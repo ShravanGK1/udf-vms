@@ -1,0 +1,336 @@
+[
+    {
+        "id": 1782690536,
+        "client_name": "Wipro",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2026-07-29T07:18:56.533299",
+        "created_at": "2026-06-29T05:18:56.986408",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IldpcHJvIiwiZXhwaXJlc19hdCI6IjIwMjYtMDctMjlUMDc6MTg6NTYuNTMzMjk5IiwibWF4X3VzZXJzIjoxMDAsIm1heF9zaXRlcyI6MTB9.o6sIAJiclD8-ZamPpOmg7gudwx7vJPVNt7ugwTCW9wWyL5lna64nQQnrXOWM9MHwOyrvsv-hPiRBSCEFm0IH823PeWYwZve5d-y7oU48j4YP25pMIgLX8cLNnvxR4AigvBOS_djZp3sj_81zRXQMxa9ShnNPE5aQjYrgDsumW6qENwO0QpXeUS_BL3QX7MgIYKlagqXi0_hV_IGTC5oXmqU6PHPEULD_LC-Um8p946XF3_9DQK3N3nP9LUwl57Jq2Zkg4epDFK2LKIPLHsCHxvwW6u27VI6dJhnuCT-mQxZM9AdvOOR0Ua3HcwagqjEYu407yF6tRqu4LUBK-6JUiw",
+        "will_terminate": false,
+        "terminated_early": false,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@wipro.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1782691268,
+        "client_name": "Test",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-06-29T07:31:07.548144",
+        "created_at": "2026-06-29T05:31:08.009375",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlRlc3QiLCJleHBpcmVzX2F0IjoiMjAyNy0wNi0yOVQwNzozMTowNy41NDgxNDQiLCJtYXhfdXNlcnMiOjEwMCwibWF4X3NpdGVzIjoxMH0.Tg1PR3QlaWoXm2LSRy_Llf4L8LrGzeOS06gZGyGRCjMBOQDdkZ-WxQjrUeWoaUIr782Mk22rD3s8KPbd52eOS3kCSfkwZuhrAvkHXVMjG9nMchdYWVBePZNAJMIPmgSA22Pkor6Zj8ibWCQfVmy7rjH0l2k4W-UKcyvYEYcoWjYK7nUsp-Vu9JT7kVT-onDdgIN8-uN61GSKOwEaAqoJJBNMuVD3BqviOCYJQfChM-u68iMist10wfmdcWYBpfye6Z4Tr3f8PB4ocOKV-YL3znMHXGGB8Jxs3OqRiwANJlDvK495nlRsciFlTK81pqn32jdrCewYWFsoOV8aeaGSig",
+        "will_terminate": false,
+        "terminated_early": false,
+        "sites": [],
+        "permissions": {
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ],
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "help@test.com",
+            "auto_purge_days": 90,
+            "enable_sms": true,
+            "enable_face_recognition": true
+        },
+        "extension_request": null
+    },
+    {
+        "id": 1782695844,
+        "client_name": "Sumeet Group",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-06-29T06:47:24.563258",
+        "created_at": "2026-06-29T06:47:24.700583",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlN1bWVldCBHcm91cCIsImV4cGlyZXNfYXQiOiIyMDI3LTA2LTI5VDA2OjQ3OjI0LjU2MzI1OCIsIm1heF91c2VycyI6MTAwLCJtYXhfc2l0ZXMiOjEwfQ.d-1LTim19E5IowAWwuAh8TCqoiq3bguFgbospzPQJ8xITB8lsMRR6hfC3zd9LSkhKnfTwt0Yo37txQlOQka4HCmCqjvs3qR99BN7uvFEPZ2PbbNgEN4y_s0F5efIADwZZ_P6C-wMYuDRT-mYDzGy978hRr6A05VVXA9J4rKLrOODdAMGq86ZrFfyN0tpeUf6YowuVct4p73LKYXtgWK5LrxBpYlorXDrojRRxr-t3bHt1rKYdaMPs0Gnqxg9l45g1vjhlKG6RzapvJQ45BUkn0BjDnMjkXzlB0_CvKdbJtjc8SXkHz0pBRkU8O2OmyAmEXD-Ko4h_7SurmUhuJ7xLQ",
+        "will_terminate": false,
+        "terminated_early": false,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@sumeetgroup.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1782869400,
+        "client_name": "Unique Delta Force",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2026-07-31T00:00:00",
+        "created_at": "2026-07-01T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlVuaXF1ZSBEZWx0YSBGb3JjZSIsImV4cGlyZXNfYXQiOiIyMDI2LTA3LTMxVDAwOjAwOjAwIiwibWF4X3VzZXJzIjoxMDAsIm1heF9zaXRlcyI6MTAsImJ1ZmZlcl9kYXlzIjoxNX0.VkxkcQ0xC1Gxc9p_2jPmaRwNcgkF7HI_xdj_ZPQ0A-JHMb4v_eEFn4S4NuLWZidMdqbAg-rducTUpkV-xfCMKwZWrOktaqT9IX4_G7NwDE5sR6jmlt7534GMjZltYw7rlZgwti-Q_9-mBtC0QFRmEFeg8mZ8zsrY56XYAYPzeFfxL9P0QIn8XIsL-lKKeb8QRlNApENZ-Un6GBMI5petdb5Otd3sNZLyFsAZKzwugNhkTpS6hPIBouoD3hLPacU7689LaZOrV2UgwVJK9o8us5IhzpzmCjm9PgRp4hlfhd-XRDX_iE8-nl6ux-_R00WoCNo9NYSjLrWPOB5gNaSYuQ",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 15,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@uniquedeltaforce.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1782872327,
+        "client_name": "Test Client",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2026-08-15T00:00:00",
+        "created_at": "2026-07-01T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlRlc3QgQ2xpZW50IiwiZXhwaXJlc19hdCI6IjIwMjYtMDgtMTVUMDA6MDA6MDAiLCJtYXhfdXNlcnMiOjEwMCwibWF4X3NpdGVzIjoxMCwiYnVmZmVyX2RheXMiOjkwfQ.r6KCKHP76oywSDJ8pGkfy3VrxVuV3ttLHmYi81Gv77WaLR1tmLOpcKR7iP6gf1UgpgdxLDKSJGArlKS9o93Ia_0vAVFK7WUDLqY3O6FFDM8W3OWQJpN5tBy_bJdGMzOnOuoBn_iLhehmXegxghXf4MHx4Ee5vXMhqVBoDBlZDoEpn52LODFzZpIgekatjLsBB_um3oXOzDoDOzUYPPm5WoroUm--MXqUNSAcIgvZO9G5QoHLRW_Q818y7Wg-W3rWYAAX__TtphfelctG9jF7MHJjquQyr83Tox2UUTr8NSeKk1Mzl9xZLRf44bOQ_5f63688snEn0QvjL1Yd_fAadQ",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@testclient.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1785801936,
+        "client_name": "Sincro Digital",
+        "max_users": 500,
+        "max_sites": 100,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-08-04T00:00:00",
+        "created_at": "2026-08-04T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlNpbmNybyBEaWdpdGFsIiwiZXhwaXJlc19hdCI6IjIwMjctMDgtMDRUMDA6MDA6MDAiLCJtYXhfdXNlcnMiOjUwMCwibWF4X3NpdGVzIjoxMDAsImJ1ZmZlcl9kYXlzIjo5MH0.kwUpu7bObKXEJyt7hScqmFya4RmrhL5dfXf9UerjYPW9d0EanlcS89xIc0MGDFQk962hVEDMfY93TGJNYOOXAQVD6xdWnjs6DnOp5rdoLGN6hK06QmC3qzvvIaw-yznm4PnnHJKugRdlE1y9blSpauqrV6J2f1tc8TRV7H4AE6unghcf64F1ANT4cgMQ0ie7pm_OUdxJGbzdLAfeVJ_oTeQKR4QLbkWieEe8HkeIrlAK2CNYNWPgPZ-UgcouRIKdYMPg-3cuREO8Ch2Isjh2Wsfyg_6vFneoMx9X3cnjiNwab0cSV6zJKhJ-Pl8yqCd6pX014jqqvk5jo_U8zp_mfw",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@sincrodigital.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1786059882,
+        "client_name": "VMS_Mobile_Test",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2028-08-07T00:00:00",
+        "created_at": "2026-08-07T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlZNU19Nb2JpbGVfVGVzdCIsImV4cGlyZXNfYXQiOiIyMDI4LTA4LTA3VDAwOjAwOjAwIiwibWF4X3VzZXJzIjoxMDAsIm1heF9zaXRlcyI6MTAsImJ1ZmZlcl9kYXlzIjo5MH0.Ev6hnhjROe2qsGyNbV1hqK9fviS4-EA2hlq0ErKPMUhEikC-m2hkY8H4ExeUfvN8Vw9csZtrNuPS1B9goP6WYq050JJH2lR7EABp5EKOaOLa7RyNmrURxf2RjBLlkgV__kfIuzovpWolZEBEtTiwUGKAYMW3xedLES6emfc9zPCbdK55kLS6ERL00BjuAhlARq4yvLzNIENkxYIOfwSSL_Ih8x96arCQs_drxstpLq78_bWPQrhw4lK024eFRFHVIn4UoN1-Z3RYIN7zLv1GAsLtr9AN9YCKZb0AOQ0YHTT_a5q5xc25QwWQ8RdP80CntlnH447VY2Q--VdYE3vhFg",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@vms_mobile_test.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    }
+]

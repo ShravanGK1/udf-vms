@@ -1,0 +1,14 @@
+{
+    "max_visitors": 500,
+    "session_timeout": 60,
+    "support_email": "support@sumeetgroup.com",
+    "enable_sms": true,
+    "enable_face_recognition": false,
+    "auto_purge_days": 90,
+    "company_name": "UDF",
+    "company_logo": "/uploads/company_logo.jpeg?t=1786079908",
+    "default_password_admin": "Admin@911",
+    "default_password_host": "Host@981",
+    "default_password_security": "Security@786",
+    "default_password_superadmin": "Superadmin@123"
+}

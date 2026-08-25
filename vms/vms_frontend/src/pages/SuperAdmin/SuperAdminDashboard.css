@@ -1,0 +1,545 @@
+/* SuperAdminDashboard Premium UI Redesign */
+.superadmin-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+  color: #102a43;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding-top: 4rem;
+  /* Offset for fixed navbar */
+}
+
+.superadmin-main-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2.5rem;
+}
+
+.superadmin-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.superadmin-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+  color: #102a43;
+  letter-spacing: -0.5px;
+}
+
+.superadmin-subtitle {
+  color: #627d98;
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.superadmin-header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.superadmin-btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
+  font-size: 0.9rem;
+}
+
+.superadmin-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.5);
+}
+
+.superadmin-btn-secondary {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  color: #334e68;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+  font-size: 0.9rem;
+}
+
+.superadmin-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.superadmin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+@media (max-width: 1024px) {
+  .superadmin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .superadmin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Config Cards */
+.superadmin-config-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+@media (max-width: 1024px) {
+  .superadmin-config-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .superadmin-config-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.superadmin-config-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.superadmin-config-card:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  transform: translateY(-4px);
+  background: #ffffff;
+}
+
+.superadmin-config-icon {
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  border-radius: 0.75rem;
+  display: flex;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+}
+
+.superadmin-config-card h4 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #102a43;
+}
+
+.superadmin-config-card p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #627d98;
+}
+
+.superadmin-config-arrow {
+  margin-left: auto;
+  color: #829ab1;
+  flex-shrink: 0;
+  transition: transform 0.3s, color 0.3s;
+}
+
+.superadmin-config-card:hover .superadmin-config-arrow {
+  transform: translateX(4px);
+  color: #2563eb;
+}
+
+.superadmin-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .superadmin-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.superadmin-left-column,
+.superadmin-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-width: 0;
+}
+
+/* Glassmorphism Cards */
+.superadmin-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.superadmin-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.superadmin-card-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.superadmin-card-title {
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin: 0;
+  color: #102a43;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Tabs */
+.superadmin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: rgba(240, 244, 248, 0.8);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.superadmin-tab {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #627d98;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+}
+
+.superadmin-tab.active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.superadmin-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 0.75rem;
+  color: #829ab1;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s;
+}
+
+.superadmin-search-box:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.superadmin-search-box input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: #102a43;
+  width: 180px;
+}
+
+/* Table */
+.superadmin-table-container {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.superadmin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.superadmin-table th {
+  text-align: left;
+  padding: 1.25rem 2rem;
+  background: rgba(240, 244, 248, 0.5);
+  color: #627d98;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+}
+
+.superadmin-table td {
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  font-size: 0.9rem;
+  color: #334e68;
+  transition: background 0.2s;
+}
+
+.superadmin-table tr:hover td {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.superadmin-company-cell {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.superadmin-company-icon {
+  padding: 0.6rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  border-radius: 0.5rem;
+  display: flex;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.superadmin-company-name {
+  font-weight: 700;
+  color: #102a43;
+}
+
+.superadmin-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.superadmin-status.active {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.superadmin-status.expiring {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.superadmin-status.expired {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.superadmin-status-dot {
+  height: 7px;
+  width: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.superadmin-action-btns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.superadmin-icon-btn {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: #829ab1;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.superadmin-icon-btn:hover {
+  background: #f0f4f8;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Audit Logs */
+.superadmin-audit-list {
+  padding: 0;
+}
+
+.superadmin-audit-item {
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  transition: background 0.3s;
+}
+
+.superadmin-audit-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.superadmin-audit-icon {
+  padding: 0.6rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  border-radius: 50%;
+  height: fit-content;
+  display: flex;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
+}
+
+.superadmin-audit-content {
+  flex: 1;
+}
+
+.superadmin-audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.superadmin-audit-user {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #102a43;
+}
+
+.superadmin-audit-time {
+  font-size: 0.8rem;
+  color: #829ab1;
+  font-weight: 500;
+}
+
+.superadmin-audit-action {
+  font-size: 0.9rem;
+  color: #627d98;
+  margin: 0.25rem 0 0;
+}
+
+.superadmin-audit-target {
+  font-size: 0.75rem;
+  background: rgba(240, 244, 248, 0.8);
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.375rem;
+  color: #627d98;
+  font-weight: 600;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.superadmin-chart-container {
+  padding: 1.5rem;
+}
+
+/* Alerts Card */
+.superadmin-alerts-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.superadmin-alerts-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.superadmin-alerts-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #102a43;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.superadmin-alerts-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.superadmin-alert-item {
+  padding: 1.25rem 2rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #334e68;
+  transition: background 0.2s;
+}
+
+.superadmin-alert-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.superadmin-alert-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.superadmin-alert-item.warning .superadmin-alert-badge {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.superadmin-alert-item.error .superadmin-alert-badge {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.superadmin-alert-item.info .superadmin-alert-badge {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}

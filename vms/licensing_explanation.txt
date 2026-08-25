@@ -1,0 +1,80 @@
+VMS Cryptographically Signed Subscription Licensing System
+
+This document explains the architecture, security mechanisms, and logic of the subscription licensing system implemented for the Visitor Management System (VMS).
+
+--------------------------------------------------------------------------------
+1. System Architecture
+--------------------------------------------------------------------------------
+The licensing system operates on a Provider-Client (Licensing Authority / Client Node) architecture:
+- Licensing Provider Console (Authority):
+  - Generates secure cryptographically signed license keys (JWT tokens).
+  - Manages client registries, active/terminated contract counts, and licensing metadata.
+  - Exposes endpoints to process anonymous license extension requests, early terminations, and contract resumptions.
+- VMS Client Backend & Frontend:
+  - Validates the license signature and checks claims on every API request.
+  - Enforces clock-tampering detection and contract boundaries.
+  - Blocks unauthorized access via routing and middleware interceptors.
+
+--------------------------------------------------------------------------------
+2. Cryptographic Validation (RS256 JWT)
+--------------------------------------------------------------------------------
+Licenses are issued as JSON Web Tokens (JWT) signed with the RS256 algorithm:
+- Signing (Provider): The licensing provider holds a private RSA key to sign the JWT.
+- Verification (Client): The VMS client application contains the matching public RSA key to verify the signature. Any tampering with the license key string instantly invalidates the signature.
+- Token Claims Payload:
+  - client_name: Name of the authorized customer.
+  - expires_at: UTC ISO timestamp representing standard contract expiration.
+  - max_users & max_sites: Resource quotas allocated to the client.
+  - machine_uuid (Optional): Unique hardware motherboard footprint check.
+
+--------------------------------------------------------------------------------
+3. Monotonic Clock Integrity & Anti-Tampering Check
+--------------------------------------------------------------------------------
+To prevent clients from bypassing license expiration by manually winding back the server's system clock, a multi-layer UTC monotonic clock check is implemented:
+- Trusted Network Time Fallback:
+  The system attempts to resolve UTC time by querying trusted public world time servers. If offline, it falls back to the local computer UTC clock.
+- Signature-Salted State Cache (license_state.json):
+  Every successful verification writes the current timestamp to a local JSON cache file alongside a SHA-256 signature hash of the timestamp combined with a hidden secret salt.
+  On subsequent requests, the verifier checks if the system clock is older than the cache timestamp. If the hash does not match, or if system time is in the past compared to the cache, it flags a CLOCK_TAMPERED status.
+- Database High Watermark:
+  The verifier queries the database for the latest activity record (MAX(created_at) from the visitor_requests table). The system time is blocked from running prior to the latest created record timestamp.
+
+--------------------------------------------------------------------------------
+4. Middlewares & Routing Interception
+--------------------------------------------------------------------------------
+- Backend Interceptor (Flask before_request):
+  - Intercepts all incoming API requests.
+  - If the license verification status is not ACTIVE (e.g. missing, expired, clock-tampered, or terminated early), it intercepts and blocks requests with a 402 Payment Required HTTP response.
+  - Bypasses public assets (/uploads/, /uploads_users/) and licensing status endpoints (/api/license-status, /api/activate-license) to allow admins to upload new keys when restricted.
+- Frontend Interceptor (Vite / React Routing):
+  - Inside AppRoutes.jsx, a global license state check runs on mount. If validity checks fail, the application redirects pages to the LicenseActivationPage restricting regular application pages.
+
+--------------------------------------------------------------------------------
+5. Extension Request Restraints & Spam Prevention
+--------------------------------------------------------------------------------
+To prevent spamming the provider authority with extension requests, strict checks are performed on the client side before notifying the provider:
+- Window Constraints: An extension request can only be submitted within a precise window prior to standard contract expiration, determined by the total contract term:
+  - >= 300 days term (e.g. 365 days): opens <= 30 days before expiry.
+  - 150 to 299 days term (e.g. 180 days): opens <= 15 days before expiry.
+  - 75 to 149 days term (e.g. 90 days): opens <= 7 days before expiry.
+  - 15 to 74 days term (e.g. 30 days): opens <= 1 day before expiry.
+  - Grace Buffer Period: If a standard contract has already expired but is within its 90-day grace period, the extension request is always eligible.
+- Anti-Spam Check: The system logs extension_requested = TRUE in the database table system_license upon submission, blocking multiple submissions during the same term.
+- Frontend Controls: The client admin modal (LicenseModal.jsx) dynamically disables the "Request License Extension" button and outputs clear helper notes detailing these rules.
+
+--------------------------------------------------------------------------------
+6. Grace Period / Buffer Time
+--------------------------------------------------------------------------------
+If a contract expires, a fixed 90-day grace buffer period begins. During this time:
+- The backend remains functional and returns an ACTIVE state with is_in_buffer = True and reports days_remaining_in_buffer.
+- The frontend dashboard shows warnings reminding administrators to renew the license.
+- Once the 90 days expire, the license status becomes EXPIRED, blocking VMS system access.
+
+--------------------------------------------------------------------------------
+7. Suspension (Early Termination) & Resumption Flow
+--------------------------------------------------------------------------------
+- Suspension: The provider can mark a client contract as terminated_early = TRUE. The Flask middleware immediately intercepts requests and returns a 402 status.
+- Resumption Checks:
+  - To resume services, administrators upload a renewed license key via /api/activate-license.
+  - To prevent abuse (e.g., trying to reactivate a suspended license key or registering a new key with a longer term without paying), the system checks if the new key's expiration date matches the suspended license's expiration date.
+  - Once validation succeeds, the terminated_early flag is reset to FALSE, restoring system functions while preserving the original contract activation start date in the database.

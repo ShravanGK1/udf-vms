@@ -1,0 +1,90 @@
+.dashboard-selection-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f1f5f9;
+    font-family: 'Inter', sans-serif;
+    padding: 2rem;
+}
+
+.dashboard-selection-content {
+    max-width: 1000px;
+    width: 100%;
+}
+
+.ds-title {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.ds-subtitle {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #64748b;
+    margin-bottom: 3rem;
+}
+
+.ds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.ds-card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ds-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: var(--hover-color);
+}
+
+.ds-icon-wrapper {
+    background-color: #f8fafc;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+.ds-card:hover .ds-icon-wrapper {
+    transform: scale(1.1);
+}
+
+.ds-card-title {
+    font-size: 1.25rem;
+    color: #334155;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.ds-card-desc {
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .ds-grid {
+        grid-template-columns: 1fr;
+    }
+}

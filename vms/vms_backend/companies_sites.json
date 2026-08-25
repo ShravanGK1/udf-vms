@@ -1,0 +1,33 @@
+[
+    {
+        "code": "SG",
+        "id": 1,
+        "name": "Wipro",
+        "sites": [
+            {
+                "address": "123 Test St",
+                "id": 111,
+                "lat": 12.34,
+                "lng": 56.78,
+                "name": "Custom Test Site A",
+                "status": "Active"
+            },
+            {
+                "address": "456 Mock Ave",
+                "id": 222,
+                "lat": 90.12,
+                "lng": 34.56,
+                "name": "Custom Test Site B",
+                "status": "Active"
+            },
+            {
+                "id": 1782725980531,
+                "name": "Kasarwadi",
+                "address": "Kasarwadi",
+                "lat": 18.6036,
+                "lng": 73.8219,
+                "status": "Active"
+            }
+        ]
+    }
+]

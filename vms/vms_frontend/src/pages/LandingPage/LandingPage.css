@@ -1,0 +1,186 @@
+/* --- Variables & Reset --- */
+:root {
+  --primary: #1d4ed8;       /* Navy Blue */
+  --primary-hover: #1e40af;
+  --primary-light: #eff6ff;
+  --dark: #0f172a;          /* Slate 900 */
+  --dark-hover: #1e293b;
+  --gray-dark: #475569;     /* Slate 600 */
+  --gray-light: #f8fafc;    /* Slate 50 */
+  --border: #e2e8f0;
+  --white: #ffffff;
+}
+
+html { scroll-behavior: smooth; }
+
+.vms-page { background-color: var(--gray-light); color: var(--dark); line-height: 1.6; }
+.vms-container { max-width: 1550px; margin: 0 auto; padding: 0 1.5rem; }
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.desktop-only { display: none; }
+.mobile-only { display: flex; }
+
+/* --- Typography --- */
+h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 1.5rem; }
+h1 span { color: var(--primary); }
+h2.section-title { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+p.section-subtitle { font-size: 1.125rem; color: var(--gray-dark); max-width: 48rem; margin: 0 auto 4rem; }
+h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+
+/* --- Icons --- */
+.icon-blue { color: var(--primary); width: 24px; height: 24px; }
+.icon-muted { color: var(--gray-dark); width: 20px; height: 20px; }
+.icon-small { width: 20px; height: 20px; }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.6rem 1.25rem; border-radius: 0.375rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s ease; border: none; font-size: 1rem; text-decoration: none;
+}
+.btn-primary { background-color: var(--primary); color: var(--white); }
+.btn-primary:hover { background-color: var(--primary-hover); }
+.btn-outline { background-color: var(--white); color: var(--dark); border: 2px solid var(--border); }
+.btn-outline:hover { border-color: #cbd5e1; }
+.btn-white { background-color: var(--white); color: var(--primary); }
+.btn-white:hover { background-color: var(--gray-light); }
+.btn-primary-dark { background-color: transparent; border: 1px solid var(--primary); color: var(--white); }
+.btn-primary-dark:hover { background-color: var(--primary); }
+.btn-large { padding: 0.875rem 2rem; font-size: 1.125rem; }
+.shadow { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+.shadow-hover:hover { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); transform: translateY(-2px); }
+.full-width { width: 100%; }
+.mt-1 { margin-top: 1rem; }
+
+/* --- Utilities --- */
+.bg-white { background-color: var(--white); }
+.bg-light { background-color: var(--gray-light); }
+.bg-dark { background-color: var(--dark); }
+.text-light { color: var(--white); }
+.text-light p { color: #94a3b8; }
+.section-padding { padding: 5rem 0; }
+.max-w-md { max-width: 800px; margin: 0 auto; }
+
+/* --- Navigation --- */
+.vms-navbar {
+  position: fixed; top: 0; left: 0; right: 0; background: var(--white);
+  border-bottom: 1px solid var(--border); z-index: 1000;
+}
+.nav-content { display: flex; justify-content: space-between; align-items: center; height: 5rem; }
+.nav-logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.25rem; color: var(--dark); cursor: pointer; }
+.logo-icon { width: 32px; height: 32px; color: var(--primary); }
+.nav-logo span span { color: var(--primary); font-weight: 700; }
+.nav-links { display: flex; align-items: center; gap: 2rem; }
+.nav-links a { color: var(--gray-dark); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+.nav-links a:hover { color: var(--primary); }
+.mobile-menu-btn { background: none; border: none; cursor: pointer; color: var(--gray-dark); }
+.mobile-nav { background: var(--white); padding: 1rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
+.mobile-nav a { padding: 0.5rem; color: var(--gray-dark); text-decoration: none; font-weight: 500; display: block; }
+
+/* --- Hero Section --- */
+.hero-section { padding-top: 8rem; padding-bottom: 5rem; display: flex; flex-direction: column; gap: 3rem; align-items: center; }
+.hero-content { flex: 1; text-align: center; }
+.hero-content p { font-size: 1.125rem; color: var(--gray-dark); margin-bottom: 2rem; }
+.hero-buttons { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+.hero-graphic { flex: 1; width: 100%; display: flex; justify-content: center; }
+
+/* UPDATED: Office Background Image for Graphic Box */
+.graphic-box { 
+  background: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.6)), 
+              url('https://images.unsplash.com/photo-1568992687947-868a62a9f521?q=80&w=1332&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  width: 100%; 
+  aspect-ratio: 4/3; 
+  border-radius: 1rem; 
+  position: relative; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.mockup-card { background: var(--white); padding: 1.5rem; border-radius: 0.5rem; width: 80%; max-width: 300px; transition: transform 0.5s; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.mockup-card:hover { transform: scale(1.05); }
+.mockup-header { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--gray-light); }
+.mockup-avatar { width: 3rem; height: 3rem; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.mockup-header h4 { font-size: 0.875rem; margin: 0; color: var(--dark); }
+.mockup-header p { font-size: 0.75rem; margin: 0; color: var(--gray-dark); }
+.mockup-lines { display: flex; flex-direction: column; gap: 0.75rem; }
+.line { height: 0.5rem; background: var(--gray-light); border-radius: 1rem; }
+.line-1 { width: 100%; } .line-2 { width: 80%; } .line-3 { width: 60%; }
+
+/* --- Features Grid --- */
+.features-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+.feature-card { background: var(--gray-light); padding: 2rem; border-radius: 0.75rem; border: 1px solid var(--border); transition: all 0.3s; }
+.feature-card:hover { background: var(--white); }
+.feature-icon-wrapper { width: 3.5rem; height: 3.5rem; background: var(--primary-light); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; transition: transform 0.3s; }
+.feature-card:hover .feature-icon-wrapper { transform: scale(1.1); }
+.feature-card p { color: var(--gray-dark); }
+
+/* --- How it Works Grid --- */
+.steps-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; position: relative; }
+.step-card { display: flex; flex-direction: column; align-items: center; text-align: center; z-index: 10; }
+.step-number { width: 5rem; height: 5rem; background: #1e293b; border: 4px solid var(--dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: #3b82f6; margin-bottom: 1.5rem; transition: all 0.3s; }
+.step-card:hover .step-number { background: var(--primary); color: var(--white); }
+.step-connector { position: absolute; top: 2.5rem; left: 10%; right: 10%; height: 2px; background: #334155; z-index: 1; }
+
+/* --- Benefits Grid --- */
+.benefits-grid { display: grid; gap: 3rem; grid-template-columns: 1fr; }
+.benefit-card { text-align: center; }
+.benefit-icon-wrapper { width: 4rem; height: 4rem; background: var(--primary-light); color: var(--primary); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
+.benefit-icon-wrapper svg { width: 2rem; height: 2rem; }
+.benefit-card p { color: var(--gray-dark); margin-bottom: 1.5rem; }
+.benefit-card ul { list-style: none; text-align: left; max-width: 250px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.75rem; }
+.benefit-card li { display: flex; align-items: center; gap: 0.5rem; color: var(--gray-dark); font-weight: 500; }
+
+/* --- FAQ Accordion --- */
+.faq-list { display: flex; flex-direction: column; gap: 1rem; }
+.faq-item { background: var(--white); border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
+.faq-button { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; background: none; border: none; font-size: 1rem; font-weight: 600; color: var(--dark); cursor: pointer; text-align: left; }
+.faq-answer { padding: 0 1.25rem; max-height: 0; overflow: hidden; transition: all 0.3s ease; color: var(--gray-dark); }
+.faq-answer.open { padding: 0 1.25rem 1.25rem; max-height: 200px; }
+
+/* --- CTA Section --- */
+.cta-section { background-color: var(--primary-hover); padding: 5rem 1.5rem; color: var(--white); }
+.cta-section h2 { font-size: 2rem; font-weight: 800; margin-bottom: 1.5rem; }
+.cta-section p { font-size: 1.25rem; color: #bfdbfe; max-width: 40rem; margin: 0 auto 2.5rem; }
+.cta-buttons { display: flex; flex-direction: column; gap: 1rem; justify-content: center; }
+
+/* --- Footer --- */
+.footer-section { background: #020617; color: #94a3b8; padding: 4rem 0 2rem; border-top: 1px solid var(--dark); }
+.footer-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; margin-bottom: 3rem; }
+.footer-logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1.25rem; font-weight: 700; color: var(--white); margin-bottom: 1rem; }
+.footer-brand p { font-size: 0.875rem; line-height: 1.6; }
+.footer-links h4 { color: var(--white); margin-bottom: 1rem; }
+.footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+.footer-links a { color: #94a3b8; text-decoration: none; font-size: 0.875rem; transition: color 0.2s; }
+.footer-links a:hover { color: #60a5fa; }
+.footer-bottom { display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center; border-top: 1px solid #1e293b; padding-top: 2rem; font-size: 0.875rem; }
+.social-links { display: flex; gap: 1rem; }
+.social-links a { color: #94a3b8; text-decoration: none; transition: color 0.2s; }
+.social-links a:hover { color: var(--white); }
+
+/* --- Responsive Desktop Styles --- */
+@media (min-width: 768px) {
+  .desktop-only { display: flex; }
+  .mobile-only { display: none; }
+  h1 { font-size: 3.5rem; }
+  .hero-section { flex-direction: row; text-align: left; padding-top: 10rem; }
+  .hero-content { text-align: left; }
+  .hero-buttons { flex-direction: row; justify-content: flex-start; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps-grid { grid-template-columns: repeat(4, 1fr); }
+  .benefits-grid { grid-template-columns: repeat(3, 1fr); }
+  .benefit-card { text-align: left; }
+  .benefit-card ul { margin: 0; }
+  .cta-buttons { flex-direction: row; }
+  .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+  .footer-bottom { flex-direction: row; justify-content: space-between; text-align: left; }
+}
+
+@media (min-width: 1024px) {
+  .features-grid { grid-template-columns: repeat(3, 1fr); }
+}

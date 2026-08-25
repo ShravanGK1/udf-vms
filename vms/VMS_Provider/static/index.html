@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMS Licensing Authority Console</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- Fixed Navigation Header -->
+    <div class="prov-navbar">
+        <div class="prov-brand">
+            <div class="prov-logo" style="background: transparent; box-shadow: none;">
+                <img src="/static/logo.png" alt="Unique Delta Force Logo" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <div>
+                <h2>VMS Licensing Authority</h2>
+                <p>Provider Subscription Panel</p>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <!-- Dropdown Selector for active client configuration -->
+            <div class="prov-tenant-selector">
+                <span class="prov-tenant-label">Active Config Client</span>
+                <select id="tenantSelect" class="prov-tenant-select" onchange="handleTenantSelectChange(this.value)">
+                    <option value="">Select a client...</option>
+                </select>
+            </div>
+            
+            <button class="sa-btn sa-btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.8rem; border-color: rgba(0,0,0,0.08); font-weight: 700; background: #ffffff;" onclick="handleLogout()">
+                <i data-lucide="log-out"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Workspace Content -->
+    <div class="superadmin-main-content">
+        <div class="superadmin-page-header">
+            <div>
+                <h1 class="superadmin-title">Authority Management Console</h1>
+                <p class="superadmin-subtitle">Configure, monitor, and regulate license keys for multi-node VMS deployments.</p>
+            </div>
+        </div>
+
+        <!-- Extension Requests Notification Banner -->
+        <div id="extensionRequestsBanner" style="display: none; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 1.5rem;">🔔</span>
+                    <div>
+                        <h4 style="margin: 0; color: #78350f; font-weight: 800; font-size: 0.95rem;">Pending License Extension Requests</h4>
+                        <p id="extensionRequestsDesc" style="margin: 0.25rem 0 0 0; color: #92400e; font-size: 0.8rem;">The following client(s) have requested subscription extensions:</p>
+                    </div>
+                </div>
+                <div id="extensionRequestsList" style="display: flex; gap: 0.75rem; align-items: center;">
+                    <!-- Extension requests details loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Counter Cards Grid -->
+        <div class="superadmin-stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-icon" style="background: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                    <i data-lucide="users"></i>
+                </div>
+                <div>
+                    <div class="stat-card-label">Total Clients</div>
+                    <div id="statTotalClients" class="stat-card-value">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-card-label">Active Subscriptions</div>
+                    <div id="statActiveSubs" class="stat-card-value">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;">
+                    <i data-lucide="alert-triangle"></i>
+                </div>
+                <div>
+                    <div class="stat-card-label">Pending Terminations</div>
+                    <div id="statPendingTerms" class="stat-card-value">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon" style="background: rgba(239, 68, 68, 0.1); color: #dc2626;">
+                    <i data-lucide="x-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-card-label">Early Terminated</div>
+                    <div id="statTerminated" class="stat-card-value">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5 Manageable Config Cards -->
+        <div class="superadmin-config-grid">
+            <div class="superadmin-config-card" onclick="openConfigModal('companySite')">
+                <div class="superadmin-config-icon"><i data-lucide="building"></i></div>
+                <div>
+                    <h4>Company & Site Master</h4>
+                    <p>Manage hierarchy, geo-coordinates</p>
+                </div>
+                <div class="superadmin-config-arrow">&rarr;</div>
+            </div>
+            <div class="superadmin-config-card" onclick="openConfigModal('rolesPermissions')">
+                <div class="superadmin-config-icon"><i data-lucide="shield"></i></div>
+                <div>
+                    <h4>Roles & Permissions</h4>
+                    <p>Configure access control matrix</p>
+                </div>
+                <div class="superadmin-config-arrow">&rarr;</div>
+            </div>
+            <div class="superadmin-config-card" onclick="openConfigModal('licenseManager')">
+                <div class="superadmin-config-icon"><i data-lucide="key"></i></div>
+                <div>
+                    <h4>License Manager</h4>
+                    <p>Extend validity, early termination</p>
+                </div>
+                <div class="superadmin-config-arrow">&rarr;</div>
+            </div>
+            <div class="superadmin-config-card" onclick="openConfigModal('systemSettings')">
+                <div class="superadmin-config-icon"><i data-lucide="settings"></i></div>
+                <div>
+                    <h4>System Settings</h4>
+                    <p>Docker parameters, visitor caps</p>
+                </div>
+                <div class="superadmin-config-arrow">&rarr;</div>
+            </div>
+            <div class="superadmin-config-card" onclick="openConfigModal('licenseCreator')">
+                <div class="superadmin-config-icon"><i data-lucide="key-round"></i></div>
+                <div>
+                    <h4>License Creator</h4>
+                    <p>Generate cryptographic license keys</p>
+                </div>
+                <div class="superadmin-config-arrow">&rarr;</div>
+            </div>
+        </div>
+
+        <!-- Bottom Splits Grid -->
+        <div class="superadmin-dashboard-grid">
+            
+            <!-- Left Column: Issued Subscriptions Registry -->
+            <div class="superadmin-left-column" style="grid-column: span 2;">
+                <div class="superadmin-card">
+                    <div class="superadmin-card-header">
+                        <h3 class="superadmin-card-title">
+                            <i data-lucide="list"></i> Issued Subscriptions Registry
+                        </h3>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <input type="text" id="searchBox" class="sa-input" style="width: 200px; padding: 0.4rem 0.8rem; font-size: 0.8rem;" placeholder="Search clients...">
+                        </div>
+                    </div>
+                    <div class="superadmin-table-container">
+                        <table class="superadmin-table" id="clientsTable">
+                            <thead>
+                                <tr>
+                                    <th>Client Company</th>
+                                    <th>Max Sites / Users</th>
+                                    <th>Term Status</th>
+                                    <th>Remaining (Buffer)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsList">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 3rem; color: #627d98;">
+                                        Loading registry subscriptions...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DIALOGS ==================== -->
+
+    <!-- Modal 1: Company & Site Master -->
+    <div id="companySiteModal" class="sa-modal-overlay hidden">
+        <div class="sa-modal-container" style="max-width: 900px;">
+            <div class="sa-modal-header">
+                <h3 class="sa-modal-title">
+                    <i data-lucide="building"></i> Company & Site Master - <span class="active-client-label">None</span>
+                </h3>
+                <button class="sa-close-btn" onclick="closeConfigModal('companySite')">&times;</button>
+            </div>
+            <div class="sa-modal-content">
+                <div class="sa-grid-2" style="grid-template-columns: 1.2fr 0.8fr;">
+                    <!-- Left: Site lists and enable toggles -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="margin: 0; font-weight: 700; font-size: 0.95rem;">Registered Client Sites</h4>
+                            <button class="sa-btn sa-btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;" onclick="toggleAddSiteForm()">
+                                <i data-lucide="plus"></i> Add Site
+                            </button>
+                        </div>
+
+                        <!-- Add Site Form (Collapsible) -->
+                        <form id="addSiteForm" style="display: none; background: rgba(0,0,0,0.02); padding: 1rem; border: 1px dashed rgba(0,0,0,0.1); border-radius: 0.75rem; margin-bottom: 1rem;" onsubmit="handleAddSiteSubmit(event)">
+                            <div class="sa-form-group">
+                                <label class="sa-form-label">Site Name</label>
+                                <input type="text" id="newSiteName" class="sa-input" placeholder="e.g. Pune Tech Park" required>
+                            </div>
+                            <div class="sa-form-group">
+                                <label class="sa-form-label">Address</label>
+                                <input type="text" id="newSiteAddress" class="sa-input" placeholder="MIDC Road, Pune" required>
+                            </div>
+                            <div class="sa-grid-2" style="grid-template-columns: 1fr 1fr; margin-bottom: 0;">
+                                <div class="sa-form-group">
+                                    <label class="sa-form-label">Latitude</label>
+                                    <input type="text" id="newSiteLat" class="sa-input" placeholder="18.5204">
+                                </div>
+                                <div class="sa-form-group">
+                                    <label class="sa-form-label">Longitude</label>
+                                    <input type="text" id="newSiteLng" class="sa-input" placeholder="73.8567">
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem;">
+                                <button type="button" class="sa-btn sa-btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="toggleAddSiteForm(false)">Cancel</button>
+                                <button type="submit" class="sa-btn sa-btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Save Site</button>
+                            </div>
+                        </form>
+
+                        <div id="sitesContainer" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <!-- Dynamically loaded sites -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Geo coordinates mapping -->
+                    <div>
+                        <h4 style="margin: 0 0 1rem 0; font-weight: 700; font-size: 0.95rem;">Geographical Location</h4>
+                        <div id="geoDetailsPanel" style="display: none; background: #ffffff; border: 1px solid rgba(0,0,0,0.05); border-radius: 1rem; padding: 1.25rem;">
+                            <h3 id="geoSiteName" style="margin: 0; color: #102a43; font-weight: 700; font-size: 1.1rem;">Pune HQ</h3>
+                            <p id="geoSiteAddress" style="margin: 0.5rem 0 0; font-size: 0.85rem; color: #334e68;">MIDC Road, Pune</p>
+                            
+                            <div class="sa-grid-2" style="background: rgba(0,0,0,0.02); padding: 0.75rem; border-radius: 0.75rem; margin: 1rem 0;">
+                                <div>
+                                    <span style="font-size: 0.7rem; color: #627d98; font-weight: 700;">Latitude</span>
+                                    <div id="geoSiteLat" style="font-size: 0.85rem; font-weight: 700;">18.5204</div>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.7rem; color: #627d98; font-weight: 700;">Longitude</span>
+                                    <div id="geoSiteLng" style="font-size: 0.85rem; font-weight: 700;">73.8567</div>
+                                </div>
+                            </div>
+                            
+                            <div class="sa-map-card">
+                                <div class="sa-map-gridlines"></div>
+                                <div class="sa-map-label" id="geoSiteCoords">18.5204, 73.8567</div>
+                            </div>
+                        </div>
+                        <div id="geoFallbackPanel" style="display: flex; justify-content: center; align-items: center; height: 200px; color: #829ab1; font-size: 0.85rem; background: rgba(255,255,255,0.4); border-radius: 1rem; border: 1px dashed rgba(0,0,0,0.1); text-align: center; padding: 1.5rem;">
+                            Select a site to view geographical coordinates.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button class="sa-btn sa-btn-secondary" onclick="closeConfigModal('companySite')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Roles & Permissions Matrix -->
+    <div id="rolesPermissionsModal" class="sa-modal-overlay hidden">
+        <div class="sa-modal-container" style="max-width: 850px;">
+            <div class="sa-modal-header">
+                <h3 class="sa-modal-title">
+                    <i data-lucide="shield"></i> Roles & Permissions Matrix - <span class="active-client-label">None</span>
+                </h3>
+                <button class="sa-close-btn" onclick="closeConfigModal('rolesPermissions')">&times;</button>
+            </div>
+            <div class="sa-modal-content">
+                <p style="margin: 0 0 1.5rem 0; color: #627d98; font-size: 0.9rem;">
+                    Configure access control mappings for roles deployed in client databases. These settings restrict client internal operations.
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Permissions header -->
+                    <div class="sa-permission-row" style="border-bottom: 2px solid rgba(0,0,0,0.1); background: rgba(240,244,248,0.5); padding: 0.75rem 1rem; border-radius: 0.5rem 0.5rem 0 0;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #627d98; text-transform: uppercase;">System Role</span>
+                        <div class="sa-permission-grid" style="font-weight: 700; font-size: 0.75rem; color: #627d98;">
+                            <span>Permissions Matrix</span>
+                        </div>
+                    </div>
+
+                    <!-- Role Mappings Rows -->
+                    <div id="rolesContainer">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button class="sa-btn sa-btn-primary" onclick="closeConfigModal('rolesPermissions')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: License Manager -->
+    <div id="licenseManagerModal" class="sa-modal-overlay hidden">
+        <div class="sa-modal-container" style="max-width: 850px;">
+            <div class="sa-modal-header">
+                <h3 class="sa-modal-title">
+                    <i data-lucide="key"></i> License Manager - <span class="active-client-label">None</span>
+                </h3>
+                <button class="sa-close-btn" onclick="closeConfigModal('licenseManager')">&times;</button>
+            </div>
+            <div class="sa-modal-content">
+                <!-- Expiry and Termination notice banners -->
+                <div id="licenseAlertContainer"></div>
+
+                <!-- Primary License details -->
+                <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbfeea 100%); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #627d98; text-transform: uppercase;">Cryptographic Node Credentials</span>
+                            <h4 id="licClientName" style="margin: 0.25rem 0; color: #102a43; font-weight: 800;">Sumeet Group</h4>
+                        </div>
+                        <div id="licStatusBadges" style="display: flex; gap: 0.5rem; align-items: center;">
+                            <!-- Badges -->
+                        </div>
+                    </div>
+
+                    <div class="sa-grid-2" style="grid-template-columns: repeat(3, 1fr); margin-top: 1rem; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 0.75rem; gap: 1rem;">
+                        <div>
+                            <span style="font-size: 0.7rem; color: #627d98;">Start Date (Created)</span>
+                            <div id="licStartDate" style="font-size: 0.95rem; font-weight: 800; color: #102a43;">N/A</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.7rem; color: #627d98;">End Date (Expiry)</span>
+                            <div id="licEndDate" style="font-size: 0.95rem; font-weight: 800; color: #102a43;">N/A</div>
+                        </div>
+                        <div>
+                            <span id="licGraceBufferLabel" style="font-size: 0.7rem; color: #627d98;">90-Day Grace Buffer</span>
+                            <div style="font-size: 0.95rem; font-weight: 800; color: #102a43;">Active</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.7rem; color: #627d98;">Standard Term Remaining</span>
+                            <div id="licDaysRemaining" style="font-size: 0.95rem; font-weight: 800; color: #102a43;">0 Days</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.7rem; color: #627d98;">Buffer Days Remaining</span>
+                            <div id="licBufferRemaining" style="font-size: 0.95rem; font-weight: 800; color: #102a43;">0 Days</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.7rem; color: #627d98;">Limits Allowed</span>
+                            <div id="licUserLimits" style="font-size: 0.85rem; font-weight: 700; color: #102a43;">100 Users / 10 Sites</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Extension Request Block -->
+                <div id="pendingExtensionRequestBlock" style="display: none; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #b45309; text-transform: uppercase;">Extension Request Pending</span>
+                            <h4 style="margin: 0.25rem 0 0.5rem 0; color: #78350f; font-weight: 800;">Client has requested a subscription extension</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: #92400e;">This client is requesting to extend their license term by 365 days.</p>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="sa-btn sa-btn-success" style="background: #10b981; color: white;" onclick="approveExtensionRequest()">
+                                Allow Request
+                            </button>
+                            <button type="button" class="sa-btn sa-btn-danger" style="background: #ef4444; color: white;" onclick="denyExtensionRequest()">
+                                Deny Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extend subscription form -->
+                <div class="sa-grid-2" style="grid-template-columns: 1.2fr 0.8fr; gap: 1.5rem;">
+                    <div>
+                        <h4 style="margin: 0 0 0.75rem 0; font-weight: 700; font-size: 0.95rem;">Extend Subscription Term</h4>
+                        <div style="background: rgba(0,0,0,0.02); border: 1px dashed rgba(0,0,0,0.08); border-radius: 1rem; padding: 1.25rem;">
+                            <div style="display: flex; gap: 0.75rem;">
+                                <select id="extendDaysSelect" class="sa-select" style="flex: 1;">
+                                    <option value="30">30 Days extension</option>
+                                    <option value="90">90 Days extension</option>
+                                    <option value="180">180 Days extension</option>
+                                    <option value="365" selected>365 Days extension (1 Year)</option>
+                                    <option value="730">730 Days extension (2 Years)</option>
+                                </select>
+                                <button type="button" class="sa-btn sa-btn-primary" onclick="extendActiveLicense()">
+                                    Extend Term
+                                </button>
+                            </div>
+                            <p style="font-size: 0.75rem; color: #627d98; margin: 0.5rem 0 0 0;">
+                                Extending will recalculate expiration and generate a new signed JWT token.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Termination action -->
+                    <div>
+                        <h4 id="termSectionTitle" style="margin: 0 0 0.75rem 0; font-weight: 700; font-size: 0.95rem; color: #dc2626;">Early Hard Suspension</h4>
+                        <div id="termSectionContainer" style="background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.1); border-radius: 1rem; padding: 1.25rem; text-align: center;">
+                            <p id="termSectionDesc" style="margin: 0 0 0.75rem 0; font-size: 0.75rem; color: #627d98; line-height: 1.4;">
+                                Instantly terminate and invalidate client subscription locks.
+                            </p>
+                            <button type="button" id="terminateLicBtn" class="sa-btn sa-btn-danger" style="width: 100%; justify-content: center;" onclick="terminateActiveLicense()">
+                                Terminate License
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display active JWT token key -->
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="margin: 0 0 0.5rem 0; font-weight: 700; font-size: 0.95rem;">Active Cryptographic Signature Token (JWT)</h4>
+                    <textarea id="activeTokenArea" class="sa-input" style="width: 100%; height: 90px; font-family: monospace; font-size: 0.7rem; resize: none;" readonly onclick="this.select();"></textarea>
+                    <button class="sa-btn sa-btn-secondary" style="margin-top: 0.5rem; width: 100%; justify-content: center;" onclick="copyActiveToken()">
+                        <i data-lucide="copy"></i> Copy Active License Key to Clipboard
+                    </button>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button class="sa-btn sa-btn-primary" onclick="closeConfigModal('licenseManager')">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: System Settings -->
+    <div id="systemSettingsModal" class="sa-modal-overlay hidden">
+        <div class="sa-modal-container" style="max-width: 800px;">
+            <div class="sa-modal-header">
+                <h3 class="sa-modal-title">
+                    <i data-lucide="settings"></i> System Settings - <span class="active-client-label">None</span>
+                </h3>
+                <button class="sa-close-btn" onclick="closeConfigModal('systemSettings')">&times;</button>
+            </div>
+            <div class="sa-modal-content">
+                <div class="sa-grid-2" style="grid-template-columns: 1.2fr 0.8fr;">
+                    <!-- Left: configuration params -->
+                    <form id="settingsForm" onsubmit="handleSettingsSubmit(event)">
+                        <h4 style="margin: 0 0 1rem 0; font-weight: 700; font-size: 0.95rem;">Operational Parameters</h4>
+                        
+                        <div class="sa-form-group">
+                            <label class="sa-form-label">Max Visitors Count</label>
+                            <input type="number" id="settingMaxVisitors" class="sa-input" required min="1">
+                        </div>
+                        <div class="sa-form-group">
+                            <label class="sa-form-label">Session Timeout (minutes)</label>
+                            <input type="number" id="settingSessionTimeout" class="sa-input" required min="1">
+                        </div>
+                        <div class="sa-form-group">
+                            <label class="sa-form-label">Support Helpdesk Contact Email</label>
+                            <input type="email" id="settingSupportEmail" class="sa-input" required>
+                        </div>
+                        <div class="sa-form-group">
+                            <label class="sa-form-label">Auto Purge Visitor Logs Period (days)</label>
+                            <input type="number" id="settingAutoPurge" class="sa-input" required min="1">
+                        </div>
+
+                        <button type="submit" class="sa-btn sa-btn-primary" style="margin-top: 0.5rem;">
+                            <i data-lucide="check"></i> Save Parameters
+                        </button>
+                    </form>
+
+                    <!-- Right: Features matrix -->
+                    <div>
+                        <h4 style="margin: 0 0 1rem 0; font-weight: 700; font-size: 0.95rem;">Authorized Features</h4>
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            
+                            <div class="sa-feature-card">
+                                <div class="sa-feature-info">
+                                    <h5>SMS Notifications</h5>
+                                    <p>Dispatch SMS host check-in alerts</p>
+                                </div>
+                                <input type="checkbox" id="settingEnableSMS" class="sa-checkbox" style="width: 18px; height: 18px; cursor: pointer;" onchange="saveClientConfig()">
+                            </div>
+
+                            <div class="sa-feature-card">
+                                <div class="sa-feature-info">
+                                    <h5>Face Recognition</h5>
+                                    <p>Biometric camera scanning verification</p>
+                                </div>
+                                <input type="checkbox" id="settingEnableFace" class="sa-checkbox" style="width: 18px; height: 18px; cursor: pointer;" onchange="saveClientConfig()">
+                            </div>
+
+                            <!-- Docker containers simulation monitor -->
+                            <div style="border: 1px solid rgba(0,0,0,0.05); border-radius: 0.75rem; padding: 1rem; margin-top: 1rem; background: rgba(0,0,0,0.01);">
+                                <h5 style="margin: 0 0 0.5rem 0; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; color: #627d98;">Node Containers</h5>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #334e68; margin-bottom: 0.25rem;">
+                                    <span>Frontend-UI:</span><span style="color: #059669; font-weight: 700;">● running</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #334e68; margin-bottom: 0.25rem;">
+                                    <span>Backend-API:</span><span style="color: #059669; font-weight: 700;">● running</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #334e68;">
+                                    <span>Database:</span><span style="color: #059669; font-weight: 700;">● running</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button class="sa-btn sa-btn-secondary" onclick="closeConfigModal('systemSettings')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 5: License Creator -->
+    <div id="licenseCreatorModal" class="sa-modal-overlay hidden">
+        <div class="sa-modal-container" style="max-width: 850px;">
+            <div class="sa-modal-header">
+                <h3 class="sa-modal-title">
+                    <i data-lucide="key-round"></i> Cryptographic License Creator
+                </h3>
+                <button class="sa-close-btn" onclick="closeConfigModal('licenseCreator')">&times;</button>
+            </div>
+            <div class="sa-modal-content">
+                <form id="creatorLicenseForm" onsubmit="handleCreateLicenseSubmit(event)">
+                    <div class="sa-grid-2" style="grid-template-columns: 1.2fr 0.8fr; gap: 2rem;">
+                        <!-- Left Side: Inputs -->
+                        <div>
+                            <div class="sa-form-group">
+                                <label class="sa-form-label">Client Company Name</label>
+                                <input type="text" id="createClientName" class="sa-input" placeholder="e.g. Tata Motors" required>
+                            </div>
+                            
+                            <div class="sa-grid-2" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
+                                <div class="sa-form-group" style="margin-bottom: 0;">
+                                    <label class="sa-form-label">Max Users</label>
+                                    <input type="number" id="createMaxUsers" class="sa-input" value="100" min="1" required>
+                                </div>
+                                <div class="sa-form-group" style="margin-bottom: 0;">
+                                    <label class="sa-form-label">Max Sites</label>
+                                    <input type="number" id="createMaxSites" class="sa-input" value="10" min="1" required>
+                                </div>
+                            </div>
+
+                            <div class="sa-form-group">
+                                <label class="sa-form-label">Hardware Lock UUID <span style="font-weight: normal; text-transform: none; color: #627d98;">(Optional)</span></label>
+                                <input type="text" id="createMachineUuid" class="sa-input" placeholder="e.g. 4C4C4544-0032-4E10-8043-B2C04F343232">
+                            </div>
+
+                            <!-- Start date & end date inputs -->
+                            <div class="sa-grid-2" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.75rem;">
+                                <div class="sa-form-group" style="margin-bottom: 0;">
+                                    <label class="sa-form-label">License Start Date</label>
+                                    <input type="date" id="createStartDate" class="sa-input" required>
+                                </div>
+                                <div class="sa-form-group" style="margin-bottom: 0;">
+                                    <label class="sa-form-label">License End Date</label>
+                                    <input type="date" id="createEndDateInput" class="sa-input" required>
+                                </div>
+                            </div>
+
+                            <!-- Grace/Buffer period number of days -->
+                            <div class="sa-form-group">
+                                <label class="sa-form-label">Grace Period (Buffer) Days</label>
+                                <input type="number" id="createGraceDays" class="sa-input" value="90" min="0" required>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Calculations & Confirmation -->
+                        <div style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <h4 style="margin: 0 0 1rem 0; font-weight: 800; font-size: 0.9rem; text-transform: uppercase; color: #334e68; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 0.5rem;">
+                                    Calculated Terms
+                                </h4>
+                                
+                                <div class="sa-form-group" style="margin-bottom: 1rem;">
+                                    <label class="sa-form-label" style="color: #627d98; font-size: 0.7rem;">Calculated Contract Days</label>
+                                    <input type="text" id="createCalculatedDays" class="sa-input" style="background: #f0f4f8; font-weight: 700; color: #102a43;" readonly>
+                                </div>
+
+                                <div class="sa-form-group" style="margin-bottom: 1rem;">
+                                    <label class="sa-form-label" style="color: #627d98; font-size: 0.7rem;">Grace Period Start Date</label>
+                                    <input type="text" id="createGraceStartDate" class="sa-input" style="background: #f0f4f8; font-weight: 700; color: #102a43;" readonly>
+                                </div>
+
+                                <div class="sa-form-group" style="margin-bottom: 1rem;">
+                                    <label class="sa-form-label" style="color: #627d98; font-size: 0.7rem;">Grace Period End Date</label>
+                                    <input type="text" id="createGraceEndDate" class="sa-input" style="background: #f0f4f8; font-weight: 700; color: #102a43;" readonly>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 1.5rem; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 1rem;">
+                                <label class="sa-checkbox-label" style="margin-bottom: 1rem; align-items: flex-start;">
+                                    <input type="checkbox" id="createConfirmCheckbox" class="sa-checkbox" style="margin-top: 0.25rem;" onchange="handleCreateConfirmationToggle()">
+                                    <span style="font-size: 0.8rem; line-height: 1.3; color: #334e68; font-weight: 600;">
+                                        I confirm that all dates and license terms are correct.
+                                    </span>
+                                </label>
+
+                                <button type="submit" id="createSignBtn" class="sa-btn sa-btn-primary" style="width: 100%; justify-content: center;" disabled>
+                                    <i data-lucide="check"></i> Sign License Key
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Generated Key Output Block inside Modal -->
+                <div id="createResultBlock" style="display: none; margin-top: 1.5rem; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 1.25rem;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #059669; text-transform: uppercase;">Generated License Token (RS256 JWT)</span>
+                    <textarea id="createResultToken" class="sa-input" style="width: 100%; height: 110px; font-family: monospace; font-size: 0.75rem; margin-top: 0.5rem; resize: none;" readonly onclick="this.select();"></textarea>
+                    <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+                        <button class="sa-btn sa-btn-secondary" style="flex: 1; justify-content: center;" onclick="copyCreatedResultToken()">
+                            <i data-lucide="copy"></i> Copy Token
+                        </button>
+                        <button class="sa-btn sa-btn-primary" style="padding: 0.65rem 1.25rem;" onclick="resetCreatorForm()">
+                            New Key
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button class="sa-btn sa-btn-secondary" onclick="closeConfigModal('licenseCreator')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="prov-toast">Copied to clipboard!</div>
+
+    <!-- Lucide CDN for premium icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="index.js"></script>
+</body>
+</html>

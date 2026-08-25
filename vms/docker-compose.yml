@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # 1. MySQL Database Service
+  db:
+    image: mysql:8.0
+    container_name: vms_db
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root_db_secure_password
+      MYSQL_DATABASE: vms
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Automatically imports the schema on startup if DB is empty
+      - ./mysql_schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - vms_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_db_secure_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Flask Backend Service
+  backend:
+    build:
+      context: ./VMS_Backend
+      dockerfile: Dockerfile
+    container_name: vms_backend
+    restart: always
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root_db_secure_password
+      - DB_NAME=vms
+      - DB_PORT=3306
+      - SECRET_KEY=vms_production_secret_key_2026
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_uploads_users:/app/uploads_users
+      # Mount product UUID from host server (Read-Only) for machine locking (Uncomment on Linux production host)
+      # - /sys/class/dmi/id/product_uuid:/etc/vms/product_uuid:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vms_network
+
+  # 3. Nginx + React Frontend Service
+  frontend:
+    build:
+      context: ./VMS_Frontend
+      dockerfile: Dockerfile
+    container_name: vms_frontend
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - backend_uploads:/app/uploads:ro
+      - backend_uploads_users:/app/uploads_users:ro
+    depends_on:
+      - backend
+    networks:
+      - vms_network
+
+volumes:
+  mysql_data:
+  backend_uploads:
+  backend_uploads_users:
+
+networks:
+  vms_network:
+    driver: bridge

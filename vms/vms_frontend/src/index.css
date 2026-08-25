@@ -1,0 +1,720 @@
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+@import "tailwindcss";
+
+@theme {
+  --color-border: var(--border);
+}
+
+@layer base {
+  :root {
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    /* VMS Blue Theme */
+    --primary-blue: 217 91% 60%;
+    --primary-hover: 224 76% 48%;
+    --bg-slate: 210 40% 98%;
+    --text-dark: 222 47% 11%;
+    --text-gray: 215 16% 47%;
+    --border-color: 214 32% 91%;
+
+    /* Status Colors */
+    --status-emerald-bg: 152 81% 90%;
+    --status-emerald-text: 164 86% 20%;
+    --status-amber-bg: 48 96% 89%;
+    --status-amber-text: 26 90% 31%;
+    --status-red-bg: 0 93% 94%;
+    --status-red-text: 0 72% 51%;
+
+    /* Shadcn mapping */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+  }
+}
+
+/* @layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+  }
+} */
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* --- PREMIUM NAVY DARK THEME OVERRIDES --- */
+[data-theme="dark"] {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 47% 11%;
+  --card-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --primary-blue: 217 91% 60%;
+  --border-color: 217.2 32.6% 17.5%;
+
+  /* Dashboard background & typography */
+  .security-dashboard,
+  .admin-dashboard,
+  .host-dashboard,
+  .superadmin-dashboard,
+  .dashboard-container {
+    background: linear-gradient(135deg, #070d19 0%, #0c1a30 100%) !important;
+    color: #f8fafc !important;
+  }
+
+  .security-title,
+  .admin-title,
+  .host-title,
+  .superadmin-title,
+  .page-header h1 {
+    color: #f8fafc !important;
+  }
+
+  .security-subtitle,
+  .admin-subtitle,
+  .host-subtitle,
+  .superadmin-subtitle,
+  .subtitle {
+    color: #94a3b8 !important;
+  }
+
+  /* Card and Panel styles */
+  .security-card,
+  .admin-card,
+  .host-card,
+  .superadmin-card,
+  .left-column .card,
+  .right-column .card {
+    background: rgba(15, 32, 59, 0.75) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .security-card-header,
+  .admin-card-header,
+  .host-card-header,
+  .superadmin-card-header,
+  .card-header {
+    background: rgba(10, 22, 41, 0.5) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .security-card-title,
+  .admin-card-title,
+  .host-card-title,
+  .superadmin-card-title,
+  .card-title {
+    color: #f8fafc !important;
+  }
+
+  /* Tabs styling */
+  .security-tabs,
+  .admin-tabs,
+  .host-tabs,
+  .superadmin-tabs {
+    background: rgba(7, 13, 25, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .security-tab,
+  .admin-tab,
+  .host-tab,
+  .superadmin-tab {
+    color: #94a3b8 !important;
+  }
+
+  .security-tab.active,
+  .admin-tab.active,
+  .host-tab.active,
+  .superadmin-tab.active {
+    background: #1e293b !important;
+    color: #38bdf8 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Search input styles */
+  .security-search-bar,
+  .admin-search-box,
+  .host-search-box,
+  .superadmin-search-box {
+    background: rgba(15, 32, 59, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #94a3b8 !important;
+  }
+
+  .security-search-bar input,
+  .admin-search-box input,
+  .host-search-box input,
+  .superadmin-search-box input {
+    color: #f8fafc !important;
+  }
+
+  /* Table styles */
+  .security-table th,
+  .admin-table th,
+  .host-table th,
+  .superadmin-table th,
+  .visits-table th {
+    background: rgba(10, 22, 41, 0.6) !important;
+    color: #94a3b8 !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .security-table td,
+  .admin-table td,
+  .host-table td,
+  .superadmin-table td,
+  .visits-table td {
+    color: #e2e8f0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .security-table tr:hover td,
+  .admin-table tr:hover td,
+  .host-table tr:hover td,
+  .superadmin-table tr:hover td,
+  .visits-table tr:hover td {
+    background: rgba(30, 41, 59, 0.4) !important;
+  }
+
+  /* Activity Lists */
+  .security-activity-item,
+  .admin-site-item,
+  .superadmin-audit-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .security-activity-item:hover,
+  .admin-site-item:hover {
+    background: rgba(30, 41, 59, 0.3) !important;
+  }
+
+  .security-activity-action,
+  .security-activity-name,
+  .admin-user-cell-name,
+  .admin-site-info h4,
+  .security-activity-detail,
+  .security-visitor-name,
+  .security-host-name {
+    color: #f8fafc !important;
+  }
+
+  .admin-site-item {
+    background: rgba(15, 32, 59, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Badge and Meta tags */
+  .tag,
+  .security-badge-tag,
+  .admin-site-visitors {
+    background: rgba(30, 41, 59, 0.6) !important;
+    color: #cbd5e1 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Modals */
+  .modal-content-wrapper,
+  .admin-modal-content,
+  .vms-modal-container {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+  }
+
+  .vms-modal-header,
+  .admin-modal-header {
+    background: #090f1d !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .vms-modal-title,
+  .vms-modal-value,
+  .admin-modal-header h3 {
+    color: #f8fafc !important;
+  }
+
+  .vms-modal-section,
+  .vms-modal-footer,
+  .admin-modal-form {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .vms-modal-input,
+  .vms-modal-select,
+  .admin-form-group input,
+  .admin-form-group select {
+    background-color: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+  }
+
+  /* Buttons */
+  .admin-btn-secondary {
+    background: rgba(30, 41, 59, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+  }
+
+
+  .vms-profile-dropdown {
+    background-color: #091526 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .vms-dropdown-header {
+    color: #f8fafc !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .vms-dropdown-item {
+    color: #cbd5e1 !important;
+  }
+
+  .vms-dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #f8fafc !important;
+  }
+
+  .vms-dropdown-divider {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* VisitorPassForm overrides */
+  .form-container {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .form-container label {
+    color: #f8fafc !important;
+  }
+
+  .form-container input,
+  .form-container select {
+    background-color: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+  }
+
+  .form-container input::placeholder {
+    color: #64748b !important;
+  }
+
+  .form-container input:focus,
+  .form-container select:focus {
+    background-color: #1e293b !important;
+    border-color: #2563eb !important;
+  }
+
+  /* HostDashboard specific overrides */
+  .request-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .request-item:hover {
+    background-color: rgba(30, 41, 59, 0.3) !important;
+  }
+
+  .visitor-details h4 {
+    color: #f8fafc !important;
+  }
+
+  .visitor-avatar {
+    background-color: #1e293b !important;
+    color: #94a3b8 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Inline style overrides for No Pending Approvals state */
+  .left-column .card h3 {
+    color: #f8fafc !important;
+  }
+
+  .left-column .card .subtitle {
+    color: #94a3b8 !important;
+  }
+
+  /* Management Reporting Dashboard overrides */
+  .report-modal {
+    background: linear-gradient(145deg, #070d19 0%, #0c1a30 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .report-header {
+    background: rgba(9, 21, 38, 0.5) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .report-title {
+    color: #f8fafc !important;
+  }
+
+  .report-date {
+    color: #94a3b8 !important;
+  }
+
+  .report-period-selector {
+    background: rgba(7, 13, 25, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .report-period-btn {
+    color: #94a3b8 !important;
+  }
+
+  .report-period-btn:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #f8fafc !important;
+  }
+
+  .report-period-btn.active {
+    background: #1e293b !important;
+    color: #38bdf8 !important;
+  }
+
+  .report-close-btn {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #94a3b8 !important;
+  }
+
+  .report-group-title {
+    color: #cbd5e1 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .report-stat-card {
+    background: rgba(15, 32, 59, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .report-stat-value {
+    color: #f8fafc !important;
+  }
+
+  .report-chart-card,
+  .insight-card {
+    background: rgba(15, 32, 59, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .report-chart-title,
+  .insight-card h4 {
+    color: #f8fafc !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+    background: transparent !important;
+  }
+
+  .insight-list li {
+    color: #cbd5e1 !important;
+  }
+
+  .insight-list li strong {
+    background: rgba(30, 41, 59, 0.6) !important;
+    color: #f8fafc !important;
+  }
+
+  .insight-metric {
+    background: rgba(7, 13, 25, 0.4) !important;
+  }
+
+  .metric-value {
+    color: #f8fafc !important;
+  }
+
+  .report-table-section {
+    background: rgba(15, 32, 59, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .report-section-title {
+    color: #f8fafc !important;
+    background: transparent !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .report-table th {
+    background: rgba(10, 22, 41, 0.6) !important;
+    color: #94a3b8 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .report-table td {
+    color: #cbd5e1 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .report-table tr:hover td {
+    background: rgba(30, 41, 59, 0.4) !important;
+  }
+
+  .report-name-cell .name {
+    color: #f8fafc !important;
+  }
+
+  .report-avatar {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    color: #cbd5e1 !important;
+  }
+
+  /* Security Dashboard Spot Requests & Expired Visits contrast overrides */
+  .security-request-info h4 {
+    color: #f8fafc !important;
+  }
+
+  .security-request-meta {
+    color: #94a3b8 !important;
+  }
+
+  .security-request-meta span {
+    color: #cbd5e1 !important;
+  }
+
+  /* Expired visits section custom rules */
+  .security-request-item.expired {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-left: 4px solid #ef4444 !important;
+    opacity: 1 !important;
+  }
+
+  .security-request-item.expired h4 {
+    color: #f8fafc !important;
+  }
+
+  .security-request-item.expired .security-visitor-avatar {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .security-request-item.expired .security-time-tag {
+    background: rgba(37, 99, 235, 0.2) !important;
+    color: #38bdf8 !important;
+  }
+
+  /* List item hover overrides to prevent light backgrounds */
+  .security-request-item:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .security-request-item.expired:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+  }
+}
+
+/* --- StatCard Permanent Colors & Shading (Global for Light & Dark modes) --- */
+
+/* Card 1: Blue */
+.security-stats-grid .vms-stat-card:nth-child(1),
+.admin-stats-grid .vms-stat-card:nth-child(1),
+.superadmin-stats-grid .vms-stat-card:nth-child(1),
+.stats-grid .stat-card:nth-child(1),
+.stats-grid .vms-stat-card:nth-child(1) {
+  border: 1.5px solid rgba(37, 99, 235, 0.45) !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(37, 99, 235, 0.04) 100%) !important;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.03) !important;
+}
+
+.security-stats-grid .vms-stat-card:nth-child(1):hover,
+.admin-stats-grid .vms-stat-card:nth-child(1):hover,
+.superadmin-stats-grid .vms-stat-card:nth-child(1):hover,
+.stats-grid .stat-card:nth-child(1):hover,
+.stats-grid .vms-stat-card:nth-child(1):hover {
+  border-color: #2563eb !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22) 0%, rgba(37, 99, 235, 0.07) 100%) !important;
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.18) !important;
+}
+
+/* Card 2: Green */
+.security-stats-grid .vms-stat-card:nth-child(2),
+.admin-stats-grid .vms-stat-card:nth-child(2),
+.superadmin-stats-grid .vms-stat-card:nth-child(2),
+.stats-grid .stat-card:nth-child(2),
+.stats-grid .vms-stat-card:nth-child(2) {
+  border: 1.5px solid rgba(16, 185, 129, 0.45) !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.04) 100%) !important;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.03) !important;
+}
+
+.security-stats-grid .vms-stat-card:nth-child(2):hover,
+.admin-stats-grid .vms-stat-card:nth-child(2):hover,
+.superadmin-stats-grid .vms-stat-card:nth-child(2):hover,
+.stats-grid .stat-card:nth-child(2):hover,
+.stats-grid .vms-stat-card:nth-child(2):hover {
+  border-color: #10b981 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.07) 100%) !important;
+  box-shadow: 0 8px 30px rgba(16, 185, 129, 0.18) !important;
+}
+
+/* Card 3: Amber */
+.security-stats-grid .vms-stat-card:nth-child(3),
+.admin-stats-grid .vms-stat-card:nth-child(3),
+.superadmin-stats-grid .vms-stat-card:nth-child(3),
+.stats-grid .stat-card:nth-child(3),
+.stats-grid .vms-stat-card:nth-child(3) {
+  border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.04) 100%) !important;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.03) !important;
+}
+
+.security-stats-grid .vms-stat-card:nth-child(3):hover,
+.admin-stats-grid .vms-stat-card:nth-child(3):hover,
+.superadmin-stats-grid .vms-stat-card:nth-child(3):hover,
+.stats-grid .stat-card:nth-child(3):hover,
+.stats-grid .vms-stat-card:nth-child(3):hover {
+  border-color: #f59e0b !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.07) 100%) !important;
+  box-shadow: 0 8px 30px rgba(245, 158, 11, 0.18) !important;
+}
+
+/* Card 4: Red (Alerts / Avg Duration in Host) */
+.security-stats-grid .vms-stat-card:nth-child(4),
+.admin-stats-grid .vms-stat-card:nth-child(4),
+.superadmin-stats-grid .vms-stat-card:nth-child(4) {
+  border: 1.5px solid rgba(239, 68, 68, 0.45) !important;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.04) 100%) !important;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.03) !important;
+}
+
+.security-stats-grid .vms-stat-card:nth-child(4):hover,
+.admin-stats-grid .vms-stat-card:nth-child(4):hover,
+.superadmin-stats-grid .vms-stat-card:nth-child(4):hover {
+  border-color: #ef4444 !important;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(239, 68, 68, 0.07) 100%) !important;
+  box-shadow: 0 8px 30px rgba(239, 68, 68, 0.18) !important;
+}
+
+/* Card 4 (Indigo for Host) */
+.stats-grid .stat-card:nth-child(4),
+.stats-grid .vms-stat-card:nth-child(4) {
+  border: 1.5px solid rgba(99, 102, 241, 0.45) !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.04) 100%) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.03) !important;
+}
+
+.stats-grid .stat-card:nth-child(4):hover,
+.stats-grid .vms-stat-card:nth-child(4):hover {
+  border-color: #6366f1 !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0.07) 100%) !important;
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.18) !important;
+}
+
+/* --- Global Premium Blue/Indigo Gradient Navbar --- */
+.vms-navbar {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15) !important;
+}
+
+.vms-brand-name,
+.vms-user-name,
+.vms-chevron,
+.vms-nav-datetime,
+.vms-notification-btn,
+.vms-theme-toggle-btn,
+.vms-role-badge {
+  color: #ffffff !important;
+}
+
+.vms-user-role {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.vms-nav-datetime {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.vms-role-badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.vms-notification-btn,
+.vms-theme-toggle-btn {
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.vms-notification-btn:hover,
+.vms-theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.vms-user-profile:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.vms-navbar svg {
+  color: #ffffff !important;
+}
+
+
+
+
+
+

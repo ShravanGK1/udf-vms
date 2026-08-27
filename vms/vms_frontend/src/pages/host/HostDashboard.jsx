@@ -420,11 +420,11 @@ export default function HostDashboard() {
                 </div>
               )}
 
-              {/* Recent Activity Feed */}
+              {/* Upcoming Visits Feed */}
               <div className="card" style={{ marginTop: '1.5rem' }}>
                 <div className="card-header" style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 className="card-title" style={{ color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    Recent Activity
+                    Upcoming Visits
                   </h3>
                   <button className="text-link" onClick={() => setShowAllActivity(!showAllActivity)}>
                     {showAllActivity ? "Show Today" : "View All"}
@@ -469,12 +469,12 @@ export default function HostDashboard() {
               </div>
             </div>
 
-            {/* Right Column - Upcoming Visits */}
+            {/* Right Column - Recent Activity */}
             <div className="right-column">
-              {/* Upcoming List */}
+              {/* Recent Activity Table */}
               <div className="card">
                 <div className="card-header">
-                  <h3 className="card-title">Upcoming Visits</h3>
+                  <h3 className="card-title">Recent Activity</h3>
                   <button className="text-link" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                     {showAllUpcoming ? "Show Today" : "View All"}
                   </button>

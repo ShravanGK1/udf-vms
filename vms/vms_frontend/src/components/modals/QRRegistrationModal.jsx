@@ -5,7 +5,7 @@ import "./QRRegistrationModal.css";
 const QRRegistrationModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  const registrationUrl = `https://unpeeled-paver-perfectly.ngrok-free.dev/visitor/register`;
+  const registrationUrl = `https://amusable-eclair-squash.ngrok-free.dev/visitor/register`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(registrationUrl);

@@ -85,7 +85,13 @@ def get_requests():
         conn.commit()
 
         cursor.execute("""
-            SELECT vr.*, v.visitor_name, v.company_name, v.person_to_visit,
+            SELECT vr.*, 
+                   v.visitor_name, v.full_name, v.email, v.mobile_number, v.pabx_number,
+                   v.company_name, v.unit, v.department, v.location,
+                   v.id_proof_type, v.id_proof_number, v.access_level,
+                   v.reason_of_visit, v.employee_id, v.photo, v.person_to_visit,
+                   v.vehicle_type, v.vehicle_number, v.vehicle_photo_front, v.vehicle_photo_side,
+                   v.has_device, v.device_type, v.device_make, v.device_serial_number,
                    u.name AS transfer_from_host_name
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id

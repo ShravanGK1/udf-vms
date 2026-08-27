@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import logo from "../../assets/logo.png";
 import Navbar from "../../components/Navbar/Navbar";
 import {
@@ -7,9 +7,12 @@ import {
 } from 'recharts';
 import {
   Users, Clock, CheckCircle, Calendar, Bell,
-  MoreVertical, LogOut, ShieldAlert, Plus, X
+  MoreVertical, LogOut, ShieldAlert, Plus, X,
+  Phone, Mail, Building, Briefcase, UserCheck, FileText,
+  MapPin, Shield, Laptop, Car, Eye, Edit
 } from 'lucide-react';
 
+import '../SecurtiyDashboard/SecurityDashboard.css';
 import './HostDashboard.css';
 import VisitorPassForm from '../../components/forms/forms/VisitorPassForm';
 import BulkUploadModal from '../../components/modals/BulkUploadModal';
@@ -80,6 +83,51 @@ export default function HostDashboard() {
 
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedTransferVisit, setSelectedTransferVisit] = useState(null);
+
+  // Hover card preview state
+  const [hoveredVisitor, setHoveredVisitor] = useState(null);
+  const [hoverCardPos, setHoverCardPos] = useState({ top: 0, left: 0 });
+  const hoverTimeoutRef = useRef(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [showVisitorForm, setShowVisitorForm] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(true);
+
+  const handleMouseEnterVisitor = (v, event) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    const rect = event.currentTarget.getBoundingClientRect();
+    const cardWidth = 380;
+    const cardHeight = 360;
+    
+    let left = rect.left + window.scrollX;
+    if (left + cardWidth > window.innerWidth - 20) {
+      left = window.innerWidth - cardWidth - 20;
+    }
+    if (left < 20) left = 20;
+
+    let top = rect.bottom + window.scrollY + 8;
+    if (rect.bottom + cardHeight > window.innerHeight && rect.top - cardHeight > 0) {
+      top = rect.top + window.scrollY - cardHeight - 8;
+    }
+
+    setHoverCardPos({ top, left });
+    setHoveredVisitor(v);
+  };
+
+  const handleMouseLeaveVisitor = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredVisitor(null);
+    }, 150);
+  };
+
+  const handleCardMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+  };
+
+  const handleCardMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredVisitor(null);
+    }, 150);
+  };
 
   const handleOpenTransferModal = (visit) => {
     setSelectedTransferVisit(visit);
@@ -295,10 +343,26 @@ export default function HostDashboard() {
                       <div 
                         key={req.request_id} 
                         className="request-item"
-                        style={req.status === "PENDING_TRANSFER" ? { borderLeft: '4px solid #3b82f6', backgroundColor: '#f0f7ff' } : {}}
+                        style={{
+                          cursor: 'pointer',
+                          ...(req.status === "PENDING_TRANSFER" ? { borderLeft: '4px solid #3b82f6', backgroundColor: '#f0f7ff' } : {})
+                        }}
+                        onMouseEnter={(e) => handleMouseEnterVisitor(req, e)}
+                        onMouseLeave={handleMouseLeaveVisitor}
                       >
                         <div className="visitor-info">
-                          <div className="visitor-avatar">{req.visitor_name?.charAt(0)}</div>
+                          <div className="visitor-avatar">
+                            {req.photo ? (
+                              <img 
+                                src={`http://localhost:5000/${req.photo}`} 
+                                alt="avatar" 
+                                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            ) : (
+                              (req.visitor_name || req.name || "U").charAt(0)
+                            )}
+                          </div>
                           <div className="visitor-details">
                             <h4>{req.visitor_name}</h4>
                             <div className="meta-tags">
@@ -327,13 +391,19 @@ export default function HostDashboard() {
                         <div className="action-buttons">
                           <button
                             className="btn-reject"
-                            onClick={() => handleAction(req.request_id, 'REJECTED')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAction(req.request_id, 'REJECTED');
+                            }}
                           >
                             Reject
                           </button>
                           <button
                             className="btn-approve"
-                            onClick={() => handleAction(req.request_id, 'APPROVED')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAction(req.request_id, 'APPROVED');
+                            }}
                           >
                             Approve
                           </button>
@@ -429,11 +499,32 @@ export default function HostDashboard() {
                           d.getMonth() === today.getMonth() &&
                           d.getFullYear() === today.getFullYear();
                       })).map((visit) => (
-                        <tr key={visit.request_id}>
+                        <tr 
+                          key={visit.request_id}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={(e) => handleMouseEnterVisitor(visit, e)}
+                          onMouseLeave={handleMouseLeaveVisitor}
+                        >
                           <td>
-                            <div style={{ fontWeight: 600 }}>{visit.visitor_name}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              {visit.company_name}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div className="visitor-avatar" style={{ width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}>
+                                {visit.photo ? (
+                                  <img 
+                                    src={`http://localhost:5000/${visit.photo}`} 
+                                    alt="avatar" 
+                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  (visit.visitor_name || visit.name || "U").charAt(0)
+                                )}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{visit.visitor_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  {visit.company_name}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td><span className="tag">{visit.purpose}</span></td>
@@ -453,7 +544,10 @@ export default function HostDashboard() {
                               parseInt(visit.host_id) === parseInt(loggedInUser.user_id) && (
                               <button 
                                 className="btn-transfer"
-                                onClick={() => handleOpenTransferModal(visit)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenTransferModal(visit);
+                                }}
                               >
                                 Transfer
                               </button>
@@ -467,135 +561,6 @@ export default function HostDashboard() {
               </div>
             </div>
 
-            {/* Commented Out Section (Visitor Analytics, Pie Chart, Host Actions) */}
-            {/* 
-            
-            {/* Traffic Chart }
-            <div className="card">
-              <div className="card-header" style={{ alignItems: 'center' }}>
-                <h3 className="card-title">Visitor Analytics</h3>
-
-                <select
-                  value={timeFilter}
-                  onChange={(e) => setTimeFilter(e.target.value)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.875rem',
-                    color: '#0f172a',
-                    backgroundColor: '#f8fafc',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="Daily">Daily</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Quarterly</option>
-                  <option value="Yearly">Yearly</option>
-                </select>
-              </div>
-              <div style={{ padding: '1.5rem', minWidth: 0 }}>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {['Daily', 'Weekly'].includes(timeFilter) ? (
-                      <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} allowDecimals={false} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9' }} />
-                        <Bar dataKey="visitors" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={40} animationDuration={500} />
-                      </BarChart>
-                    ) : (
-                      <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} allowDecimals={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Line type="monotone" dataKey="visitors" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: 'white', stroke: '#2563eb', strokeWidth: 2 }} animationDuration={500} />
-                      </LineChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Pie Chart }
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Visit Purpose</h3>
-                <span className="tag" style={{ fontSize: '0.7rem' }}>{timeFilter}</span>
-              </div>
-              <div style={{ padding: '1.5rem' }}>
-                <div className="pie-chart-container">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={purposeData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                        animationDuration={500}
-                      >
-                        {purposeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="pie-chart-total">
-                    <span className="total-number">{purposeData.reduce((sum, item) => sum + item.value, 0)}</span>
-                    <span className="total-label">Total</span>
-                  </div>
-                </div>
-                <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {purposeData.map((item) => (
-                    <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: item.color }}></span>
-                        <span style={{ color: '#475569' }}>{item.name}</span>
-                      </div>
-                      <span style={{ fontWeight: 600 }}>{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Host Actions Widget }
-            <div className="host-actions-card">
-              <h3 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ShieldAlert size={20} /> Host Actions
-              </h3>
-              <p style={{ fontSize: '0.875rem', opacity: 0.9, lineHeight: 1.5 }}>
-                Compliance Check: Ensure all vendors have submitted insurance documents.
-              </p>
-
-              <div className="action-btn-group">
-                <button className="glass-btn">
-                  <Calendar size={20} />
-                  <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Sync Calendar</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Import meetings</div>
-                  </div>
-                </button>
-                <button className="glass-btn">
-                  <LogOut size={20} />
-                  <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Evacuation Log</div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Emergency protocols</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            */}
-
           </div>
         </main>
 
@@ -606,6 +571,23 @@ export default function HostDashboard() {
               <VisitorPassForm
                 onClose={() => {
                   setShowInviteForm(false);
+                  fetchRequests();
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* View / Edit Visitor Details Form Modal */}
+        {showVisitorForm && (
+          <div className="modal-overlay">
+            <div className="modal-content-wrapper">
+              <VisitorPassForm
+                requestId={selectedRequestId}
+                readOnly={isReadOnly}
+                onClose={() => {
+                  setShowVisitorForm(false);
+                  setSelectedRequestId(null);
                   fetchRequests();
                 }}
               />
@@ -634,6 +616,155 @@ export default function HostDashboard() {
             visit={selectedTransferVisit}
             onSuccess={fetchRequests}
           />
+        )}
+
+        {/* Visitor Hover Preview Card */}
+        {hoveredVisitor && (
+          <div
+            className="visitor-hover-card"
+            style={{
+              top: `${hoverCardPos.top}px`,
+              left: `${hoverCardPos.left}px`
+            }}
+            onMouseEnter={handleCardMouseEnter}
+            onMouseLeave={handleCardMouseLeave}
+          >
+            <div className="vh-header">
+              <div className="vh-avatar">
+                {hoveredVisitor.photo ? (
+                  <img
+                    src={`http://localhost:5000/${hoveredVisitor.photo}`}
+                    alt="visitor"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  (hoveredVisitor.visitor_name || hoveredVisitor.name || "User").split(" ").map(n => n[0]).join("")
+                )}
+              </div>
+              <div className="vh-title-info">
+                <div className="vh-name-row">
+                  <h4 className="vh-name">{hoveredVisitor.visitor_name || hoveredVisitor.name}</h4>
+                  <span className="vh-badge">{hoveredVisitor.badge || `V-${hoveredVisitor.request_id || hoveredVisitor.id}`}</span>
+                </div>
+                <div className="vh-status-row">
+                  <span className={`status-badge ${getVisitorStatusClass(hoveredVisitor)}`}>
+                    <span className="dot"></span> {getVisitorStatus(hoveredVisitor)}
+                  </span>
+                  {hoveredVisitor.access_level && (
+                    <span className="vh-access-tag">{hoveredVisitor.access_level}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="vh-divider" />
+
+            <div className="vh-grid">
+              <div className="vh-item">
+                <span className="vh-label"><Phone size={12} /> Mobile</span>
+                <span className="vh-value">{hoveredVisitor.mobile_number || hoveredVisitor.phone || "-"}</span>
+              </div>
+              {hoveredVisitor.email && (
+                <div className="vh-item">
+                  <span className="vh-label"><Mail size={12} /> Email</span>
+                  <span className="vh-value">{hoveredVisitor.email}</span>
+                </div>
+              )}
+              
+              <div className="vh-item">
+                <span className="vh-label"><Building size={12} /> Company</span>
+                <span className="vh-value">{hoveredVisitor.company_name || hoveredVisitor.company || "-"}</span>
+              </div>
+              {(hoveredVisitor.department || hoveredVisitor.unit) && (
+                <div className="vh-item">
+                  <span className="vh-label"><Briefcase size={12} /> Dept / Unit</span>
+                  <span className="vh-value">
+                    {[hoveredVisitor.department, hoveredVisitor.unit].filter(Boolean).join(" · ")}
+                  </span>
+                </div>
+              )}
+
+              <div className="vh-item">
+                <span className="vh-label"><UserCheck size={12} /> Host / Approver</span>
+                <span className="vh-value">{hoveredVisitor.person_to_visit || hoveredVisitor.host || hoveredVisitor.approver_name || "-"}</span>
+              </div>
+              <div className="vh-item">
+                <span className="vh-label"><FileText size={12} /> Reason of Visit</span>
+                <span className="vh-value">{hoveredVisitor.reason_of_visit || hoveredVisitor.purpose || "-"}</span>
+              </div>
+
+              {(hoveredVisitor.scheduled_date || hoveredVisitor.check_in_time) && (
+                <div className="vh-item">
+                  <span className="vh-label"><Clock size={12} /> Schedule / Time</span>
+                  <span className="vh-value">
+                    {hoveredVisitor.check_in_time || `${hoveredVisitor.scheduled_date || ""} ${hoveredVisitor.scheduled_time ? `at ${hoveredVisitor.scheduled_time}` : ""}`.trim() || "-"}
+                  </span>
+                </div>
+              )}
+              {hoveredVisitor.location && (
+                <div className="vh-item">
+                  <span className="vh-label"><MapPin size={12} /> Location</span>
+                  <span className="vh-value">{hoveredVisitor.location}</span>
+                </div>
+              )}
+
+              {(hoveredVisitor.id_proof_type || hoveredVisitor.typeOfIDProof) && (
+                <div className="vh-item">
+                  <span className="vh-label"><Shield size={12} /> ID Proof</span>
+                  <span className="vh-value">
+                    {hoveredVisitor.id_proof_type || hoveredVisitor.typeOfIDProof}: {hoveredVisitor.id_proof_number || hoveredVisitor.idProofNumber || "Provided"}
+                  </span>
+                </div>
+              )}
+
+              {(hoveredVisitor.has_device || hoveredVisitor.hasDevice === "Yes" || hoveredVisitor.device_type) && (
+                <div className="vh-item full-width">
+                  <span className="vh-label"><Laptop size={12} /> Device Details</span>
+                  <span className="vh-value">
+                    {[hoveredVisitor.device_type || hoveredVisitor.deviceType, hoveredVisitor.device_make || hoveredVisitor.deviceMake, (hoveredVisitor.device_serial_number || hoveredVisitor.deviceSerialNumber) ? `S/N: ${hoveredVisitor.device_serial_number || hoveredVisitor.deviceSerialNumber}` : null].filter(Boolean).join(" - ") || "Carrying Device"}
+                  </span>
+                </div>
+              )}
+
+              {(hoveredVisitor.vehicle_type || hoveredVisitor.vehicle_number || hoveredVisitor.vehicleNumber) && (
+                <div className="vh-item full-width">
+                  <span className="vh-label"><Car size={12} /> Vehicle</span>
+                  <span className="vh-value">
+                    {[hoveredVisitor.vehicle_type || hoveredVisitor.vehicleType, hoveredVisitor.vehicle_number || hoveredVisitor.vehicleNumber].filter(Boolean).join(" - ")}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="vh-footer-actions">
+              <button
+                className="vh-action-btn vh-action-view"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
+                  setIsReadOnly(true);
+                  setShowVisitorForm(true);
+                  setHoveredVisitor(null);
+                }}
+              >
+                <Eye size={14} /> View Form
+              </button>
+              <button
+                className="vh-action-btn vh-action-edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
+                  setIsReadOnly(false);
+                  setShowVisitorForm(true);
+                  setHoveredVisitor(null);
+                }}
+              >
+                <Edit size={14} /> Edit Form
+              </button>
+            </div>
+          </div>
         )}
 
       </div>

@@ -420,59 +420,8 @@ export default function HostDashboard() {
                 </div>
               )}
 
-              {/* Recent Activity Feed */}
-              <div className="card" style={{ marginTop: '1.5rem' }}>
-                <div className="card-header" style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title" style={{ color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    Recent Activity
-                  </h3>
-                  <button className="text-link" onClick={() => setShowAllActivity(!showAllActivity)}>
-                    {showAllActivity ? "Show Today" : "View All"}
-                  </button>
-                </div>
-                <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
-                  {(() => {
-                    const isToday = (timeStr) => {
-                      if (!timeStr) return false;
-                      const datePart = timeStr.split(',')[0].trim();
-                      const today = new Date();
-                      const day = String(today.getDate()).padStart(2, '0');
-                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const month = months[today.getMonth()];
-                      const year = today.getFullYear();
-                      const todayStr = `${day} ${month} ${year}`;
-                      const todayStrSingleDigit = `${today.getDate()} ${month} ${year}`;
-                      return datePart === todayStr || datePart === todayStrSingleDigit;
-                    };
-                    const displayed = showAllActivity ? recentActivity : recentActivity.filter(act => isToday(act.time));
-                    return displayed.length > 0 ? (
-                      <div className="security-activity-list">
-                        {displayed.map((act, i) => (
-                          <div key={i} className="security-activity-item" style={{ padding: '0.75rem 0', borderBottom: '1px solid #f1f5f9' }}>
-                            <div className="security-activity-content" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                              <div className="security-activity-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', marginTop: '6px', flexShrink: 0 }} />
-                              <div>
-                                <span className="security-activity-action" style={{ fontWeight: 'bold', color: '#1e293b' }}>{act.action}</span>
-                                <span className="security-activity-name" style={{ color: '#475569', fontSize: '0.9rem' }}> — {act.name}</span>
-                                <p className="security-activity-detail" style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>{act.detail}</p>
-                                <span className="security-activity-time" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{act.time}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ textAlign: 'center', color: '#94a3b8', margin: '2rem 0' }}>No recent activities found.</p>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Upcoming Visits */}
-            <div className="right-column">
               {/* Upcoming Visits Table */}
-              <div className="card">
+              <div className="card" style={{ marginTop: '1.5rem' }}>
                 <div className="card-header">
                   <h3 className="card-title">Upcoming Visits</h3>
                   <button className="text-link" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
@@ -557,6 +506,57 @@ export default function HostDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Recent Activity */}
+            <div className="right-column">
+              {/* Recent Activity Feed */}
+              <div className="card">
+                <div className="card-header" style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 className="card-title" style={{ color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    Recent Activity
+                  </h3>
+                  <button className="text-link" onClick={() => setShowAllActivity(!showAllActivity)}>
+                    {showAllActivity ? "Show Today" : "View All"}
+                  </button>
+                </div>
+                <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
+                  {(() => {
+                    const isToday = (timeStr) => {
+                      if (!timeStr) return false;
+                      const datePart = timeStr.split(',')[0].trim();
+                      const today = new Date();
+                      const day = String(today.getDate()).padStart(2, '0');
+                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const month = months[today.getMonth()];
+                      const year = today.getFullYear();
+                      const todayStr = `${day} ${month} ${year}`;
+                      const todayStrSingleDigit = `${today.getDate()} ${month} ${year}`;
+                      return datePart === todayStr || datePart === todayStrSingleDigit;
+                    };
+                    const displayed = showAllActivity ? recentActivity : recentActivity.filter(act => isToday(act.time));
+                    return displayed.length > 0 ? (
+                      <div className="security-activity-list">
+                        {displayed.map((act, i) => (
+                          <div key={i} className="security-activity-item" style={{ padding: '0.75rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                            <div className="security-activity-content" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                              <div className="security-activity-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', marginTop: '6px', flexShrink: 0 }} />
+                              <div>
+                                <span className="security-activity-action" style={{ fontWeight: 'bold', color: '#1e293b' }}>{act.action}</span>
+                                <span className="security-activity-name" style={{ color: '#475569', fontSize: '0.9rem' }}> — {act.name}</span>
+                                <p className="security-activity-detail" style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>{act.detail}</p>
+                                <span className="security-activity-time" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{act.time}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ textAlign: 'center', color: '#94a3b8', margin: '2rem 0' }}>No recent activities found.</p>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

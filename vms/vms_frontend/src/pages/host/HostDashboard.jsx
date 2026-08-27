@@ -420,10 +420,10 @@ export default function HostDashboard() {
                 </div>
               )}
 
-              {/* Upcoming Visits Table */}
+              {/* Recent Activity Table */}
               <div className="card" style={{ marginTop: '1.5rem' }}>
                 <div className="card-header">
-                  <h3 className="card-title">Upcoming Visits</h3>
+                  <h3 className="card-title">Recent Activity</h3>
                   <button className="text-link" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
                     {showAllUpcoming ? "Show Today" : "View All"}
                   </button>
@@ -510,51 +510,72 @@ export default function HostDashboard() {
               </div>
             </div>
 
-            {/* Right Column - Recent Activity */}
+            {/* Right Column - Upcoming Visits */}
             <div className="right-column">
-              {/* Recent Activity Feed */}
+              {/* Upcoming Visits Feed */}
               <div className="card">
                 <div className="card-header" style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 className="card-title" style={{ color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    Recent Activity
+                    <Calendar size={18} /> Upcoming Visits
                   </h3>
-                  <button className="text-link" onClick={() => setShowAllActivity(!showAllActivity)}>
-                    {showAllActivity ? "Show Today" : "View All"}
+                  <button className="text-link" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
+                    {showAllUpcoming ? "Show Today" : "View All"}
                   </button>
                 </div>
                 <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
                   {(() => {
-                    const isToday = (timeStr) => {
-                      if (!timeStr) return false;
-                      const datePart = timeStr.split(',')[0].trim();
+                    const displayed = (showAllUpcoming ? upcomingVisits : upcomingVisits.filter(visit => {
+                      if (!visit.scheduled_date) return false;
+                      const d = new Date(visit.scheduled_date);
                       const today = new Date();
-                      const day = String(today.getDate()).padStart(2, '0');
-                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const month = months[today.getMonth()];
-                      const year = today.getFullYear();
-                      const todayStr = `${day} ${month} ${year}`;
-                      const todayStrSingleDigit = `${today.getDate()} ${month} ${year}`;
-                      return datePart === todayStr || datePart === todayStrSingleDigit;
-                    };
-                    const displayed = showAllActivity ? recentActivity : recentActivity.filter(act => isToday(act.time));
+                      return d.getDate() === today.getDate() &&
+                        d.getMonth() === today.getMonth() &&
+                        d.getFullYear() === today.getFullYear();
+                    })).filter(v => v.status === "APPROVED" && !v.check_out_time);
+
                     return displayed.length > 0 ? (
                       <div className="security-activity-list">
-                        {displayed.map((act, i) => (
-                          <div key={i} className="security-activity-item" style={{ padding: '0.75rem 0', borderBottom: '1px solid #f1f5f9' }}>
-                            <div className="security-activity-content" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                              <div className="security-activity-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6', marginTop: '6px', flexShrink: 0 }} />
-                              <div>
-                                <span className="security-activity-action" style={{ fontWeight: 'bold', color: '#1e293b' }}>{act.action}</span>
-                                <span className="security-activity-name" style={{ color: '#475569', fontSize: '0.9rem' }}> — {act.name}</span>
-                                <p className="security-activity-detail" style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>{act.detail}</p>
-                                <span className="security-activity-time" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{act.time}</span>
+                        {displayed.map((visit) => (
+                          <div 
+                            key={visit.request_id} 
+                            className="security-activity-item" 
+                            style={{ padding: '0.85rem 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                            onMouseEnter={(e) => handleMouseEnterVisitor(visit, e)}
+                            onMouseLeave={handleMouseLeaveVisitor}
+                          >
+                            <div className="security-activity-content" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                              <div className="visitor-avatar" style={{ width: '36px', height: '36px', fontSize: '0.8rem', flexShrink: 0 }}>
+                                {visit.photo ? (
+                                  <img 
+                                    src={`http://localhost:5000/${visit.photo}`} 
+                                    alt="avatar" 
+                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  (visit.visitor_name || visit.name || "U").charAt(0)
+                                )}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontWeight: '600', color: '#1e293b' }}>{visit.visitor_name}</span>
+                                  <span className={`status-badge ${getVisitorStatusClass(visit)}`} style={{ fontSize: '0.7rem' }}>
+                                    <span className="dot"></span> {getVisitorStatus(visit)}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                                  <span>{visit.company_name || 'Guest'}</span> • <span className="tag" style={{ fontSize: '0.7rem' }}>{visit.purpose}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
+                                  📅 {visit.scheduled_date} {visit.scheduled_time ? `at ${visit.scheduled_time}` : ''}
+                                </div>
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p style={{ textAlign: 'center', color: '#94a3b8', margin: '2rem 0' }}>No recent activities found.</p>
+                      <p style={{ textAlign: 'center', color: '#94a3b8', margin: '2rem 0' }}>No upcoming visits scheduled.</p>
                     );
                   })()}
                 </div>

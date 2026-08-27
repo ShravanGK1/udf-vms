@@ -63,6 +63,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function HostDashboard() {
   const [requests, setRequests] = useState([]);
+  const [allRequests, setAllRequests] = useState([]);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [timeFilter, setTimeFilter] = useState('Daily');
@@ -135,6 +136,12 @@ export default function HostDashboard() {
   };
 
   const getVisitorStatus = (visit) => {
+    if (visit.status === "PENDING") {
+      return "Pending Approval";
+    }
+    if (visit.status === "PENDING_TRANSFER") {
+      return "Pending Transfer";
+    }
     if (visit.check_out_time) {
       return "Checked Out";
     }
@@ -157,6 +164,8 @@ export default function HostDashboard() {
   };
 
   const getVisitorStatusClass = (visit) => {
+    if (visit.status === "PENDING") return "pending";
+    if (visit.status === "PENDING_TRANSFER") return "pending-transfer";
     const statusText = getVisitorStatus(visit);
     return statusText.toLowerCase().replace(" ", "-");
   };
@@ -189,6 +198,7 @@ export default function HostDashboard() {
       const res = await API.get("/visitor-requests");
 
       const all = res.data;
+      setAllRequests(all);
 
       const loggedInUser = JSON.parse(sessionStorage.getItem("user") || "{}");
       const todayStr = new Date().toISOString().split('T')[0];
@@ -524,14 +534,35 @@ export default function HostDashboard() {
                 </div>
                 <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', maxHeight: '400px', overflowY: 'auto' }}>
                   {(() => {
-                    const displayed = (showAllUpcoming ? upcomingVisits : upcomingVisits.filter(visit => {
-                      if (!visit.scheduled_date) return false;
-                      const d = new Date(visit.scheduled_date);
-                      const today = new Date();
-                      return d.getDate() === today.getDate() &&
-                        d.getMonth() === today.getMonth() &&
-                        d.getFullYear() === today.getFullYear();
-                    })).filter(v => v.status === "APPROVED" && !v.check_out_time);
+                    const today = new Date();
+                    const todayStr = today.toISOString().split('T')[0];
+
+                    const displayed = (allRequests || []).filter(visit => {
+                      if (visit.check_out_time || visit.status === "REJECTED") return false;
+
+                      const isUnapproved = visit.status === "PENDING" || visit.status === "PENDING_TRANSFER";
+                      const isFutureOrToday = visit.scheduled_date ? visit.scheduled_date >= todayStr : true;
+                      const isNotCheckedIn = !visit.check_in_time;
+
+                      // Request is not approved OR going to be there in the future (scheduled today/future and not checked in)
+                      const isTarget = isUnapproved || (visit.status === "APPROVED" && isFutureOrToday && isNotCheckedIn);
+
+                      if (!isTarget) return false;
+
+                      if (!showAllUpcoming) {
+                        // "Show Today" filter: only items scheduled for today or unapproved requests for today
+                        if (visit.scheduled_date) {
+                          const d = new Date(visit.scheduled_date);
+                          return d.getDate() === today.getDate() &&
+                            d.getMonth() === today.getMonth() &&
+                            d.getFullYear() === today.getFullYear();
+                        }
+                        return true;
+                      }
+
+                      // "View All": all not approved requests or all future scheduled visits
+                      return true;
+                    });
 
                     return displayed.length > 0 ? (
                       <div className="security-activity-list">
@@ -567,7 +598,7 @@ export default function HostDashboard() {
                                   <span>{visit.company_name || 'Guest'}</span> • <span className="tag" style={{ fontSize: '0.7rem' }}>{visit.purpose}</span>
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-                                  📅 {visit.scheduled_date} {visit.scheduled_time ? `at ${visit.scheduled_time}` : ''}
+                                  📅 {visit.scheduled_date || "Today"} {visit.scheduled_time ? `at ${visit.scheduled_time}` : ''}
                                 </div>
                               </div>
                             </div>
@@ -575,7 +606,7 @@ export default function HostDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <p style={{ textAlign: 'center', color: '#94a3b8', margin: '2rem 0' }}>No upcoming visits scheduled.</p>
+                      <p style={{ textAlign: 'center', color: '#94a3b8', margin: '2rem 0' }}>No upcoming or pending requests.</p>
                     );
                   })()}
                 </div>

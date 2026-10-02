@@ -152,8 +152,19 @@ export default function HostDashboard() {
       try {
         const checkInDate = new Date(visit.check_in_time);
         const now = new Date();
-        if (now - checkInDate > 2 * 60 * 60 * 1000) {
-          return "Overstay";
+        const isMultiDay = visit.is_multi_day === 1 || visit.is_multi_day === true || visit.isMultiDay === "Yes";
+        const validTill = visit.valid_till || visit.validTill;
+
+        if (isMultiDay && validTill) {
+          const tillDate = new Date(validTill);
+          tillDate.setHours(23, 59, 59, 999);
+          if (now > tillDate) {
+            return "Overstay";
+          }
+        } else {
+          if (now - checkInDate > 2 * 60 * 60 * 1000) {
+            return "Overstay";
+          }
         }
       } catch (e) {
         console.error(e);
@@ -168,6 +179,19 @@ export default function HostDashboard() {
     if (visit.status === "PENDING_TRANSFER") return "pending-transfer";
     const statusText = getVisitorStatus(visit);
     return statusText.toLowerCase().replace(" ", "-");
+  };
+
+  const isVisitorLive = (v) => {
+    if (!v) return false;
+    const reqId = v.request_id || v.id;
+    const statusStr = (getVisitorStatus(v) || v.status || "").toString().trim().toLowerCase();
+    const liveStatuses = ["inside", "overstay", "temp out", "checked in", "live", "in"];
+    if (liveStatuses.includes(statusStr)) return true;
+    if (v.is_temp_out === 1 || v.is_temp_out === true) return true;
+    const hasCheckIn = Boolean(v.check_in_time || v.checkIn);
+    const hasCheckOut = Boolean(v.check_out_time || v.checkOut);
+    if (hasCheckIn && !hasCheckOut) return true;
+    return false;
   };
 
   useEffect(() => {
@@ -803,18 +827,20 @@ export default function HostDashboard() {
               >
                 <Eye size={14} /> View Form
               </button>
-              <button
-                className="vh-action-btn vh-action-edit"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
-                  setIsReadOnly(false);
-                  setShowVisitorForm(true);
-                  setHoveredVisitor(null);
-                }}
-              >
-                <Edit size={14} /> Edit Form
-              </button>
+              {!isVisitorLive(hoveredVisitor) && (
+                <button
+                  className="vh-action-btn vh-action-edit"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
+                    setIsReadOnly(false);
+                    setShowVisitorForm(true);
+                    setHoveredVisitor(null);
+                  }}
+                >
+                  <Edit size={14} /> Edit Form
+                </button>
+              )}
             </div>
           </div>
         )}

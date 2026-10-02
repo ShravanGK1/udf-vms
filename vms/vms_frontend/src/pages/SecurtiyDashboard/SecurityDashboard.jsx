@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import API from "../../app/apiClient";
 import StatCard from "../../components/StatCard/StatCard";
 import VisitorPassForm from "../../components/forms/forms/VisitorPassForm"
-import { Users, UserCheck, Clock, AlertTriangle, Search, CheckCircle, Camera, QrCode, Shield, UserPlus, X, RefreshCw, Eye, Edit, Printer, Phone, Mail, Building, MapPin, Laptop, Car, FileText, Briefcase, Info } from "lucide-react";
+import { Users, UserCheck, Clock, AlertTriangle, Search, CheckCircle, Camera, QrCode, Shield, UserPlus, X, RefreshCw, Eye, Edit, Printer, Phone, Mail, Building, MapPin, Laptop, Car, FileText, Briefcase, Info, Tag } from "lucide-react";
 import "./SecurityDashboard.css";
 import QRRegistrationModal from "../../components/modals/QRRegistrationModal";
 import BulkUploadModal from "../../components/modals/BulkUploadModal";
@@ -38,6 +38,12 @@ const SecurityDashboard = () => {
   const [isLoadingMuster, setIsLoadingMuster] = useState(false);
 
   const [manualCheckouts, setManualCheckouts] = useState({});
+
+  // Manual physical badge allotment modal state
+  const [checkinModalReq, setCheckinModalReq] = useState(null);
+  const [checkinBadgeInput, setCheckinBadgeInput] = useState("");
+  const [reassignModalReq, setReassignModalReq] = useState(null);
+  const [reassignBadgeInput, setReassignBadgeInput] = useState("");
 
   // Hover card preview state
   const [hoveredVisitor, setHoveredVisitor] = useState(null);
@@ -261,19 +267,21 @@ const SecurityDashboard = () => {
       console.error("Reject error:", err);
     }
   };
-  const handleCheckin = async (id) => {
+  const handleCheckin = async (id, physicalBadgeNo = "") => {
     try {
-      await API.post(`/security/checkin/${id}`);
+      await API.post(`/security/checkin/${id}`, {
+        physical_badge_no: physicalBadgeNo
+      });
 
       // 🔥 Move from Expected → Live
       const checkedInItem = expectedVisitors.find(
-        req => (req.request_id) === id
+        req => (req.request_id || req.id) === id
       );
 
       if (checkedInItem) {
         // remove from expected
         setExpectedVisitors(prev =>
-          prev.filter(req => (req.request_id) !== id)
+          prev.filter(req => (req.request_id || req.id) !== id)
         );
 
         // add to live
@@ -282,14 +290,39 @@ const SecurityDashboard = () => {
           {
             ...checkedInItem,
             status: "Inside",
+            badge: `V-${checkedInItem.request_id || checkedInItem.id}`,
+            physical_badge: physicalBadgeNo || null,
+            physical_badge_no: physicalBadgeNo || null,
             checkIn: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
           }
         ]);
       }
       fetchSecurityData();
+      setCheckinModalReq(null);
+      setCheckinBadgeInput("");
 
     } catch (err) {
       console.error("Checkin error:", err);
+    }
+  };
+
+  const handleReassignBadge = async (id, newBadgeNo) => {
+    try {
+      await API.put(`/security/reassign-badge/${id}`, {
+        physical_badge_no: newBadgeNo
+      });
+      setLiveVisitors(prev =>
+        prev.map(v =>
+          (v.request_id || v.id) === id
+            ? { ...v, physical_badge: newBadgeNo, physical_badge_no: newBadgeNo }
+            : v
+        )
+      );
+      fetchSecurityData();
+      setReassignModalReq(null);
+      setReassignBadgeInput("");
+    } catch (err) {
+      console.error("Reassign badge error:", err);
     }
   };
 
@@ -741,6 +774,22 @@ const SecurityDashboard = () => {
     }
   };
 
+  const isVisitorLive = (v) => {
+    if (!v) return false;
+    const reqId = v.request_id || v.id;
+    if (reqId && liveVisitors.some(lv => (lv.request_id || lv.id) === reqId)) {
+      return true;
+    }
+    const statusStr = (v.status || "").toString().trim().toLowerCase();
+    const liveStatuses = ["inside", "overstay", "temp out", "checked in", "live", "in"];
+    if (liveStatuses.includes(statusStr)) return true;
+    if (v.is_temp_out === 1 || v.is_temp_out === true) return true;
+    const hasCheckIn = Boolean(v.check_in_time || v.checkIn);
+    const hasCheckOut = Boolean(v.check_out_time || v.checkOut);
+    if (hasCheckIn && !hasCheckOut) return true;
+    return false;
+  };
+
   return (
     <div className="security-dashboard">
       <div className="security-main-content">
@@ -847,7 +896,8 @@ const SecurityDashboard = () => {
                       {liveVisitors.filter(v => 
                         (v.name || "").toLowerCase().includes(liveSearchQuery.toLowerCase()) || 
                         String(v.request_id).toLowerCase().includes(liveSearchQuery.toLowerCase()) ||
-                        (v.phone || v.mobile_number || "").toLowerCase().includes(liveSearchQuery.toLowerCase())
+                        (v.phone || v.mobile_number || "").toLowerCase().includes(liveSearchQuery.toLowerCase()) ||
+                        (v.physical_badge || v.physical_badge_no || "").toLowerCase().includes(liveSearchQuery.toLowerCase())
                       ).map(v => (
                         <tr key={v.request_id}>
                           <td>
@@ -900,7 +950,18 @@ const SecurityDashboard = () => {
                             <div className="security-host-name">{v.approver || v.host || "Walk-in"}</div>
                             <div className="security-host-id" style={{ fontSize: '11px', color: '#64748b' }}>{v.employee_id ? `ID: ${v.employee_id}` : ""}</div>
                           </td>
-                          <td><span className="security-badge-tag">{v.request_id}</span></td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span className="security-badge-tag" title="System Pass ID">V-{v.request_id}</span>
+                              {v.physical_badge || v.physical_badge_no ? (
+                                <span style={{ fontSize: '11px', padding: '2px 6px', background: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontWeight: 600, width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Allotted Physical Badge">
+                                  🏷️ {v.physical_badge || v.physical_badge_no}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>No Physical Card</span>
+                              )}
+                            </div>
+                          </td>
                           <td>{v.checkIn}</td>
                           <td>
                             <span className={`security-status ${getStatusClass(v.is_temp_out ? "Temp Out" : v.status)}`}>
@@ -912,6 +973,17 @@ const SecurityDashboard = () => {
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                                 {v.status !== "Checked Out" && (
                                   <>
+                                    <button
+                                      onClick={() => {
+                                        setReassignModalReq(v);
+                                        setReassignBadgeInput(v.physical_badge || v.physical_badge_no || "");
+                                      }}
+                                      className="security-icon-btn"
+                                      title="Allot / Reassign Physical Badge"
+                                      style={{ marginRight: '4px', color: '#d97706', borderColor: '#fde68a' }}
+                                    >
+                                      <Tag size={16} />
+                                    </button>
                                     <button
                                       onClick={() => handleOpenIDCard(v.request_id || v.id)}
                                       className="security-icon-btn print"
@@ -1165,7 +1237,10 @@ const SecurityDashboard = () => {
 
                         <div className="security-request-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <button
-                            onClick={() => handleCheckin(req.request_id || req.id)}
+                            onClick={() => {
+                              setCheckinModalReq(req);
+                              setCheckinBadgeInput("");
+                            }}
                             className="security-approve-btn"
                           >
                             <CheckCircle size={16} /> Check In
@@ -1653,7 +1728,14 @@ const SecurityDashboard = () => {
             {/* Check-In & Location */}
             <div className="vh-item">
               <span className="vh-label"><Clock size={12} /> Check-In Time</span>
-              <span className="vh-value">{hoveredVisitor.checkIn || hoveredVisitor.check_in_time || "-"}</span>
+              <span className="vh-value">
+                {hoveredVisitor.checkIn || hoveredVisitor.check_in_time || "-"}
+                {(hoveredVisitor.is_multi_day || hoveredVisitor.isMultiDay === "Yes" || hoveredVisitor.is_multi_day === 1) && hoveredVisitor.valid_till && (
+                  <div style={{ fontSize: "11px", color: "#2563eb", fontWeight: 600, marginTop: "2px" }}>
+                    Valid Till: {hoveredVisitor.valid_till} (Multi-Day)
+                  </div>
+                )}
+              </span>
             </div>
             {hoveredVisitor.location && (
               <div className="vh-item">
@@ -1706,18 +1788,172 @@ const SecurityDashboard = () => {
             >
               <Eye size={14} /> View Form
             </button>
-            <button
-              className="vh-action-btn vh-action-edit"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
-                setIsReadOnly(false);
-                setShowForm(true);
-                setHoveredVisitor(null);
-              }}
-            >
-              <Edit size={14} /> Edit Form
-            </button>
+            {!isVisitorLive(hoveredVisitor) && (
+              <button
+                className="vh-action-btn vh-action-edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
+                  setIsReadOnly(false);
+                  setShowForm(true);
+                  setHoveredVisitor(null);
+                }}
+              >
+                <Edit size={14} /> Edit Form
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Check-In Physical Badge Allotment Modal */}
+      {checkinModalReq && (
+        <div className="security-modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+        }}>
+          <div className="security-modal" style={{
+            background: '#ffffff', borderRadius: '16px', maxWidth: '480px', width: '100%',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: '#dbeafe', color: '#2563eb', padding: '8px', borderRadius: '10px' }}>
+                  <Tag size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Visitor Check-In</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Allot physical RFID or card badge for entry</p>
+                </div>
+              </div>
+              <button onClick={() => setCheckinModalReq(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', marginBottom: '18px', border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>Visitor Name:</span>
+                <strong style={{ fontSize: '14px', color: '#0f172a' }}>{checkinModalReq.name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>Host / Person to Visit:</span>
+                <span style={{ fontSize: '13px', color: '#334155' }}>{checkinModalReq.host || checkinModalReq.person_to_visit || "N/A"}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>System Pass ID:</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb', background: '#dbeafe', padding: '2px 8px', borderRadius: '999px' }}>
+                  V-{checkinModalReq.request_id || checkinModalReq.id}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                Physical Badge / RFID Tag Number
+              </label>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Scan RFID card or type physical badge # (e.g. CARD-045)"
+                value={checkinBadgeInput}
+                onChange={(e) => setCheckinBadgeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCheckin(checkinModalReq.request_id || checkinModalReq.id, checkinBadgeInput);
+                  }
+                }}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1',
+                  fontSize: '14px', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
+                }}
+              />
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', margin: '6px 0 0 0' }}>
+                💡 Tip: You can leave this blank to proceed with auto-generated System ID only.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setCheckinModalReq(null)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleCheckin(checkinModalReq.request_id || checkinModalReq.id, checkinBadgeInput)}
+                style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#ffffff', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CheckCircle size={16} /> Confirm Check-In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign Physical Badge Modal */}
+      {reassignModalReq && (
+        <div className="security-modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+        }}>
+          <div className="security-modal" style={{
+            background: '#ffffff', borderRadius: '16px', maxWidth: '440px', width: '100%',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: '#fef3c7', color: '#d97706', padding: '8px', borderRadius: '10px' }}>
+                  <Tag size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Reassign Physical Badge</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Update badge for live visitor {reassignModalReq.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setReassignModalReq(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                New Physical Badge / RFID Tag Number
+              </label>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Scan new card or type new badge #"
+                value={reassignBadgeInput}
+                onChange={(e) => setReassignBadgeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleReassignBadge(reassignModalReq.request_id || reassignModalReq.id, reassignBadgeInput);
+                  }
+                }}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1',
+                  fontSize: '14px', outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setReassignModalReq(null)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleReassignBadge(reassignModalReq.request_id || reassignModalReq.id, reassignBadgeInput)}
+                style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#d97706', color: '#ffffff', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+              >
+                Save Badge
+              </button>
+            </div>
           </div>
         </div>
       )}

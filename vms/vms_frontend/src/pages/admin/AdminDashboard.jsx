@@ -5,11 +5,11 @@ import Navbar from "../../components/Navbar/Navbar";
 import StatCard from "../../components/StatCard/StatCard";
 import VisitorPassForm from "../../components/forms/forms/VisitorPassForm";
 import CameraModal from "../../components/modals/CameraModal";
-import { 
-  Users, UserCheck, Clock, AlertTriangle, Plus, Search, Building, 
-  ChevronRight, ChevronDown, BarChart3, MapPin, Download, Camera, X, Shield, 
-  RefreshCw, Eye, Edit, Printer, Phone, Mail, Laptop, Car, FileText, 
-  Briefcase, CheckCircle 
+import {
+  Users, UserCheck, Clock, AlertTriangle, Plus, Search, Building,
+  ChevronRight, ChevronDown, BarChart3, MapPin, Download, Camera, X, Shield,
+  RefreshCw, Eye, Edit, Printer, Phone, Mail, Laptop, Car, FileText,
+  Briefcase, CheckCircle, ClipboardList, Trash2, Save, Check
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import "../SecurtiyDashboard/SecurityDashboard.css";
@@ -62,6 +62,167 @@ const AdminDashboard = () => {
   const [isLoadingIDCard, setIsLoadingIDCard] = useState(false);
   const [manualCheckouts, setManualCheckouts] = useState({});
 
+  // Dynamic Form Dropdown Management State
+  const [manageReasons, setManageReasons] = useState([
+    "Police Verification", "Meeting", "IT", "Interview", "ID(New)", "ID(Renew)",
+    "Document Verification", "Delivery", "Contractor Work", "Audit", "Payment", "Maintenance", "Other"
+  ]);
+  const [manageUnits, setManageUnits] = useState([
+    "Pune Eduction Foundation-Kasarwadi",
+    "Sason-Kasarwadi",
+    "Humankind-Kasarwadi",
+    "UDF-Kasarwadi",
+    "Eagle-Kasarwadi"
+  ]);
+  const [manageDepartments, setManageDepartments] = useState([
+    "IT", "HR", "Operations", "Sales & Marketing", "Accounts", "Legal", "Store"
+  ]);
+  const [manageAccessLevels, setManageAccessLevels] = useState([
+    "Visitor (Level 1)", "Vendor (Level 2)", "Security (Level 3)", "Host (Level 4)", "Admin (Level 5)"
+  ]);
+
+  const [newReasonInput, setNewReasonInput] = useState("");
+  const [newUnitInput, setNewUnitInput] = useState("");
+  const [newDeptInput, setNewDeptInput] = useState("");
+  const [newAccessInput, setNewAccessInput] = useState("");
+  const [savingDropdowns, setSavingDropdowns] = useState(false);
+  const [dropdownSuccessMsg, setDropdownSuccessMsg] = useState("");
+
+  const fetchFormOptions = async () => {
+    try {
+      const res = await API.get("/api/form-options");
+      if (res.data) {
+        if (res.data.reasons && Array.isArray(res.data.reasons) && res.data.reasons.length > 0) {
+          setManageReasons(res.data.reasons);
+        }
+        if (res.data.units && Array.isArray(res.data.units) && res.data.units.length > 0) {
+          setManageUnits(res.data.units);
+        }
+        if (res.data.departments && Array.isArray(res.data.departments) && res.data.departments.length > 0) {
+          setManageDepartments(res.data.departments);
+        }
+        if (res.data.access_levels && Array.isArray(res.data.access_levels) && res.data.access_levels.length > 0) {
+          setManageAccessLevels(res.data.access_levels);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching form options:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFormOptions();
+  }, []);
+
+  const handleAddReason = () => {
+    const val = newReasonInput.trim();
+    if (!val) return;
+    if (manageReasons.includes(val)) {
+      alert("This Reason of Visit option already exists.");
+      return;
+    }
+    setManageReasons(prev => [...prev, val]);
+    setNewReasonInput("");
+  };
+
+  const handleRemoveReason = (indexToRemove) => {
+    setManageReasons(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleAddUnit = () => {
+    const val = newUnitInput.trim();
+    if (!val) return;
+    if (manageUnits.includes(val)) {
+      alert("This Unit option already exists.");
+      return;
+    }
+    setManageUnits(prev => [...prev, val]);
+    setNewUnitInput("");
+  };
+
+  const handleRemoveUnit = (indexToRemove) => {
+    setManageUnits(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleAddDept = () => {
+    const val = newDeptInput.trim();
+    if (!val) return;
+    if (manageDepartments.includes(val)) {
+      alert("This Department option already exists.");
+      return;
+    }
+    setManageDepartments(prev => [...prev, val]);
+    setNewDeptInput("");
+  };
+
+  const handleRemoveDept = (indexToRemove) => {
+    setManageDepartments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleAddAccess = () => {
+    const val = newAccessInput.trim();
+    if (!val) return;
+    if (manageAccessLevels.includes(val)) {
+      alert("This Access Level option already exists.");
+      return;
+    }
+    setManageAccessLevels(prev => [...prev, val]);
+    setNewAccessInput("");
+  };
+
+  const handleRemoveAccess = (indexToRemove) => {
+    setManageAccessLevels(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const [editingOption, setEditingOption] = useState(null);
+  const [editingText, setEditingText] = useState("");
+
+  const handleStartEdit = (category, index, currentValue) => {
+    setEditingOption({ category, index });
+    setEditingText(currentValue);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingOption(null);
+    setEditingText("");
+  };
+
+  const handleSaveEdit = (category, index) => {
+    const val = editingText.trim();
+    if (!val) return;
+    if (category === "reason") {
+      setManageReasons(prev => prev.map((item, i) => i === index ? val : item));
+    } else if (category === "unit") {
+      setManageUnits(prev => prev.map((item, i) => i === index ? val : item));
+    } else if (category === "dept") {
+      setManageDepartments(prev => prev.map((item, i) => i === index ? val : item));
+    } else if (category === "access") {
+      setManageAccessLevels(prev => prev.map((item, i) => i === index ? val : item));
+    }
+    setEditingOption(null);
+    setEditingText("");
+  };
+
+  const handleSaveFormOptions = async () => {
+    setSavingDropdowns(true);
+    setDropdownSuccessMsg("");
+    try {
+      await API.post("/admin/settings", {
+        reasons_of_visit: manageReasons.join(", "),
+        units: manageUnits.join(", "),
+        departments: manageDepartments.join(", "),
+        access_levels: manageAccessLevels.join(", ")
+      });
+      setDropdownSuccessMsg("✅ Form dropdown options updated successfully!");
+      setTimeout(() => setDropdownSuccessMsg(""), 4000);
+    } catch (err) {
+      console.error("Error saving form options:", err);
+      alert("Failed to save dropdown options.");
+    } finally {
+      setSavingDropdowns(false);
+    }
+  };
+
   // Hover card preview state
   const [hoveredVisitor, setHoveredVisitor] = useState(null);
   const [hoverCardPos, setHoverCardPos] = useState({ top: 0, left: 0 });
@@ -91,7 +252,7 @@ const AdminDashboard = () => {
     const rect = event.currentTarget.getBoundingClientRect();
     const cardWidth = 380;
     const cardHeight = 360;
-    
+
     let left = rect.left + window.scrollX;
     if (left + cardWidth > window.innerWidth - 20) {
       left = window.innerWidth - cardWidth - 20;
@@ -204,18 +365,18 @@ const AdminDashboard = () => {
 
         const today = new Date();
         const enteredDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, 0, 0);
-        
+
         if (enteredDate > today) {
           alert("Manual check-out time cannot be in the future!");
           return;
         }
-        
+
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
         const localDateStr = `${yyyy}-${mm}-${dd}`;
         const combinedDateTimeStr = `${localDateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        
+
         payload.manualCheckOutTime = combinedDateTimeStr;
       }
 
@@ -279,7 +440,7 @@ const AdminDashboard = () => {
       alert("Please allow popups to print the visitor ID card.");
       return;
     }
-    
+
     const initials = (idCardData.name || "V")
       .split(" ")
       .map(n => n[0])
@@ -321,10 +482,10 @@ const AdminDashboard = () => {
                 <span class="role">Visitor</span>
               </div>
               <div class="avatar-box">
-                ${idCardData.photo 
-                  ? `<img src="/${idCardData.photo}" class="avatar-img" alt="Photo" />` 
-                  : `<div class="avatar-init">${initials}</div>`
-                }
+                ${idCardData.photo
+        ? `<img src="/${idCardData.photo}" class="avatar-img" alt="Photo" />`
+        : `<div class="avatar-init">${initials}</div>`
+      }
               </div>
             </div>
             
@@ -439,7 +600,7 @@ const AdminDashboard = () => {
     try {
       const visitorsRes = await API.get("/security/live-visitors");
       setLiveVisitors(visitorsRes.data);
-      
+
       const usersRes = await API.get("/admin/users");
       const activeEmployees = usersRes.data.filter(u => u.status.toLowerCase() === "active");
       setMusterEmployees(activeEmployees);
@@ -454,24 +615,24 @@ const AdminDashboard = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "EMERGENCY MUSTER ROLL\n";
     csvContent += `Generated at: ${new Date().toLocaleString()}\n\n`;
-    
+
     csvContent += "VISITORS ON PREMISES\n";
     csvContent += "Badge No,Visitor Name,Company,Host,Check-in Time,Access Level\n";
     liveVisitors.forEach(v => {
       csvContent += `"${v.badge || ''}","${v.name || ''}","${v.company || ''}","${v.host || ''}","${v.checkIn || ''}","${v.access_level || ''}"\n`;
     });
-    
+
     csvContent += "\n";
     csvContent += "ACTIVE EMPLOYEES ON PREMISES\n";
     csvContent += "Employee ID,Name,Department,Role,Email\n";
     musterEmployees.forEach(emp => {
       csvContent += `"${emp.id || ''}","${emp.name || ''}","${emp.department || ''}","${emp.role || ''}","${emp.email || ''}"\n`;
     });
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Emergency_Muster_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `Emergency_Muster_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -709,6 +870,80 @@ const AdminDashboard = () => {
 
   const loggedInUser = JSON.parse(sessionStorage.getItem("user") || "{}");
 
+  const isVisitorLive = (v) => {
+    if (!v) return false;
+    const reqId = v.request_id || v.id;
+    if (reqId && liveVisitors && liveVisitors.some(lv => (lv.request_id || lv.id) === reqId)) {
+      return true;
+    }
+    const statusStr = (v.status || "").toString().trim().toLowerCase();
+    const liveStatuses = ["inside", "overstay", "temp out", "checked in", "live", "in"];
+    if (liveStatuses.includes(statusStr)) return true;
+    if (v.is_temp_out === 1 || v.is_temp_out === true) return true;
+    const hasCheckIn = Boolean(v.check_in_time || v.checkIn);
+    const hasCheckOut = Boolean(v.check_out_time || v.checkOut);
+    if (hasCheckIn && !hasCheckOut) return true;
+    return false;
+  };
+
+  const renderOptionItem = (itemText, idx, category, onRemove) => {
+    const isEditing = editingOption && editingOption.category === category && editingOption.index === idx;
+
+    if (isEditing) {
+      return (
+        <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 8px", background: "#eff6ff", borderRadius: "8px", border: "1px solid #93c5fd" }}>
+          <input
+            type="text"
+            value={editingText}
+            onChange={(e) => setEditingText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); handleSaveEdit(category, idx); }
+              if (e.key === "Escape") { e.preventDefault(); handleCancelEdit(); }
+            }}
+            autoFocus
+            style={{ flex: 1, padding: "4px 8px", borderRadius: "6px", border: "1px solid #3b82f6", fontSize: "0.875rem", outline: "none" }}
+          />
+          <button
+            onClick={() => handleSaveEdit(category, idx)}
+            style={{ background: "#22c55e", border: "none", color: "white", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center" }}
+            title="Save changes"
+          >
+            <Check size={14} />
+          </button>
+          <button
+            onClick={handleCancelEdit}
+            style={{ background: "#94a3b8", border: "none", color: "white", padding: "4px 8px", borderRadius: "6px", cursor: "pointer", display: "flex", alignItems: "center" }}
+            title="Cancel"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
+        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#334155" }}>{itemText}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <button
+            onClick={() => handleStartEdit(category, idx, itemText)}
+            style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: "2px", borderRadius: "4px" }}
+            title="Edit option"
+          >
+            <Edit size={16} />
+          </button>
+          <button
+            onClick={() => onRemove(idx)}
+            style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: "2px", borderRadius: "4px" }}
+            title="Remove option"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="admin-dashboard">
       <Navbar role={loggedInUser.role || "admin"} userName={loggedInUser.name || "Admin User"} />
@@ -724,15 +959,13 @@ const AdminDashboard = () => {
               <Download size={16} /> Export Report
             </button>
             <button className="admin-btn-primary" style={{ backgroundColor: '#ef4444' }} onClick={handleOpenMuster}>
-              <AlertTriangle size={16} /> Visitor Muster
+              <AlertTriangle size={16} /> Emergency Muster
             </button>
             <button className="admin-btn-primary" onClick={() => setShowAddUserModal(true)}>
               <Plus size={16} /> Add User
             </button>
           </div>
         </div>
-
-        {/* STATS */}
         <div className="admin-stats-grid">
           <StatCard label="Total Users" value={stats.users} icon={<Users size={22} />} iconBg="hsl(217, 91%, 60%, 0.1)" iconColor="hsl(217, 91%, 60%)" trend={{ value: "12% this month", positive: true }} />
           <StatCard label="Active Visitors" value={stats.visitors} icon={<UserCheck size={22} />} iconBg="hsl(152, 81%, 90%)" iconColor="hsl(164, 86%, 20%)" trend={{ value: "8% today", positive: true }} />
@@ -820,6 +1053,9 @@ const AdminDashboard = () => {
                   <button className={`admin-tab ${activeTab === "remote_sessions" ? "active" : ""}`} onClick={() => setActiveTab("remote_sessions")}>
                     <RefreshCw size={16} /> Remote Sessions
                   </button>
+                  <button className={`admin-tab ${activeTab === "form_options" ? "active" : ""}`} onClick={() => setActiveTab("form_options")}>
+                    <FileText size={16} /> Form Dropdowns
+                  </button>
                 </div>
                 <div className="admin-search-box">
                   <Search size={16} />
@@ -882,7 +1118,7 @@ const AdminDashboard = () => {
                 <div className="admin-visitors-container">
                   {/* 4 VISITOR SECTION BLOCKS */}
                   <div className="visitor-blocks-grid">
-                    <div 
+                    <div
                       className={`visitor-block-card ${visitorSubTab === "live_visitors" ? "active" : ""}`}
                       onClick={() => setVisitorSubTab("live_visitors")}
                     >
@@ -896,7 +1132,7 @@ const AdminDashboard = () => {
                       {visitorSubTab === "live_visitors" && <span className="visitor-block-indicator" />}
                     </div>
 
-                    <div 
+                    <div
                       className={`visitor-block-card ${visitorSubTab === "spot_requests" ? "active" : ""}`}
                       onClick={() => setVisitorSubTab("spot_requests")}
                     >
@@ -910,7 +1146,7 @@ const AdminDashboard = () => {
                       {visitorSubTab === "spot_requests" && <span className="visitor-block-indicator" />}
                     </div>
 
-                    <div 
+                    <div
                       className={`visitor-block-card ${visitorSubTab === "expected_visitors" ? "active" : ""}`}
                       onClick={() => setVisitorSubTab("expected_visitors")}
                     >
@@ -924,7 +1160,7 @@ const AdminDashboard = () => {
                       {visitorSubTab === "expected_visitors" && <span className="visitor-block-indicator" />}
                     </div>
 
-                    <div 
+                    <div
                       className={`visitor-block-card ${visitorSubTab === "expired_visits" ? "active" : ""}`}
                       onClick={() => setVisitorSubTab("expired_visits")}
                     >
@@ -941,385 +1177,394 @@ const AdminDashboard = () => {
 
                   {/* SUB-SECTION 1: LIVE VISITORS */}
                   {visitorSubTab === "live_visitors" && (
-                <div className="security-table-container">
-                  <table className="security-table">
-                    <thead>
-                      <tr>
-                        <th>Visitor</th>
-                        <th>Host (ID)</th>
-                        <th>Badge</th>
-                        <th>Check-In</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {liveVisitors.filter(v => 
-                        (v.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        String(v.request_id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (v.phone || v.mobile_number || "").toLowerCase().includes(searchQuery.toLowerCase())
-                      ).map(v => (
-                        <tr key={v.request_id}>
-                          <td>
-                            <div 
-                              className="security-visitor-cell"
-                              style={{ cursor: "pointer" }}
-                              onClick={() => {
-                                setSelectedRequestId(v.request_id || v.id);
-                                setIsReadOnly(true);
-                                setShowVisitorForm(true);
-                              }}
-                              onMouseEnter={(e) => handleMouseEnterVisitor(v, e)}
-                              onMouseLeave={handleMouseLeaveVisitor}
-                            >
-                              <div className="avatar-wrapper">
-                                <div className="avatar-circle">
-                                  {v.photo ? (
-                                    <img
-                                      src={`/${v.photo}`}
-                                      alt="visitor"
-                                      className="avatar-image"
-                                    />
-                                  ) : (
-                                    (v.name || "user").split(" ").map(n => n[0]).join("")
-                                  )}
-                                </div>
+                    <div className="security-table-container">
+                      <table className="security-table">
+                        <thead>
+                          <tr>
+                            <th>Visitor</th>
+                            <th>Host (ID)</th>
+                            <th>Badge</th>
+                            <th>Check-In</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {liveVisitors.filter(v =>
+                            (v.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            String(v.request_id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (v.phone || v.mobile_number || "").toLowerCase().includes(searchQuery.toLowerCase())
+                          ).map(v => (
+                            <tr key={v.request_id}>
+                              <td>
                                 <div
-                                  className="camera-icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCurrentRequestId(v.request_id);
-                                    setShowCamera(true);
+                                  className="security-visitor-cell"
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() => {
+                                    setSelectedRequestId(v.request_id || v.id);
+                                    setIsReadOnly(true);
+                                    setShowVisitorForm(true);
                                   }}
+                                  onMouseEnter={(e) => handleMouseEnterVisitor(v, e)}
+                                  onMouseLeave={handleMouseLeaveVisitor}
                                 >
-                                  <Camera size={12} color="white" />
-                                </div>
-                              </div>
-
-                              <div>
-                                <div className="security-visitor-name">{v.name}</div>
-                                <div className="security-visitor-company">{v.company_name && v.purpose ? `${v.company_name} · ${v.purpose}` : ""}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="security-host-name">{v.approver || v.host || "Walk-in"}</div>
-                            <div className="security-host-id" style={{ fontSize: '11px', color: '#64748b' }}>{v.employee_id ? `ID: ${v.employee_id}` : ""}</div>
-                          </td>
-                          <td><span className="security-badge-tag">{v.request_id}</span></td>
-                          <td>{v.checkIn}</td>
-                          <td>
-                            <span className={`security-status ${getStatusClass(v.is_temp_out ? "Temp Out" : v.status)}`}>
-                              <span className="security-status-dot" /> {v.is_temp_out ? "Temp Out" : v.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="security-action-btns" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                {v.status !== "Checked Out" && (
-                                  <>
-                                    <button
-                                      onClick={() => handleOpenIDCard(v.request_id || v.id)}
-                                      className="security-icon-btn print"
-                                      title="Print ID Card"
-                                      style={{ marginRight: '4px' }}
+                                  <div className="avatar-wrapper">
+                                    <div className="avatar-circle">
+                                      {v.photo ? (
+                                        <img
+                                          src={`/${v.photo}`}
+                                          alt="visitor"
+                                          className="avatar-image"
+                                        />
+                                      ) : (
+                                        (v.name || "user").split(" ").map(n => n[0]).join("")
+                                      )}
+                                    </div>
+                                    <div
+                                      className="camera-icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentRequestId(v.request_id);
+                                        setShowCamera(true);
+                                      }}
                                     >
-                                      <Printer size={18} />
-                                    </button>
-                                    {v.is_temp_out ? (
-                                      <button
-                                        onClick={() => handleTempCheckin(v.id || v.request_id)}
-                                        className="security-checkout-btn"
-                                        style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-                                        Temp Check In
-                                      </button>
-                                    ) : (
+                                      <Camera size={12} color="white" />
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="security-visitor-name">{v.name}</div>
+                                    <div className="security-visitor-company">{v.company_name && v.purpose ? `${v.company_name} · ${v.purpose}` : ""}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="security-host-name">{v.approver || v.host || "Walk-in"}</div>
+                                <div className="security-host-id" style={{ fontSize: '11px', color: '#64748b' }}>{v.employee_id ? `ID: ${v.employee_id}` : ""}</div>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  <span className="security-badge-tag" title="System Pass ID">V-{v.request_id}</span>
+                                  {v.physical_badge || v.physical_badge_no ? (
+                                    <span style={{ fontSize: '11px', padding: '2px 6px', background: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontWeight: 600, width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Allotted Physical Badge">
+                                      🏷️ {v.physical_badge || v.physical_badge_no}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td>{v.checkIn}</td>
+                              <td>
+                                <span className={`security-status ${getStatusClass(v.is_temp_out ? "Temp Out" : v.status)}`}>
+                                  <span className="security-status-dot" /> {v.is_temp_out ? "Temp Out" : v.status}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="security-action-btns" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+                                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    {v.status !== "Checked Out" && (
                                       <>
                                         <button
-                                          onClick={() => handleTempCheckout(v.id || v.request_id)}
-                                          className="security-checkout-btn"
-                                          style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
-                                          Temp Out
+                                          onClick={() => handleOpenIDCard(v.request_id || v.id)}
+                                          className="security-icon-btn print"
+                                          title="Print ID Card"
+                                          style={{ marginRight: '4px' }}
+                                        >
+                                          <Printer size={18} />
                                         </button>
-                                        <button
-                                          onClick={() => handleCheckout(v.id || v.request_id)}
-                                          className="security-checkout-btn">
-                                          Check Out
-                                        </button>
+                                        {v.is_temp_out ? (
+                                          <button
+                                            onClick={() => handleTempCheckin(v.id || v.request_id)}
+                                            className="security-checkout-btn"
+                                            style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+                                            Temp Check In
+                                          </button>
+                                        ) : (
+                                          <>
+                                            <button
+                                              onClick={() => handleTempCheckout(v.id || v.request_id)}
+                                              className="security-checkout-btn"
+                                              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
+                                              Temp Out
+                                            </button>
+                                            <button
+                                              onClick={() => handleCheckout(v.id || v.request_id)}
+                                              className="security-checkout-btn">
+                                              Check Out
+                                            </button>
+                                          </>
+                                        )}
                                       </>
                                     )}
-                                  </>
-                                )}
-                              </div>
-                              {v.status !== "Checked Out" && !v.is_temp_out && (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginTop: '2px' }}>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b', cursor: 'pointer', margin: 0, fontWeight: '500' }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={manualCheckouts[v.id || v.request_id] !== undefined}
-                                      onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        if (checked) {
-                                          const now = new Date();
-                                          let hours = now.getHours();
-                                          const ampm = hours >= 12 ? 'PM' : 'AM';
-                                          hours = hours % 12;
-                                          hours = hours ? hours : 12;
-                                          const defaultTimeStr = `${String(hours).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`;
-                                          setManualCheckouts(prev => ({
-                                            ...prev,
-                                            [v.id || v.request_id]: defaultTimeStr
-                                          }));
-                                        } else {
-                                          setManualCheckouts(prev => {
-                                            const updated = { ...prev };
-                                            delete updated[v.id || v.request_id];
-                                            return updated;
-                                          });
-                                        }
-                                      }}
-                                    />
-                                    Already <span style={{ whiteSpace: 'nowrap' }}>checked out</span>
-                                  </label>
-                                  {manualCheckouts[v.id || v.request_id] !== undefined && (() => {
-                                    const timeVal = manualCheckouts[v.id || v.request_id] || "";
-                                    const match = timeVal.match(/^(\d{2}):(\d{2})\s(AM|PM)$/);
-                                    const currentHour = match ? match[1] : "12";
-                                    const currentMinute = match ? match[2] : "00";
-                                    const currentAmpm = match ? match[3] : "PM";
-                                    return (
-                                      <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                                        <select
-                                          value={currentHour}
+                                  </div>
+                                  {v.status !== "Checked Out" && !v.is_temp_out && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginTop: '2px' }}>
+                                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b', cursor: 'pointer', margin: 0, fontWeight: '500' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={manualCheckouts[v.id || v.request_id] !== undefined}
                                           onChange={(e) => {
-                                            const val = e.target.value;
-                                            setManualCheckouts(prev => ({
-                                              ...prev,
-                                              [v.id || v.request_id]: `${val}:${currentMinute} ${currentAmpm}`
-                                            }));
+                                            const checked = e.target.checked;
+                                            if (checked) {
+                                              const now = new Date();
+                                              let hours = now.getHours();
+                                              const ampm = hours >= 12 ? 'PM' : 'AM';
+                                              hours = hours % 12;
+                                              hours = hours ? hours : 12;
+                                              const defaultTimeStr = `${String(hours).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${ampm}`;
+                                              setManualCheckouts(prev => ({
+                                                ...prev,
+                                                [v.id || v.request_id]: defaultTimeStr
+                                              }));
+                                            } else {
+                                              setManualCheckouts(prev => {
+                                                const updated = { ...prev };
+                                                delete updated[v.id || v.request_id];
+                                                return updated;
+                                              });
+                                            }
                                           }}
-                                          style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
-                                        >
-                                          {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                                            <option key={h} value={h}>{h}</option>
-                                          ))}
-                                        </select>
-                                        <span style={{ fontSize: '11px', color: '#64748b' }}>:</span>
-                                        <select
-                                          value={currentMinute}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            setManualCheckouts(prev => ({
-                                              ...prev,
-                                              [v.id || v.request_id]: `${currentHour}:${val} ${currentAmpm}`
-                                            }));
-                                          }}
-                                          style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
-                                        >
-                                          {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
-                                            <option key={m} value={m}>{m}</option>
-                                          ))}
-                                        </select>
-                                        <select
-                                          value={currentAmpm}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            setManualCheckouts(prev => ({
-                                              ...prev,
-                                              [v.id || v.request_id]: `${currentHour}:${currentMinute} ${val}`
-                                            }));
-                                          }}
-                                          style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
-                                        >
-                                          <option value="AM">AM</option>
-                                          <option value="PM">PM</option>
-                                        </select>
-                                      </div>
-                                    );
-                                  })()}
+                                        />
+                                        Already <span style={{ whiteSpace: 'nowrap' }}>checked out</span>
+                                      </label>
+                                      {manualCheckouts[v.id || v.request_id] !== undefined && (() => {
+                                        const timeVal = manualCheckouts[v.id || v.request_id] || "";
+                                        const match = timeVal.match(/^(\d{2}):(\d{2})\s(AM|PM)$/);
+                                        const currentHour = match ? match[1] : "12";
+                                        const currentMinute = match ? match[2] : "00";
+                                        const currentAmpm = match ? match[3] : "PM";
+                                        return (
+                                          <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                            <select
+                                              value={currentHour}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                setManualCheckouts(prev => ({
+                                                  ...prev,
+                                                  [v.id || v.request_id]: `${val}:${currentMinute} ${currentAmpm}`
+                                                }));
+                                              }}
+                                              style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+                                            >
+                                              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                                                <option key={h} value={h}>{h}</option>
+                                              ))}
+                                            </select>
+                                            <span style={{ fontSize: '11px', color: '#64748b' }}>:</span>
+                                            <select
+                                              value={currentMinute}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                setManualCheckouts(prev => ({
+                                                  ...prev,
+                                                  [v.id || v.request_id]: `${currentHour}:${val} ${currentAmpm}`
+                                                }));
+                                              }}
+                                              style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+                                            >
+                                              {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                              ))}
+                                            </select>
+                                            <select
+                                              value={currentAmpm}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                setManualCheckouts(prev => ({
+                                                  ...prev,
+                                                  [v.id || v.request_id]: `${currentHour}:${currentMinute} ${val}`
+                                                }));
+                                              }}
+                                              style={{ fontSize: '11px', padding: '2px 4px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+                                            >
+                                              <option value="AM">AM</option>
+                                              <option value="PM">PM</option>
+                                            </select>
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* SPOT REQUESTS TAB CONTENT */}
-              {visitorSubTab === "spot_requests" && (
-                <div className="security-requests-list">
-                  {pendingRequests.filter(req => 
-                    (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (req.company_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(req => (
-                    <div key={req.request_id} className="security-request-item">
-                      <div className="security-request-info">
-                        <div className="security-visitor-avatar">{(req.name || "user").split(" ").map(n => n[0]).join("")}</div>
-                        <div>
-                          <h4>{req.name}</h4>
-                          <div className="security-request-meta">
-                            <span>{req.company_name}</span> · <span>{req.purpose}</span> · <span>Host: {req.host || "Walk-in"}</span>
-                          </div>
-                          <span className="security-time-tag">{req.time}</span>
-                        </div>
-                      </div>
-                      <div className="security-request-actions">
-                        <div className="security-action-icons" style={{ display: 'flex', gap: '8px', marginRight: '10px' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedRequestId(req.request_id || req.id);
-                              setIsReadOnly(true);
-                              setShowVisitorForm(true);
-                            }}
-                            className="security-icon-btn view"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedRequestId(req.request_id || req.id);
-                              setIsReadOnly(false);
-                              setShowVisitorForm(true);
-                            }}
-                            className="security-icon-btn edit"
-                            title="Edit Request"
-                          >
-                            <Edit size={18} />
-                          </button>
-                        </div>
-                        <button onClick={() => handleReject(req.request_id || req.id)} className="security-reject-btn">
-                          Reject
-                        </button>
-                        <button onClick={() => handleApprove(req.request_id || req.id)} className="security-approve-btn">
-                          Approve
-                        </button>
-                      </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* EXPECTED VISITORS TAB CONTENT */}
-              {visitorSubTab === "expected_visitors" && (
-                <div className="security-requests-list">
-                  {expectedVisitors.filter(req => 
-                    (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (req.company_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(req => (
-                    <div key={req.request_id} className="security-request-item">
-                      <div className="security-request-info">
-                        <div className="security-visitor-avatar">
-                          {(req.name || "User").split(" ").map(n => n[0]).join("")}
-                        </div>
-                        <div>
-                          <h4>{req.name}</h4>
-                          <div className="security-request-meta">
-                            <span>{req.company_name}</span> · <span>{req.purpose}</span> · <span>Host: {req.host || "Walk-in"}</span>
-                          </div>
-                          <span className="security-time-tag">Expected at {req.time}</span>
-                        </div>
-                      </div>
-
-                      <div className="security-request-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div className="security-action-icons" style={{ display: 'flex', gap: '8px', marginRight: '10px' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedRequestId(req.request_id || req.id);
-                              setIsReadOnly(true);
-                              setShowVisitorForm(true);
-                            }}
-                            className="security-icon-btn view"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedRequestId(req.request_id || req.id);
-                              setIsReadOnly(false);
-                              setShowVisitorForm(true);
-                            }}
-                            className="security-icon-btn edit"
-                            title="Edit Request"
-                          >
-                            <Edit size={18} />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => handleCheckin(req.request_id || req.id)}
-                          className="security-approve-btn"
-                        >
-                          <CheckCircle size={16} /> Check In
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* EXPIRED VISITS TAB CONTENT */}
-              {visitorSubTab === "expired_visits" && (
-                <div className="security-requests-list">
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '15px 2rem', gap: '10px', alignItems: 'center', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#627d98' }}>Filter Expired:</span>
-                    <select
-                      value={expiredFilter}
-                      onChange={(e) => setExpiredFilter(e.target.value)}
-                      style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', outline: 'none', backgroundColor: '#ffffff', color: '#102a43', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      <option value="all">All Expired</option>
-                      <option value="week">This Week (Last 7 Days)</option>
-                      <option value="month">This Month (Last 30 Days)</option>
-                      <option value="quarter">This Quarter (Last 90 Days)</option>
-                      <option value="year">This Year (Last 365 Days)</option>
-                    </select>
-                  </div>
-                  {expiredVisits.filter(req => 
-                    (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (req.company || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
-                  ).length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#829ab1' }}>
-                      <CheckCircle size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                      <p>No expired visits found</p>
-                    </div>
-                  ) : (
-                    expiredVisits.filter(req => 
-                      (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      (req.company || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
-                    ).map(req => (
-                      <div key={req.id || req.request_id} className="security-request-item expired">
-                        <div className="security-request-info">
-                          <div className="security-visitor-avatar" style={{ background: '#f1f5f9', color: '#64748b' }}>
-                            {(req.name || "User").split(" ").map(n => n[0]).join("")}
-                          </div>
-                          <div>
-                            <h4 style={{ color: '#64748b' }}>{req.name} <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#ef4444', marginLeft: '8px' }}>Expired</span></h4>
-                            <div className="security-request-meta">
-                              <span>{req.company}</span> · <span>{req.purpose}</span> · <span>Host: {req.host}</span>
-                            </div>
-                            <span className="security-time-tag">Created on {new Date(req.created_at).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div className="security-request-actions">
-                          <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: '500' }}>Exceeded 36h</div>
-                        </div>
-                      </div>
-                    ))
                   )}
-                </div>
-              )}
+
+                  {/* SPOT REQUESTS TAB CONTENT */}
+                  {visitorSubTab === "spot_requests" && (
+                    <div className="security-requests-list">
+                      {pendingRequests.filter(req =>
+                        (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (req.company_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
+                      ).map(req => (
+                        <div key={req.request_id} className="security-request-item">
+                          <div className="security-request-info">
+                            <div className="security-visitor-avatar">{(req.name || "user").split(" ").map(n => n[0]).join("")}</div>
+                            <div>
+                              <h4>{req.name}</h4>
+                              <div className="security-request-meta">
+                                <span>{req.company_name}</span> · <span>{req.purpose}</span> · <span>Host: {req.host || "Walk-in"}</span>
+                              </div>
+                              <span className="security-time-tag">{req.time}</span>
+                            </div>
+                          </div>
+                          <div className="security-request-actions">
+                            <div className="security-action-icons" style={{ display: 'flex', gap: '8px', marginRight: '10px' }}>
+                              <button
+                                onClick={() => {
+                                  setSelectedRequestId(req.request_id || req.id);
+                                  setIsReadOnly(true);
+                                  setShowVisitorForm(true);
+                                }}
+                                className="security-icon-btn view"
+                                title="View Details"
+                              >
+                                <Eye size={18} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedRequestId(req.request_id || req.id);
+                                  setIsReadOnly(false);
+                                  setShowVisitorForm(true);
+                                }}
+                                className="security-icon-btn edit"
+                                title="Edit Request"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            </div>
+                            <button onClick={() => handleReject(req.request_id || req.id)} className="security-reject-btn">
+                              Reject
+                            </button>
+                            <button onClick={() => handleApprove(req.request_id || req.id)} className="security-approve-btn">
+                              Approve
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* EXPECTED VISITORS TAB CONTENT */}
+                  {visitorSubTab === "expected_visitors" && (
+                    <div className="security-requests-list">
+                      {expectedVisitors.filter(req =>
+                        (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (req.company_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
+                      ).map(req => (
+                        <div key={req.request_id} className="security-request-item">
+                          <div className="security-request-info">
+                            <div className="security-visitor-avatar">
+                              {(req.name || "User").split(" ").map(n => n[0]).join("")}
+                            </div>
+                            <div>
+                              <h4>{req.name}</h4>
+                              <div className="security-request-meta">
+                                <span>{req.company_name}</span> · <span>{req.purpose}</span> · <span>Host: {req.host || "Walk-in"}</span>
+                              </div>
+                              <span className="security-time-tag">Expected at {req.time}</span>
+                            </div>
+                          </div>
+
+                          <div className="security-request-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="security-action-icons" style={{ display: 'flex', gap: '8px', marginRight: '10px' }}>
+                              <button
+                                onClick={() => {
+                                  setSelectedRequestId(req.request_id || req.id);
+                                  setIsReadOnly(true);
+                                  setShowVisitorForm(true);
+                                }}
+                                className="security-icon-btn view"
+                                title="View Details"
+                              >
+                                <Eye size={18} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedRequestId(req.request_id || req.id);
+                                  setIsReadOnly(false);
+                                  setShowVisitorForm(true);
+                                }}
+                                className="security-icon-btn edit"
+                                title="Edit Request"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => handleCheckin(req.request_id || req.id)}
+                              className="security-approve-btn"
+                            >
+                              <CheckCircle size={16} /> Check In
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* EXPIRED VISITS TAB CONTENT */}
+                  {visitorSubTab === "expired_visits" && (
+                    <div className="security-requests-list">
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '15px 2rem', gap: '10px', alignItems: 'center', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#627d98' }}>Filter Expired:</span>
+                        <select
+                          value={expiredFilter}
+                          onChange={(e) => setExpiredFilter(e.target.value)}
+                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', outline: 'none', backgroundColor: '#ffffff', color: '#102a43', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <option value="all">All Expired</option>
+                          <option value="week">This Week (Last 7 Days)</option>
+                          <option value="month">This Month (Last 30 Days)</option>
+                          <option value="quarter">This Quarter (Last 90 Days)</option>
+                          <option value="year">This Year (Last 365 Days)</option>
+                        </select>
+                      </div>
+                      {expiredVisits.filter(req =>
+                        (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (req.company || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
+                      ).length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#829ab1' }}>
+                          <CheckCircle size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                          <p>No expired visits found</p>
+                        </div>
+                      ) : (
+                        expiredVisits.filter(req =>
+                          (req.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          String(req.request_id || req.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (req.company || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (req.host || "").toLowerCase().includes(searchQuery.toLowerCase())
+                        ).map(req => (
+                          <div key={req.id || req.request_id} className="security-request-item expired">
+                            <div className="security-request-info">
+                              <div className="security-visitor-avatar" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                                {(req.name || "User").split(" ").map(n => n[0]).join("")}
+                              </div>
+                              <div>
+                                <h4 style={{ color: '#64748b' }}>{req.name} <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#ef4444', marginLeft: '8px' }}>Expired</span></h4>
+                                <div className="security-request-meta">
+                                  <span>{req.company}</span> · <span>{req.purpose}</span> · <span>Host: {req.host}</span>
+                                </div>
+                                <span className="security-time-tag">Created on {new Date(req.created_at).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <div className="security-request-actions">
+                              <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: '500' }}>Exceeded 36h</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1328,7 +1573,7 @@ const AdminDashboard = () => {
                 <div className="admin-table-container">
                   {remoteSuccess && <div style={{ background: '#d1fae5', color: '#065f46', padding: '10px 15px', borderRadius: '6px', margin: '10px 15px', fontWeight: 500, fontSize: '0.85rem' }}>{remoteSuccess}</div>}
                   {remoteError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 15px', borderRadius: '6px', margin: '10px 15px', fontWeight: 500, fontSize: '0.85rem' }}>{remoteError}</div>}
-                  
+
                   {selectedUserForRemote ? (
                     <div style={{ padding: '20px', background: 'rgba(37, 99, 235, 0.03)', borderRadius: '8px', margin: '15px', border: '1px solid rgba(37, 99, 235, 0.1)' }}>
                       <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', fontWeight: 700 }}>Authorize Remote Re-login</h4>
@@ -1413,6 +1658,185 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* FORM DROPDOWNS MANAGEMENT TAB */}
+              {activeTab === "form_options" && (
+                <div style={{ padding: "1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Form Dropdown Options Manager</h3>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
+                        Customize the values available in Reason of Visit and Unit/Site dropdowns across all visitor forms.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleSaveFormOptions}
+                      disabled={savingDropdowns}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                        color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: 600,
+                        cursor: "pointer", fontSize: "0.9rem", boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)"
+                      }}
+                    >
+                      <Save size={18} /> {savingDropdowns ? "Saving..." : "Save Dropdown Settings"}
+                    </button>
+                  </div>
+
+                  {dropdownSuccessMsg && (
+                    <div style={{ padding: "12px 16px", borderRadius: "10px", background: "#dcfce7", color: "#15803d", fontWeight: 600, fontSize: "0.9rem", marginBottom: "1.5rem", border: "1px solid #bbf7d0" }}>
+                      {dropdownSuccessMsg}
+                    </div>
+                  )}
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
+                    
+                    {/* CARD 1: REASON OF VISIT */}
+                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                        <div style={{ background: "#dbeafe", color: "#2563eb", padding: "8px", borderRadius: "8px" }}>
+                          <ClipboardList size={20} />
+                        </div>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Reason of Visit Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageReasons.length} options defined</span>
+                        </div>
+                      </div>
+
+                      {/* Add input row */}
+                      <div style={{ display: "flex", gap: "8px", marginBottom: "1rem" }}>
+                        <input
+                          type="text"
+                          placeholder="Add new Reason of Visit..."
+                          value={newReasonInput}
+                          onChange={(e) => setNewReasonInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddReason())}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                        />
+                        <button
+                          onClick={handleAddReason}
+                          style={{ padding: "8px 14px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      </div>
+
+                      {/* List of Reasons */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto" }}>
+                        {manageReasons.map((reason, idx) => renderOptionItem(reason, idx, "reason", handleRemoveReason))}
+                      </div>
+                    </div>
+
+                    {/* CARD 2: UNITS / SITES */}
+                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                        <div style={{ background: "#fef3c7", color: "#d97706", padding: "8px", borderRadius: "8px" }}>
+                          <Building size={20} />
+                        </div>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Unit / Location Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageUnits.length} units defined</span>
+                        </div>
+                      </div>
+
+                      {/* Add input row */}
+                      <div style={{ display: "flex", gap: "8px", marginBottom: "1rem" }}>
+                        <input
+                          type="text"
+                          placeholder="Add new Unit name..."
+                          value={newUnitInput}
+                          onChange={(e) => setNewUnitInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddUnit())}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                        />
+                        <button
+                          onClick={handleAddUnit}
+                          style={{ padding: "8px 14px", background: "#d97706", color: "white", border: "none", borderRadius: "8px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      </div>
+
+                      {/* List of Units */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto" }}>
+                        {manageUnits.map((unit, idx) => renderOptionItem(unit, idx, "unit", handleRemoveUnit))}
+                      </div>
+                    </div>
+
+                    {/* CARD 3: DEPARTMENT OPTIONS */}
+                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                        <div style={{ background: "#f3e8ff", color: "#7c3aed", padding: "8px", borderRadius: "8px" }}>
+                          <Briefcase size={20} />
+                        </div>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Department Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageDepartments.length} departments defined</span>
+                        </div>
+                      </div>
+
+                      {/* Add input row */}
+                      <div style={{ display: "flex", gap: "8px", marginBottom: "1rem" }}>
+                        <input
+                          type="text"
+                          placeholder="Add new Department..."
+                          value={newDeptInput}
+                          onChange={(e) => setNewDeptInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddDept())}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                        />
+                        <button
+                          onClick={handleAddDept}
+                          style={{ padding: "8px 14px", background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      </div>
+
+                      {/* List of Departments */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto" }}>
+                        {manageDepartments.map((dept, idx) => renderOptionItem(dept, idx, "dept", handleRemoveDept))}
+                      </div>
+                    </div>
+
+                    {/* CARD 4: ACCESS LEVEL OPTIONS */}
+                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
+                        <div style={{ background: "#e0f2fe", color: "#0284c7", padding: "8px", borderRadius: "8px" }}>
+                          <Shield size={20} />
+                        </div>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Access Level Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageAccessLevels.length} levels defined</span>
+                        </div>
+                      </div>
+
+                      {/* Add input row */}
+                      <div style={{ display: "flex", gap: "8px", marginBottom: "1rem" }}>
+                        <input
+                          type="text"
+                          placeholder="Add new Access Level..."
+                          value={newAccessInput}
+                          onChange={(e) => setNewAccessInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddAccess())}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                        />
+                        <button
+                          onClick={handleAddAccess}
+                          style={{ padding: "8px 14px", background: "#0284c7", color: "white", border: "none", borderRadius: "8px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <Plus size={16} /> Add
+                        </button>
+                      </div>
+
+                      {/* List of Access Levels */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto" }}>
+                        {manageAccessLevels.map((lvl, idx) => renderOptionItem(lvl, idx, "access", handleRemoveAccess))}
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
               )}
             </div>
@@ -1505,7 +1929,7 @@ const AdminDashboard = () => {
                   <Shield size={20} color="#ef4444" />
                   <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'hsl(var(--foreground))' }}>Emergency Muster Roll</h3>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowMusterModal(false)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))' }}
                 >
@@ -1592,13 +2016,13 @@ const AdminDashboard = () => {
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-                    <button 
+                    <button
                       onClick={handleExportCSV}
                       style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.15)', background: 'transparent', color: 'hsl(var(--foreground))', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
                       CSV Export
                     </button>
-                    <button 
+                    <button
                       onClick={handleDownloadPDF}
                       style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#ef4444', color: '#ffffff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
@@ -1739,7 +2163,7 @@ const AdminDashboard = () => {
                         </div>
                       </div>
 
-                      <div 
+                      <div
                         className="visitor-id-card-preview-footer-tag-new"
                         style={{
                           background: idCardData.accessLevel === "5" ? "#ef4444" : (idCardData.accessLevel === "3" ? "#3b82f6" : "#10b981")
@@ -1751,16 +2175,16 @@ const AdminDashboard = () => {
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px', width: '100%' }}>
-                    <button 
+                    <button
                       onClick={handlePrintIDCard}
-                      className="modal-btn capture-btn" 
+                      className="modal-btn capture-btn"
                       style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}
                     >
                       <Printer size={18} /> Print Pass
                     </button>
-                    <button 
+                    <button
                       onClick={() => setShowIDCardModal(false)}
-                      className="modal-btn close-btn" 
+                      className="modal-btn close-btn"
                       style={{ margin: 0 }}
                     >
                       Close
@@ -1824,7 +2248,7 @@ const AdminDashboard = () => {
                   <span className="vh-value">{hoveredVisitor.email}</span>
                 </div>
               )}
-              
+
               <div className="vh-item">
                 <span className="vh-label"><Building size={12} /> Company</span>
                 <span className="vh-value">{hoveredVisitor.company || hoveredVisitor.company_name || "-"}</span>
@@ -1899,18 +2323,20 @@ const AdminDashboard = () => {
               >
                 <Eye size={14} /> View Form
               </button>
-              <button
-                className="vh-action-btn vh-action-edit"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
-                  setIsReadOnly(false);
-                  setShowVisitorForm(true);
-                  setHoveredVisitor(null);
-                }}
-              >
-                <Edit size={14} /> Edit Form
-              </button>
+              {!isVisitorLive(hoveredVisitor) && (
+                <button
+                  className="vh-action-btn vh-action-edit"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedRequestId(hoveredVisitor.request_id || hoveredVisitor.id);
+                    setIsReadOnly(false);
+                    setShowVisitorForm(true);
+                    setHoveredVisitor(null);
+                  }}
+                >
+                  <Edit size={14} /> Edit Form
+                </button>
+              )}
             </div>
           </div>
         )}

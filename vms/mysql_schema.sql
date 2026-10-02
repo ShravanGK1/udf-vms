@@ -68,6 +68,7 @@ CREATE TABLE visitor_requests (
     temp_in_time DATETIME DEFAULT NULL,
     parent_request_id INT DEFAULT NULL,
     transfer_from_host_id INT DEFAULT NULL,
+    physical_badge_no VARCHAR(50) DEFAULT NULL,
     FOREIGN KEY (visitor_id) REFERENCES visitors(visitor_id) ON DELETE CASCADE,
     FOREIGN KEY (host_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL

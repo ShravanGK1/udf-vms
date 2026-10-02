@@ -24,7 +24,20 @@ def check_and_add_columns():
                 print("Adding transfer_from_host_id column to visitor_requests...")
                 cursor.execute("ALTER TABLE visitor_requests ADD COLUMN transfer_from_host_id INT DEFAULT NULL")
             
-            # 2. Update visitors table for device columns (fix mismatch bug)
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'is_multi_day'")
+            if not cursor.fetchone():
+                print("Adding is_multi_day column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN is_multi_day BOOLEAN DEFAULT FALSE")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'valid_till'")
+            if not cursor.fetchone():
+                print("Adding valid_till column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN valid_till DATE DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'physical_badge_no'")
+            if not cursor.fetchone():
+                print("Adding physical_badge_no column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN physical_badge_no VARCHAR(50) DEFAULT NULL")
             cursor.execute("SHOW COLUMNS FROM visitors LIKE 'has_device'")
             if not cursor.fetchone():
                 print("Adding has_device column to visitors...")
@@ -44,6 +57,21 @@ def check_and_add_columns():
             if not cursor.fetchone():
                 print("Adding device_serial_number column to visitors...")
                 cursor.execute("ALTER TABLE visitors ADD COLUMN device_serial_number VARCHAR(100) DEFAULT NULL")
+
+            cursor.execute("SHOW TABLES LIKE 'system_settings'")
+            if not cursor.fetchone():
+                print("Creating system_settings table...")
+                cursor.execute("""
+                    CREATE TABLE system_settings (
+                        setting_key VARCHAR(255) PRIMARY KEY,
+                        setting_value TEXT NOT NULL
+                    )
+                """)
+            else:
+                try:
+                    cursor.execute("ALTER TABLE system_settings MODIFY COLUMN setting_value TEXT NOT NULL")
+                except Exception as ex:
+                    print("Note modifying system_settings:", ex)
 
             conn.commit()
             cursor.close()
@@ -308,12 +336,18 @@ def create_request():
             if len(sched_time_val) == 5:
                 sched_time_val += ":00"
 
+        is_multi_day_raw = data.get("is_multi_day") or data.get("isMultiDay")
+        is_multi_day = True if str(is_multi_day_raw).lower() in ["1", "true", "yes"] else False
+        valid_till = data.get("valid_till") or data.get("validTill") or sched_date_val
+
         request_data = {
             "visitor_id": visitor_id,
             "host_id": host_id,
             "purpose": data.get("purpose"),
             "scheduled_date": sched_date_val,
-            "scheduled_time": sched_time_val
+            "scheduled_time": sched_time_val,
+            "is_multi_day": is_multi_day,
+            "valid_till": valid_till if valid_till else sched_date_val
         }
 
         cursor.execute("""
@@ -323,12 +357,15 @@ def create_request():
                 purpose,
                 scheduled_date,
                 scheduled_time,
+                is_multi_day,
+                valid_till,
                 status,
                 created_at
             )
             VALUES (
                 %(visitor_id)s, %(host_id)s, %(purpose)s, 
-                %(scheduled_date)s, %(scheduled_time)s, 'PENDING', NOW()
+                %(scheduled_date)s, %(scheduled_time)s,
+                %(is_multi_day)s, %(valid_till)s, 'PENDING', NOW()
             )
         """, request_data)
 

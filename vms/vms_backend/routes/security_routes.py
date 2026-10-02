@@ -5,7 +5,7 @@ import time
 import re
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import pymysql.cursors
 from routes.request_routes import auto_expire_past_requests
 
@@ -52,7 +52,7 @@ def security_dashboard():
         pending_approval = cursor.fetchone()[0]
 
         cursor.execute("""
-            SELECT check_in_time 
+            SELECT check_in_time, is_multi_day, valid_till 
             FROM visitor_requests 
             WHERE check_in_time IS NOT NULL 
             AND check_out_time IS NULL
@@ -60,9 +60,28 @@ def security_dashboard():
         live_visitors_times = cursor.fetchall()
         overstay = 0
         now = datetime.now()
-        for (cit,) in live_visitors_times:
-            if cit and isinstance(cit, datetime) and now - cit > timedelta(hours=2):
-                overstay += 1
+        for row in live_visitors_times:
+            cit = row[0]
+            is_multi = bool(row[1]) if len(row) > 1 and row[1] is not None else False
+            v_till = row[2] if len(row) > 2 else None
+
+            if is_multi and v_till:
+                try:
+                    if isinstance(v_till, str):
+                        v_till_date = datetime.strptime(v_till.split("T")[0], "%Y-%m-%d").date()
+                    elif hasattr(v_till, "date"):
+                        v_till_date = v_till.date()
+                    elif isinstance(v_till, date):
+                        v_till_date = v_till
+                    else:
+                        v_till_date = None
+                    if v_till_date and now.date() > v_till_date:
+                        overstay += 1
+                except Exception as ex:
+                    print("Error checking multi-day overstay in dashboard:", ex)
+            else:
+                if cit and isinstance(cit, datetime) and now - cit > timedelta(hours=2):
+                    overstay += 1
 
         conn.close()
 
@@ -90,6 +109,8 @@ def live_visitors():
         cursor.execute("""
             SELECT
                 vr.request_id,
+                vr.is_multi_day,
+                vr.valid_till,
                 vr.purpose as "reasonOfVisit",
                 vr.purpose,
                 vr.scheduled_date,
@@ -97,6 +118,7 @@ def live_visitors():
                 vr.check_in_time,
                 vr.check_out_time,
                 vr.is_temp_out,
+                vr.physical_badge_no as "physical_badge_no",
                 v.visitor_name as name,
                 v.company_name as company,
                 v.company_name as "companyName",
@@ -137,16 +159,41 @@ def live_visitors():
 
         for r in rows:
             check_in_time = r.get("check_in_time")
+            is_multi_day = bool(r.get("is_multi_day"))
+            valid_till = r.get("valid_till")
+            is_temp_out = bool(r.get("is_temp_out"))
             status = "Inside"
 
-            if check_in_time and isinstance(check_in_time, datetime) and datetime.now() - check_in_time > timedelta(hours=2):
-                status = "Overstay"
+            if is_temp_out:
+                status = "Temp Out"
+            else:
+                now = datetime.now()
+                if is_multi_day and valid_till:
+                    try:
+                        if isinstance(valid_till, str):
+                            till_date = datetime.strptime(valid_till.split("T")[0], "%Y-%m-%d").date()
+                        elif hasattr(valid_till, "date"):
+                            till_date = valid_till.date()
+                        elif isinstance(valid_till, date):
+                            till_date = valid_till
+                        else:
+                            till_date = None
+                        if till_date and now.date() > till_date:
+                            status = "Overstay"
+                    except Exception as ex:
+                        print("Error checking multi-day overstay in live_visitors:", ex)
+                else:
+                    if check_in_time and isinstance(check_in_time, datetime) and now - check_in_time > timedelta(hours=2):
+                        status = "Overstay"
 
             r["badge"] = f"V-{r['request_id']}"
+            r["physical_badge"] = r.get("physical_badge_no") or None
             r["status"] = status
             r["checkIn"] = check_in_time.strftime("%d %b %Y, %I:%M %p") if check_in_time and isinstance(check_in_time, datetime) else str(check_in_time or "-")
             if r.get("scheduled_date"):
                 r["scheduled_date"] = str(r["scheduled_date"])
+            if r.get("valid_till"):
+                r["valid_till"] = str(r["valid_till"])
             if r.get("scheduled_time"):
                 r["scheduled_time"] = str(r["scheduled_time"])
             if r.get("check_in_time"):
@@ -269,20 +316,60 @@ def pending_requests():
 
 @security_bp.route("/api/security/checkin/<int:request_id>", methods=["POST"])
 def checkin_visitor(request_id):
-
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        UPDATE visitor_requests
-        SET check_in_time = NOW()
-        WHERE request_id = %s
-    """, (request_id,))
+    data = request.get_json() or {}
+    physical_badge = data.get("physical_badge_no") or data.get("physical_badge") or data.get("badge")
+    if isinstance(physical_badge, str):
+        physical_badge = physical_badge.strip()
+    if not physical_badge:
+        physical_badge = None
+
+    if physical_badge:
+        cursor.execute("""
+            UPDATE visitor_requests
+            SET check_in_time = NOW(), physical_badge_no = %s
+            WHERE request_id = %s
+        """, (physical_badge, request_id))
+    else:
+        cursor.execute("""
+            UPDATE visitor_requests
+            SET check_in_time = NOW()
+            WHERE request_id = %s
+        """, (request_id,))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Visitor checked in successfully"})
+    return jsonify({"message": "Visitor checked in successfully", "physical_badge_no": physical_badge})
+
+
+# ---------------------------------------------------
+# REASSIGN / UPDATE PHYSICAL BADGE
+# ---------------------------------------------------
+@security_bp.route("/api/security/reassign-badge/<int:request_id>", methods=["PUT", "POST"])
+def reassign_badge(request_id):
+    try:
+        data = request.get_json() or {}
+        physical_badge = data.get("physical_badge_no") or data.get("physical_badge") or data.get("badge")
+        if isinstance(physical_badge, str):
+            physical_badge = physical_badge.strip()
+        if not physical_badge:
+            physical_badge = None
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE visitor_requests
+            SET physical_badge_no = %s
+            WHERE request_id = %s
+        """, (physical_badge, request_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Physical badge updated successfully", "physical_badge_no": physical_badge})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------------------------------------------------
@@ -933,6 +1020,8 @@ def get_request_details(request_id):
         cursor.execute("""
             SELECT 
                 vr.request_id,
+                vr.is_multi_day,
+                vr.valid_till,
                 vr.purpose as "reasonOfVisit",
                 v.has_device,
                 v.device_type as "deviceType",
@@ -1149,16 +1238,22 @@ def update_request_details(request_id):
                 manual_checkout_val,
                 request_id
             ))
-        else:
-            cursor.execute("""
-                UPDATE visitor_requests
-                SET 
-                    purpose = %s
-                WHERE request_id = %s
-            """, (
-                data.get("reasonOfVisit"),
-                request_id
-            ))
+        is_multi_day_raw = data.get("is_multi_day") or data.get("isMultiDay")
+        is_multi_day = True if str(is_multi_day_raw).lower() in ["1", "true", "yes"] else False
+        valid_till = data.get("valid_till") or data.get("validTill")
+
+        cursor.execute("""
+            UPDATE visitor_requests
+            SET purpose = %s,
+                is_multi_day = %s,
+                valid_till = %s
+            WHERE request_id = %s
+        """, (
+            data.get("reasonOfVisit"),
+            is_multi_day,
+            valid_till,
+            request_id
+        ))
 
         conn.commit()
         conn.close()

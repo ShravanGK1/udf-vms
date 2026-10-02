@@ -17,7 +17,9 @@ import {
   Camera,
   Printer,
   Calendar,
-  Clock
+  Clock,
+  Plus,
+  Trash2
 } from "lucide-react";
 import "./VisitorPassForm.css";
 import CameraModal from "../../modals/CameraModal";
@@ -51,7 +53,7 @@ const parsePhoneNumber = (phone) => {
   return { countryCode: "", localNumber: phone };
 };
 
-export default function VisitorPassForm({ onClose, requestId, readOnly }) {
+export default function VisitorPassForm({ onClose, requestId, readOnly: initialReadOnly }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -83,17 +85,50 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
     }
   };
 
-  const sites = [
-    { name: "Pune Eduction Foundation-Kasarwadi" },
-    { name: "Sason-Kasarwadi" },
-    { name: "Humankind-Kasarwadi" },
-    { name: "UDF-Kasarwadi" },
-    { name: "Eagle-Kasarwadi" }
-  ];
+  const [reasonOptions, setReasonOptions] = useState([
+    "Police Verification", "Meeting", "IT", "Interview", "ID(New)", "ID(Renew)",
+    "Document Verification", "Delivery", "Contractor Work", "Audit", "Payment", "Maintenance", "Other"
+  ]);
+  const [unitOptions, setUnitOptions] = useState([
+    "Pune Eduction Foundation-Kasarwadi",
+    "Sason-Kasarwadi",
+    "Humankind-Kasarwadi",
+    "UDF-Kasarwadi",
+    "Eagle-Kasarwadi"
+  ]);
+  const [departmentOptions, setDepartmentOptions] = useState([
+    "IT", "HR", "Operations", "Sales & Marketing", "Accounts", "Legal", "Store"
+  ]);
+  const [accessLevelOptions, setAccessLevelOptions] = useState([
+    "Visitor (Level 1)", "Vendor (Level 2)", "Security (Level 3)", "Host (Level 4)", "Admin (Level 5)"
+  ]);
 
   useEffect(() => {
     const history = JSON.parse(localStorage.getItem("visitor_history") || "[]");
     setVisitHistory(history);
+
+    const fetchFormOptions = async () => {
+      try {
+        const res = await API.get('/api/form-options');
+        if (res.data) {
+          if (res.data.reasons && Array.isArray(res.data.reasons) && res.data.reasons.length > 0) {
+            setReasonOptions(res.data.reasons);
+          }
+          if (res.data.units && Array.isArray(res.data.units) && res.data.units.length > 0) {
+            setUnitOptions(res.data.units);
+          }
+          if (res.data.departments && Array.isArray(res.data.departments) && res.data.departments.length > 0) {
+            setDepartmentOptions(res.data.departments);
+          }
+          if (res.data.access_levels && Array.isArray(res.data.access_levels) && res.data.access_levels.length > 0) {
+            setAccessLevelOptions(res.data.access_levels);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching form options:", err);
+      }
+    };
+    fetchFormOptions();
   }, []);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -115,6 +150,8 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
     reasonOfVisit: "",
     scheduled_date: todayStr,
     scheduled_time: nowTimeStr,
+    isMultiDay: "No",
+    valid_till: todayStr,
     hasDevice: "No",
     deviceType: "",
     deviceMake: "",
@@ -124,6 +161,40 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
     vehiclePhotoFront: "",
     vehiclePhotoSide: ""
   });
+
+  const [devices, setDevices] = useState([
+    { deviceType: "", deviceMake: "", deviceSerialNumber: "" }
+  ]);
+
+  const handleDeviceChange = (index, field, value) => {
+    setDevices(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addDeviceRow = () => {
+    setDevices(prev => [...prev, { deviceType: "", deviceMake: "", deviceSerialNumber: "" }]);
+  };
+
+  const removeDeviceRow = (index) => {
+    setDevices(prev => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+
+  const isVisitorLive = (data) => {
+    if (!data) return false;
+    const statusStr = (data.status || "").toString().trim().toLowerCase();
+    const liveStatuses = ["inside", "overstay", "temp out", "checked in", "live", "in"];
+    if (liveStatuses.includes(statusStr)) return true;
+    if (data.is_temp_out === 1 || data.is_temp_out === true) return true;
+    const hasCheckIn = Boolean(data.check_in_time || data.checkIn);
+    const hasCheckOut = Boolean(data.check_out_time || data.checkOut);
+    if (hasCheckIn && !hasCheckOut) return true;
+    return false;
+  };
+
+  const readOnly = Boolean(initialReadOnly || isVisitorLive(formData));
 
   // 🔄 Load existing data if in Edit Mode
   useEffect(() => {
@@ -135,8 +206,31 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
             console.log("Fetched Request Data:", res.data);
             setFormData(prev => ({
               ...prev,
-              ...res.data
+              ...res.data,
+              isMultiDay: (res.data.is_multi_day || res.data.isMultiDay === "Yes" || res.data.is_multi_day === 1 || res.data.is_multi_day === true) ? "Yes" : "No",
+              valid_till: res.data.valid_till || res.data.validTill || res.data.scheduled_date || todayStr
             }));
+
+            if (res.data.hasDevice === "Yes" || res.data.has_device) {
+              const fetchedType = res.data.deviceType || res.data.device_type || "";
+              const fetchedMake = res.data.deviceMake || res.data.device_make || "";
+              const fetchedSerial = res.data.deviceSerialNumber || res.data.device_serial_number || "";
+              
+              const types = fetchedType ? fetchedType.split(",").map(s => s.trim()) : [];
+              const makes = fetchedMake ? fetchedMake.split(",").map(s => s.trim()) : [];
+              const serials = fetchedSerial ? fetchedSerial.split(",").map(s => s.trim()) : [];
+              const count = Math.max(types.length, makes.length, serials.length, 1);
+              
+              const loadedDevices = [];
+              for (let i = 0; i < count; i++) {
+                loadedDevices.push({
+                  deviceType: types[i] || "",
+                  deviceMake: makes[i] || "",
+                  deviceSerialNumber: serials[i] || ""
+                });
+              }
+              setDevices(loadedDevices);
+            }
           }
         } catch (err) {
           console.error("Failed to fetch request details:", err);
@@ -287,7 +381,22 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
     if (targetCountry.length && val.length > targetCountry.length) return;
     if (targetCountry.maxLength && val.length > targetCountry.maxLength) return;
     if (!targetCountry.length && !targetCountry.maxLength && val.length > 15) return;
+    
     setFormData((prev) => ({ ...prev, phone: countryCode + val }));
+
+    // Instant text box validation
+    if (val.length > 0) {
+      if (!targetCountry.regex.test(val)) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          phone: `Please enter a valid phone number for ${targetCountry.name} (e.g. ${targetCountry.placeholder}).`
+        }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, phone: null }));
+      }
+    } else {
+      setFieldErrors((prev) => ({ ...prev, phone: null }));
+    }
   };
 
   const handleChange = (e) => {
@@ -425,49 +534,46 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const user = JSON.parse(sessionStorage.getItem("user"));
-
     // Parse country code and validate local number specifically
     const { countryCode, localNumber } = parsePhoneNumber(formData.phone);
     const selectedCountry = countries.find(c => c.code === countryCode) || countries[countries.length - 1];
-    
+
+    const newErrors = {};
+
     if (!selectedCountry.regex.test(localNumber)) {
-      alert(`⚠️ Please enter a valid phone number for ${selectedCountry.name} (e.g. ${selectedCountry.placeholder}).`);
-      return;
+      newErrors.phone = `Please enter a valid phone number for ${selectedCountry.name} (e.g. ${selectedCountry.placeholder}).`;
     }
 
     // 🚦 ID Proof Validation
     if (formData.typeOfIDProof === "Aadhar Card" && formData.idProofNumber.length !== 12) {
-      setFieldErrors(prev => ({ ...prev, idProofNumber: "Aadhar Card must be exactly 12 digits" }));
-      alert("⚠️ Aadhar Card must be exactly 12 digits");
-      return;
+      newErrors.idProofNumber = "Aadhar Card must be exactly 12 digits";
     }
     if (formData.typeOfIDProof === "PAN Card" && formData.idProofNumber.length !== 10) {
-      setFieldErrors(prev => ({ ...prev, idProofNumber: "PAN Card must be exactly 10 alphanumeric characters" }));
-      alert("⚠️ PAN Card must be exactly 10 characters");
-      return;
+      newErrors.idProofNumber = "PAN Card must be exactly 10 alphanumeric characters";
     }
 
     // 🚦 Vehicle Validation when Vehicle Type is selected
     if (formData.vehicleType) {
       if (!formData.vehicleNumber || formData.vehicleNumber.trim() === "") {
-        alert("⚠️ Vehicle Number is required when Vehicle Type is selected.");
-        return;
-      }
-      const cleanVehicleNum = formData.vehicleNumber.replace(/[^A-Za-z0-9]/g, "");
-      const vehicleNumberRegex = /^[A-Za-z]{2}[0-9]{2}[A-Za-z]{1,2}[0-9]{4}$/;
-      if (!vehicleNumberRegex.test(cleanVehicleNum)) {
-        alert("⚠️ Please enter a valid Indian vehicle registration number (e.g., MH12AB1234).");
-        return;
+        newErrors.vehicleNumber = "Vehicle Number is required when Vehicle Type is selected.";
+      } else {
+        const cleanVehicleNum = formData.vehicleNumber.replace(/[^A-Za-z0-9]/g, "");
+        const vehicleNumberRegex = /^[A-Za-z]{2}[0-9]{2}[A-Za-z]{1,2}[0-9]{4}$/;
+        if (!vehicleNumberRegex.test(cleanVehicleNum)) {
+          newErrors.vehicleNumber = "Please enter a valid Indian vehicle registration number (e.g., MH12AB1234).";
+        }
       }
       if (!vehiclePhotoFrontFile && !formData.vehiclePhotoFront) {
-        alert("⚠️ Vehicle Photo (Front View) is required when Vehicle Type is selected.");
-        return;
+        newErrors.vehiclePhotoFront = "Vehicle Photo (Front View) is required when Vehicle Type is selected.";
       }
       if (!vehiclePhotoSideFile && !formData.vehiclePhotoSide) {
-        alert("⚠️ Vehicle Photo (Side View) is required when Vehicle Type is selected.");
-        return;
+        newErrors.vehiclePhotoSide = "Vehicle Photo (Side View) is required when Vehicle Type is selected.";
       }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      return;
     }
 
     const data = new FormData();
@@ -487,13 +593,27 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
     data.append("purpose", formData.reasonOfVisit);
     data.append("scheduled_date", formData.scheduled_date || todayStr);
     data.append("scheduled_time", formData.scheduled_time || nowTimeStr);
+    const isMulti = formData.isMultiDay === "Yes" || formData.isMultiDay === true;
+    data.append("is_multi_day", isMulti ? "1" : "0");
+    data.append("isMultiDay", isMulti ? "Yes" : "No");
+    data.append("valid_till", isMulti ? (formData.valid_till || formData.scheduled_date || todayStr) : (formData.scheduled_date || todayStr));
     data.append("access_level", formData.accessLevel);
     data.append("host_id", user.user_id);
 
-    data.append("hasDevice", formData.hasDevice);
-    data.append("deviceType", formData.deviceType);
-    data.append("deviceMake", formData.deviceMake);
-    data.append("deviceSerialNumber", formData.deviceSerialNumber);
+    if (formData.hasDevice === "Yes") {
+      const combinedType = devices.map(d => d.deviceType.trim()).filter(Boolean).join(", ");
+      const combinedMake = devices.map(d => d.deviceMake.trim()).filter(Boolean).join(", ");
+      const combinedSerial = devices.map(d => d.deviceSerialNumber.trim()).filter(Boolean).join(", ");
+      data.append("hasDevice", "Yes");
+      data.append("deviceType", combinedType);
+      data.append("deviceMake", combinedMake);
+      data.append("deviceSerialNumber", combinedSerial);
+    } else {
+      data.append("hasDevice", "No");
+      data.append("deviceType", "");
+      data.append("deviceMake", "");
+      data.append("deviceSerialNumber", "");
+    }
     data.append("vehicleType", formData.vehicleType);
     data.append("vehicleNumber", formData.vehicleNumber);
 
@@ -553,17 +673,6 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
       alert(requestId ? "❌ Failed to update request" : "❌ Failed to send invite");
     }
   };
-
-  // Department options
-  const departmentOptions = [
-    "IT",
-    "HR",
-    "Operations",
-    "Sales & Marketing",
-    "Accounts",
-    "Legal",
-    "Store"
-  ];
 
   return (
     <div className="form-container">
@@ -630,40 +739,127 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
             </div>
           </div>
 
-          {/* Visit Date */}
-          <div className="form-group">
-            <label>Visit Date <span>*</span></label>
-            <div style={{ position: "relative" }}>
-              <Calendar size={18} style={iconStyle} />
+          {/* Multi-day Visit Toggle Checkbox */}
+          <div className="form-group full-width" style={{ marginTop: "4px", marginBottom: "8px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600, color: "#1e293b", fontSize: "13px" }}>
               <input
-                type="date"
-                name="scheduled_date"
-                min={todayStr}
-                required
-                style={inputStyle}
-                value={formData.scheduled_date || todayStr}
-                onChange={handleChange}
+                type="checkbox"
+                name="isMultiDay"
+                checked={formData.isMultiDay === "Yes" || formData.isMultiDay === true}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData(prev => ({
+                    ...prev,
+                    isMultiDay: checked ? "Yes" : "No",
+                    valid_till: checked ? (prev.valid_till || prev.scheduled_date || todayStr) : ""
+                  }));
+                }}
                 disabled={readOnly}
+                style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#2563eb" }}
               />
-            </div>
+              <span>Multiple Days Visit (Long Duration On-Site Access)</span>
+            </label>
           </div>
 
-          {/* Visit Time */}
-          <div className="form-group">
-            <label>Visit Time <span>*</span></label>
-            <div style={{ position: "relative" }}>
-              <Clock size={18} style={iconStyle} />
-              <input
-                type="time"
-                name="scheduled_time"
-                required
-                style={inputStyle}
-                value={formData.scheduled_time || nowTimeStr}
-                onChange={handleChange}
-                disabled={readOnly}
-              />
-            </div>
-          </div>
+          {/* Visit Date(s) & Time */}
+          {formData.isMultiDay === "Yes" || formData.isMultiDay === true ? (
+            <>
+              {/* From Date */}
+              <div className="form-group">
+                <label>From Date (Start) <span>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <Calendar size={18} style={iconStyle} />
+                  <input
+                    type="date"
+                    name="scheduled_date"
+                    min={todayStr}
+                    required
+                    style={inputStyle}
+                    value={formData.scheduled_date || todayStr}
+                    onChange={(e) => {
+                      handleChange(e);
+                      if (formData.valid_till && e.target.value > formData.valid_till) {
+                        setFormData(prev => ({ ...prev, valid_till: e.target.value }));
+                      }
+                    }}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
+
+              {/* Till Date */}
+              <div className="form-group">
+                <label>Till Date (End) <span>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <Calendar size={18} style={iconStyle} />
+                  <input
+                    type="date"
+                    name="valid_till"
+                    min={formData.scheduled_date || todayStr}
+                    required
+                    style={inputStyle}
+                    value={formData.valid_till || formData.scheduled_date || todayStr}
+                    onChange={handleChange}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
+
+              {/* Visit Time */}
+              <div className="form-group full-width">
+                <label>Visit Time <span>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <Clock size={18} style={iconStyle} />
+                  <input
+                    type="time"
+                    name="scheduled_time"
+                    required
+                    style={inputStyle}
+                    value={formData.scheduled_time || nowTimeStr}
+                    onChange={handleChange}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Single Visit Date */}
+              <div className="form-group">
+                <label>Visit Date <span>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <Calendar size={18} style={iconStyle} />
+                  <input
+                    type="date"
+                    name="scheduled_date"
+                    min={todayStr}
+                    required
+                    style={inputStyle}
+                    value={formData.scheduled_date || todayStr}
+                    onChange={handleChange}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
+
+              {/* Visit Time */}
+              <div className="form-group">
+                <label>Visit Time <span>*</span></label>
+                <div style={{ position: "relative" }}>
+                  <Clock size={18} style={iconStyle} />
+                  <input
+                    type="time"
+                    name="scheduled_time"
+                    required
+                    style={inputStyle}
+                    value={formData.scheduled_time || nowTimeStr}
+                    onChange={handleChange}
+                    disabled={readOnly}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Email */}
           <div className="form-group">
@@ -738,6 +934,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
                   type="tel"
                   name="localPhone"
                   required
+                  className={fieldErrors.phone ? "invalid-input" : ""}
                   placeholder={
                     (countries.find(c => c.code === parsePhoneNumber(formData.phone).countryCode) || countries[countries.length - 1]).placeholder
                   }
@@ -748,6 +945,11 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
                 />
               </div>
             </div>
+            {fieldErrors.phone && (
+              <span className="error-text" style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                ⚠️ {fieldErrors.phone}
+              </span>
+            )}
           </div>
 
           {/* PABX */}
@@ -797,9 +999,12 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
                 disabled={readOnly}
               >
                 <option value="">Select Unit</option>
-                {sites.map((site, idx) => (
-                  <option key={idx} value={site.name}>{site.name}</option>
+                {unitOptions.map((unitName, idx) => (
+                  <option key={idx} value={unitName}>{unitName}</option>
                 ))}
+                {formData.unit && !unitOptions.includes(formData.unit) && (
+                  <option value={formData.unit}>{formData.unit}</option>
+                )}
               </select>
             </div>
           </div>
@@ -853,13 +1058,10 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
                 disabled={readOnly}
               >
                 <option value="">Select Access Level</option>
-                <option value="1">Visitor(level 1)</option>
-                <option value="2">Vendor(level 2)</option>
-                <option value="3">Security(level 3)</option>
-                <option value="4">Host(level 4)</option>
-                <option value="5">Admin(level 5)</option>
-                {/* Fallback for unknown values */}
-                {formData.accessLevel && !["1", "2", "3", "4", "5"].includes(formData.accessLevel) && (
+                {accessLevelOptions.map((opt, idx) => (
+                  <option key={idx} value={String(idx + 1)}>{opt}</option>
+                ))}
+                {formData.accessLevel && !accessLevelOptions.some((_, i) => String(i + 1) === String(formData.accessLevel)) && (
                   <option value={formData.accessLevel}>{formData.accessLevel}</option>
                 )}
               </select>
@@ -1032,30 +1234,12 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
                 disabled={readOnly}
               >
                 <option value="">Select Reason</option>
-                <option value="Police Verification">Police Verification</option>
-                <option value="Meeting">Meeting</option>
-                <option value="IT">IT</option>
-                <option value="Interview">Interview</option>
-                <option value="ID(New)">ID(New)</option>
-                <option value="ID(Renew)">ID(Renew)</option>
-                <option value="Recruitment">Recruitment</option>
-                <option value="Payment">Payment</option>
-                <option value="P.F.">P.F.</option>
-                <option value="E.C.S.I.">E.C.S.I.</option>
-                <option value="Personal">Personal</option>
-                <option value="Logistics(Departure)">Logistics(Departure)</option>
-                <option value="Logistics(Receving)">Logistics(Receving)</option>
-                <option value="Field Related">Field Related</option>
-                <option value="Billings">Billings</option>
-                <option value="Vendor">Vendor</option>
-                <option value="Tie-ups">Tie-ups</option>
-                <option value="Leave Payment">Leave Payment</option>
-                <option value="Bonus Payment">Bonus Payment</option>
-                <option value="Cheque">Cheque</option>
-                <option value="Cheque Bearer">Cheque Bearer</option>
-                <option value="Plant Visit">Plant Visit</option>
-                <option value="Medical">Medical</option>
-                <option value="Other">Other</option>
+                {reasonOptions.map((reasonName, idx) => (
+                  <option key={idx} value={reasonName}>{reasonName}</option>
+                ))}
+                {formData.reasonOfVisit && !reasonOptions.includes(formData.reasonOfVisit) && (
+                  <option value={formData.reasonOfVisit}>{formData.reasonOfVisit}</option>
+                )}
               </select>
             </div>
           </div>
@@ -1070,7 +1254,12 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
                 required
                 style={inputStyle}
                 value={formData.hasDevice}
-                onChange={handleChange}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (e.target.value === "Yes" && devices.length === 0) {
+                    setDevices([{ deviceType: "", deviceMake: "", deviceSerialNumber: "" }]);
+                  }
+                }}
                 disabled={readOnly}
               >
                 <option value="No">No</option>
@@ -1080,61 +1269,128 @@ export default function VisitorPassForm({ onClose, requestId, readOnly }) {
           </div>
 
           {formData.hasDevice === "Yes" && (
-            <>
-              {/* Device Type */}
-              <div className="form-group">
-                <label>Device Type <span>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <Laptop size={18} style={iconStyle} />
-                  <input
-                    type="text"
-                    name="deviceType"
-                    required
-                    placeholder="e.g. Laptop, Tablet"
-                    style={inputStyle}
-                    value={formData.deviceType}
-                    onChange={handleChange}
-                    disabled={readOnly}
-                  />
-                </div>
+            <div className="form-group full-width" style={{ marginTop: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                  Accompanying Devices ({devices.length}) <span>*</span>
+                </label>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={addDeviceRow}
+                    style={{
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      border: "1px solid #bfdbfe",
+                      borderRadius: "6px",
+                      padding: "6px 14px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <Plus size={14} /> Add Another Device
+                  </button>
+                )}
               </div>
 
-              {/* Device Make */}
-              <div className="form-group">
-                <label>Device Make <span>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <Laptop size={18} style={iconStyle} />
-                  <input
-                    type="text"
-                    name="deviceMake"
-                    required
-                    placeholder="e.g. Dell, Apple"
-                    style={inputStyle}
-                    value={formData.deviceMake}
-                    onChange={handleChange}
-                    disabled={readOnly}
-                  />
-                </div>
-              </div>
+              {devices.map((device, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "10px",
+                    padding: "16px",
+                    marginBottom: "12px",
+                    position: "relative"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Device #{idx + 1}
+                    </span>
+                    {!readOnly && devices.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDeviceRow(idx)}
+                        style={{
+                          background: "#fee2e2",
+                          border: "1px solid #fca5a5",
+                          borderRadius: "4px",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          padding: "4px 8px",
+                          fontSize: "12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                        title="Remove this device"
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    )}
+                  </div>
 
-              {/* Device Serial Number */}
-              <div className="form-group full-width">
-                <label>Device Serial Number <span>*</span></label>
-                <div style={{ position: "relative" }}>
-                  <Hash size={18} style={iconStyle} />
-                  <input
-                    type="text"
-                    name="deviceSerialNumber"
-                    required
-                    placeholder="Enter Serial Number"
-                    style={inputStyle}
-                    value={formData.deviceSerialNumber}
-                    onChange={handleChange}
-                    disabled={readOnly}
-                  />
+                  <div className="form-grid" style={{ gap: "12px" }}>
+                    {/* Device Type */}
+                    <div className="form-group">
+                      <label style={{ fontSize: "12px" }}>Device Type <span>*</span></label>
+                      <div style={{ position: "relative" }}>
+                        <Laptop size={18} style={iconStyle} />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Laptop, Tablet"
+                          style={inputStyle}
+                          value={device.deviceType}
+                          onChange={(e) => handleDeviceChange(idx, "deviceType", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Device Make */}
+                    <div className="form-group">
+                      <label style={{ fontSize: "12px" }}>Device Make <span>*</span></label>
+                      <div style={{ position: "relative" }}>
+                        <Laptop size={18} style={iconStyle} />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Dell, Apple"
+                          style={inputStyle}
+                          value={device.deviceMake}
+                          onChange={(e) => handleDeviceChange(idx, "deviceMake", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Device Serial Number */}
+                    <div className="form-group full-width">
+                      <label style={{ fontSize: "12px" }}>Device Serial Number <span>*</span></label>
+                      <div style={{ position: "relative" }}>
+                        <Hash size={18} style={iconStyle} />
+                        <input
+                          type="text"
+                          required
+                          placeholder="Enter Serial Number"
+                          style={inputStyle}
+                          value={device.deviceSerialNumber}
+                          onChange={(e) => handleDeviceChange(idx, "deviceSerialNumber", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </>
+              ))}
+            </div>
           )}
 
         </div>

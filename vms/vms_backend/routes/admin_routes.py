@@ -423,6 +423,67 @@ def add_site():
 
 
 # ---------------- SYSTEM SETTINGS CRUD ----------------
+@admin_bp.route("/api/form-options", methods=["GET"])
+def get_form_options():
+    default_reasons = ["Meeting", "Interview", "Delivery", "Maintenance", "Work", "Payment", "Official", "Vendor Visit", "Audit", "Other"]
+    default_units = [
+        "Pune Eduction Foundation-Kasarwadi",
+        "Sason-Kasarwadi",
+        "Humankind-Kasarwadi",
+        "UDF-Kasarwadi",
+        "Eagle-Kasarwadi"
+    ]
+    default_departments = ["IT", "HR", "Operations", "Sales & Marketing", "Accounts", "Legal", "Store"]
+    default_access_levels = [
+        "Visitor (Level 1)",
+        "Vendor (Level 2)",
+        "Security (Level 3)",
+        "Host (Level 4)",
+        "Admin (Level 5)"
+    ]
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({
+            "reasons": default_reasons,
+            "units": default_units,
+            "departments": default_departments,
+            "access_levels": default_access_levels
+        }), 200
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('reasons_of_visit', 'units', 'departments', 'access_levels')")
+        rows = cursor.fetchall()
+        settings = {r[0]: r[1] for r in rows}
+        
+        reasons_str = settings.get("reasons_of_visit")
+        units_str = settings.get("units")
+        departments_str = settings.get("departments")
+        access_levels_str = settings.get("access_levels")
+        
+        reasons_list = [r.strip() for r in reasons_str.split(",") if r.strip()] if reasons_str else default_reasons
+        units_list = [u.strip() for u in units_str.split(",") if u.strip()] if units_str else default_units
+        departments_list = [d.strip() for d in departments_str.split(",") if d.strip()] if departments_str else default_departments
+        access_levels_list = [a.strip() for a in access_levels_str.split(",") if a.strip()] if access_levels_str else default_access_levels
+
+        return jsonify({
+            "reasons": reasons_list,
+            "units": units_list,
+            "departments": departments_list,
+            "access_levels": access_levels_list
+        }), 200
+    except Exception as e:
+        print("Error fetching form options:", e)
+        return jsonify({
+            "reasons": default_reasons,
+            "units": default_units,
+            "departments": default_departments,
+            "access_levels": default_access_levels
+        }), 200
+    finally:
+        cursor.close()
+        conn.close()
+
 @admin_bp.route("/admin/settings", methods=["GET"])
 def get_settings():
     conn = get_db_connection()

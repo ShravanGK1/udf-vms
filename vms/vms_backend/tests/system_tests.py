@@ -911,19 +911,30 @@ def test_adm_003(log):
     
     try:
         client = get_test_client()
-        log(f"Performing security check-in for request {request_id}...")
-        res = client.post(f"/api/security/checkin/{request_id}")
+        log(f"Performing security check-in without signature for request {request_id}...")
+        res_empty = client.post(f"/api/security/checkin/{request_id}", json={})
+        log(f"Check-in without signature status: {res_empty.status_code}")
+        if res_empty.status_code != 400:
+            raise Exception(f"Expected 400 when check-in is attempted without signature, got {res_empty.status_code}")
+
+        valid_sig = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        log(f"Performing security check-in with valid signature for request {request_id}...")
+        res = client.post(f"/api/security/checkin/{request_id}", json={"physical_badge_no": "CARD-999", "signature": valid_sig})
         log(f"Check-in status: {res.status_code}")
         
         if res.status_code != 200:
-            raise Exception("Check-in endpoint failed.")
+            raise Exception(f"Check-in endpoint failed: {res.get_json()}")
             
         # Verify in DB
-        cursor.execute("SELECT check_in_time FROM visitor_requests WHERE request_id = %s", (request_id,))
-        check_in = cursor.fetchone()[0]
-        log(f"DB verification -> check_in_time: {check_in}")
+        cursor.execute("SELECT check_in_time, signature_path FROM visitor_requests WHERE request_id = %s", (request_id,))
+        row = cursor.fetchone()
+        check_in = row[0]
+        sig_path = row[1]
+        log(f"DB verification -> check_in_time: {check_in}, signature_path: {sig_path}")
         if not check_in:
             raise Exception("Check-in time was not written to database request record.")
+        if not sig_path or not sig_path.startswith("uploads/signatures/"):
+            raise Exception("Signature path was not saved correctly to database request record.")
     finally:
         # Cleanup
         cursor.execute("DELETE FROM visitor_requests WHERE request_id = %s", (request_id,))
@@ -934,39 +945,75 @@ def test_adm_003(log):
         
     log("Security check-in flow confirmed.")
 
-@register_test("TEST-ADM-004", "Administration", "Security Check-out Flow", "Verifies security can check out a visitor, updating checkout timestamps.")
+@register_test("TEST-ADM-004", "Administration", "Security Check-out Flow", "Verifies permanent checkout requires signature and temporary checkout does not.")
 def test_adm_004(log):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create request with APPROVED status and checked-in
+    # Create request with APPROVED status and checked-in with check-in signature A
     cursor.execute("""
         INSERT INTO visitors (visitor_name, mobile_number, email) 
         VALUES ('Temp Checkout Guest', '9998881357', 'temp_checkout@test.com')
     """)
     visitor_id = cursor.lastrowid
+    sig_a_path = "uploads/signatures/sig_test_a.png"
     cursor.execute("""
-        INSERT INTO visitor_requests (visitor_id, host_id, purpose, scheduled_date, scheduled_time, status, check_in_time, created_at)
-        VALUES (%s, 1, 'Meeting', CURRENT_DATE, CURRENT_TIME, 'APPROVED', NOW(), NOW())
-    """, (visitor_id,))
+        INSERT INTO visitor_requests (visitor_id, host_id, purpose, scheduled_date, scheduled_time, status, check_in_time, signature_path, created_at)
+        VALUES (%s, 1, 'Meeting', CURRENT_DATE, CURRENT_TIME, 'APPROVED', NOW(), %s, NOW())
+    """, (visitor_id, sig_a_path))
     request_id = cursor.lastrowid
     conn.commit()
     
     try:
         client = get_test_client()
-        log(f"Performing security check-out for request {request_id}...")
-        res = client.post(f"/api/security/checkout/{request_id}")
-        log(f"Check-out status: {res.status_code}")
-        
-        if res.status_code != 200:
-            raise Exception("Check-out endpoint failed.")
+        log(f"1. Testing Temporary Checkout without signature for request {request_id}...")
+        res_temp = client.post(f"/api/security/temp-checkout/{request_id}")
+        if res_temp.status_code != 200:
+            raise Exception(f"Temporary checkout without signature failed: {res_temp.get_json()}")
             
-        # Verify in DB
-        cursor.execute("SELECT check_out_time FROM visitor_requests WHERE request_id = %s", (request_id,))
-        check_out = cursor.fetchone()[0]
-        log(f"DB verification -> check_out_time: {check_out}")
+        cursor.execute("SELECT is_temp_out, signature_path, checkout_signature_path FROM visitor_requests WHERE request_id = %s", (request_id,))
+        temp_row = cursor.fetchone()
+        if not temp_row[0]:
+            raise Exception("Temporary checkout did not set is_temp_out = TRUE.")
+        if temp_row[1] != sig_a_path:
+            raise Exception("Temporary checkout altered the check-in signature!")
+        if temp_row[2] is not None:
+            raise Exception("Temporary checkout set a checkout_signature_path!")
+        log("Temporary checkout without signature succeeded as expected.")
+
+        # Re-enter visitor from temp out
+        client.post(f"/api/security/temp-checkin/{request_id}")
+
+        log(f"2. Testing Permanent Checkout WITHOUT signature for request {request_id}...")
+        res_nosig = client.post(f"/api/security/checkout/{request_id}", json={})
+        if res_nosig.status_code != 400:
+            raise Exception(f"Expected 400 Bad Request when permanent checkout has no signature, got {res_nosig.status_code}")
+        log("Permanent checkout without signature correctly blocked (400).")
+
+        valid_sig_b = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        log(f"3. Testing Permanent Checkout WITH valid signature for request {request_id}...")
+        res_checkout = client.post(f"/api/security/checkout/{request_id}", json={"checkout_signature": valid_sig_b})
+        if res_checkout.status_code != 200:
+            raise Exception(f"Permanent checkout failed: {res_checkout.get_json()}")
+
+        # Verify in DB: check-in signature A and checkout signature B must both exist independently!
+        cursor.execute("SELECT check_in_time, check_out_time, signature_path, checkout_signature_path FROM visitor_requests WHERE request_id = %s", (request_id,))
+        row = cursor.fetchone()
+        check_in = row[0]
+        check_out = row[1]
+        db_sig_a = row[2]
+        db_sig_b = row[3]
+        log(f"DB verification -> check_in: {check_in}, check_out: {check_out}")
+        log(f"DB verification -> signature_path (Check-in): {db_sig_a}")
+        log(f"DB verification -> checkout_signature_path (Checkout): {db_sig_b}")
+
         if not check_out:
             raise Exception("Check-out time was not written to database request record.")
+        if db_sig_a != sig_a_path:
+            raise Exception(f"Check-in signature was overwritten or corrupted! Expected '{sig_a_path}', got '{db_sig_a}'")
+        if not db_sig_b or not db_sig_b.startswith("uploads/signatures/checkout_sig_"):
+            raise Exception(f"Checkout signature path invalid: '{db_sig_b}'")
+            
     finally:
         # Cleanup
         cursor.execute("DELETE FROM visitor_requests WHERE request_id = %s", (request_id,))

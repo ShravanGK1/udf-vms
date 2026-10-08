@@ -26,7 +26,8 @@ BYPASS_ROUTES = [
     "/api/auth/login",
     "/api/auth/register",
     "/api/auth/poll-remote-login",
-    "/api/active-visitors-count"
+    "/api/active-visitors-count",
+    "/api/hosts"
 ]
 
 @app.before_request
@@ -212,7 +213,7 @@ def activate_license():
         return jsonify({"error": "Failed to store license in database."}), 500
 
 # Serve uploaded images
-@app.route('/uploads/<filename>')
+@app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     cwd_path = os.path.abspath(os.path.join(os.getcwd(), 'uploads'))
     if os.path.exists(os.path.join(cwd_path, filename)):

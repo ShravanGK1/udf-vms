@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import API from "../../app/apiClient";
 import StatCard from "../../components/StatCard/StatCard";
 import VisitorPassForm from "../../components/forms/forms/VisitorPassForm"
-import { Users, UserCheck, Clock, AlertTriangle, Search, CheckCircle, Camera, QrCode, Shield, UserPlus, X, RefreshCw, Eye, Edit, Printer, Phone, Mail, Building, MapPin, Laptop, Car, FileText, Briefcase, Info, Tag } from "lucide-react";
+import { Users, UserCheck, Clock, AlertTriangle, Search, CheckCircle, Camera, QrCode, Shield, UserPlus, X, RefreshCw, Eye, Edit, Printer, Phone, Mail, Building, MapPin, Laptop, Car, FileText, Briefcase, Info, Tag, LogOut, Package } from "lucide-react";
 import "./SecurityDashboard.css";
 import QRRegistrationModal from "../../components/modals/QRRegistrationModal";
 import BulkUploadModal from "../../components/modals/BulkUploadModal";
 import CameraModal from "../../components/modals/CameraModal";
+import VisitorSignaturePad from "../../components/VisitorSignaturePad/VisitorSignaturePad";
 
 const SecurityDashboard = () => {
   const [liveSearchQuery, setLiveSearchQuery] = useState("");
@@ -39,9 +40,16 @@ const SecurityDashboard = () => {
 
   const [manualCheckouts, setManualCheckouts] = useState({});
 
+  // Permanent Checkout modal state
+  const [checkoutModalReq, setCheckoutModalReq] = useState(null);
+  const [checkoutSignature, setCheckoutSignature] = useState(null);
+  const [checkoutSignatureError, setCheckoutSignatureError] = useState("");
+
   // Manual physical badge allotment modal state
   const [checkinModalReq, setCheckinModalReq] = useState(null);
   const [checkinBadgeInput, setCheckinBadgeInput] = useState("");
+  const [checkinSignature, setCheckinSignature] = useState(null);
+  const [checkinSignatureError, setCheckinSignatureError] = useState("");
   const [reassignModalReq, setReassignModalReq] = useState(null);
   const [reassignBadgeInput, setReassignBadgeInput] = useState("");
 
@@ -267,11 +275,19 @@ const SecurityDashboard = () => {
       console.error("Reject error:", err);
     }
   };
-  const handleCheckin = async (id, physicalBadgeNo = "") => {
+  const handleCheckin = async (id, physicalBadgeNo = "", signatureData = checkinSignature) => {
+    if (!signatureData) {
+      setCheckinSignatureError("Visitor handwritten signature is required before completing Check-In.");
+      return;
+    }
+    setCheckinSignatureError("");
     try {
-      await API.post(`/security/checkin/${id}`, {
-        physical_badge_no: physicalBadgeNo
+      const res = await API.post(`/security/checkin/${id}`, {
+        physical_badge_no: physicalBadgeNo,
+        signature: signatureData
       });
+
+      const signatureUrl = res.data?.signature_url || null;
 
       // 🔥 Move from Expected → Live
       const checkedInItem = expectedVisitors.find(
@@ -293,6 +309,7 @@ const SecurityDashboard = () => {
             badge: `V-${checkedInItem.request_id || checkedInItem.id}`,
             physical_badge: physicalBadgeNo || null,
             physical_badge_no: physicalBadgeNo || null,
+            signature_url: signatureUrl,
             checkIn: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
           }
         ]);
@@ -300,9 +317,13 @@ const SecurityDashboard = () => {
       fetchSecurityData();
       setCheckinModalReq(null);
       setCheckinBadgeInput("");
+      setCheckinSignature(null);
+      setCheckinSignatureError("");
 
     } catch (err) {
       console.error("Checkin error:", err);
+      const errMsg = err.response?.data?.error || err.message || "Failed to complete check-in.";
+      setCheckinSignatureError(errMsg);
     }
   };
 
@@ -326,9 +347,29 @@ const SecurityDashboard = () => {
     }
   };
 
-  const handleCheckout = async (id) => {
+  const handleCheckout = (v) => {
+    // Open permanent checkout modal requiring handwritten stylus signature
+    const visitorObj = typeof v === 'object' ? v : liveVisitors.find(item => (item.id || item.request_id) === v);
+    if (!visitorObj) return;
+    setCheckoutModalReq(visitorObj);
+    setCheckoutSignature(null);
+    setCheckoutSignatureError("");
+  };
+
+  const confirmPermanentCheckout = async (visitor) => {
+    if (!visitor) return;
+    const id = visitor.id || visitor.request_id;
+
+    if (!checkoutSignature || checkoutSignature.trim() === "") {
+      setCheckoutSignatureError("Visitor handwritten signature is required before completing permanent checkout.");
+      return;
+    }
+
     try {
-      const payload = {};
+      const payload = {
+        checkout_signature: checkoutSignature
+      };
+
       if (manualCheckouts[id] !== undefined) {
         const timeInput = manualCheckouts[id];
         if (!timeInput) {
@@ -380,20 +421,19 @@ const SecurityDashboard = () => {
         });
       }
 
-      const checkedOutItem = liveVisitors.find(
-        v => (v.id || v.request_id) === id
-      );
+      setCheckoutModalReq(null);
+      setCheckoutSignature(null);
+      setCheckoutSignatureError("");
 
-      if (checkedOutItem) {
-        // remove from live
-        setLiveVisitors(prev =>
-          prev.filter(v => (v.id || v.request_id) !== id)
-        );
-      }
+      setLiveVisitors(prev =>
+        prev.filter(v => (v.id || v.request_id) !== id)
+      );
       fetchSecurityData();
 
     } catch (err) {
       console.error("Checkout error:", err);
+      const errMsg = err.response?.data?.error || "Failed to complete checkout.";
+      setCheckoutSignatureError(errMsg);
     }
   };
 
@@ -1497,6 +1537,38 @@ const SecurityDashboard = () => {
                       </div>
                     </div>
 
+                    <div className="visitor-id-card-preview-divider" />
+
+                    {/* Visitor Signature Section */}
+                    <div className="visitor-id-card-preview-rows">
+                      <div className="visitor-id-card-preview-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                        <span className="visitor-id-card-preview-label">VISITOR SIGNATURE</span>
+                        {idCardData.signature_url || idCardData.signature_path ? (
+                          <div style={{
+                            background: '#ffffff',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            display: 'flex',
+                            justify: 'center',
+                            alignItems: 'center'
+                          }}>
+                            <img
+                              src={idCardData.signature_url || `/${idCardData.signature_path}`}
+                              alt="Visitor Signature"
+                              style={{ maxHeight: '55px', maxWidth: '100%', objectFit: 'contain' }}
+                            />
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                            No signature available
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     <div 
                       className="visitor-id-card-preview-footer-tag-new"
                       style={{
@@ -1764,6 +1836,16 @@ const SecurityDashboard = () => {
               </div>
             )}
 
+            {/* Material Info */}
+            {(hoveredVisitor.hasMaterial === "Yes" || hoveredVisitor.has_material || hoveredVisitor.materialName || hoveredVisitor.material_name) && (
+              <div className="vh-item full-width">
+                <span className="vh-label"><Package size={12} /> Material / Goods</span>
+                <span className="vh-value">
+                  {[hoveredVisitor.materialName || hoveredVisitor.material_name, (hoveredVisitor.materialQuantity || hoveredVisitor.material_quantity) ? `Qty: ${hoveredVisitor.materialQuantity || hoveredVisitor.material_quantity}` : null, (hoveredVisitor.materialSerialNumber || hoveredVisitor.material_serial_number) ? `No: ${hoveredVisitor.materialSerialNumber || hoveredVisitor.material_serial_number}` : null].filter(Boolean).join(" - ") || "Carrying Material"}
+                </span>
+              </div>
+            )}
+
             {/* Vehicle Info */}
             {(hoveredVisitor.vehicleType || hoveredVisitor.vehicleNumber) && (
               <div className="vh-item full-width">
@@ -1811,10 +1893,12 @@ const SecurityDashboard = () => {
         <div className="security-modal-overlay" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem',
+          overflowY: 'auto'
         }}>
           <div className="security-modal" style={{
-            background: '#ffffff', borderRadius: '16px', maxWidth: '480px', width: '100%',
+            background: '#ffffff', borderRadius: '16px', maxWidth: '520px', width: '100%',
+            maxHeight: '90vh', overflowY: 'auto',
             padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -1849,9 +1933,9 @@ const SecurityDashboard = () => {
               </div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Physical Badge / RFID Tag Number
+                Physical Badge / RFID Tag Number (Optional)
               </label>
               <input
                 type="text"
@@ -1859,33 +1943,196 @@ const SecurityDashboard = () => {
                 placeholder="Scan RFID card or type physical badge # (e.g. CARD-045)"
                 value={checkinBadgeInput}
                 onChange={(e) => setCheckinBadgeInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleCheckin(checkinModalReq.request_id || checkinModalReq.id, checkinBadgeInput);
-                  }
-                }}
                 style={{
                   width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1',
                   fontSize: '14px', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
                 }}
               />
-              <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', margin: '6px 0 0 0' }}>
-                💡 Tip: You can leave this blank to proceed with auto-generated System ID only.
-              </p>
             </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <VisitorSignaturePad
+                onSignatureChange={(dataUrl) => {
+                  setCheckinSignature(dataUrl);
+                  if (dataUrl) setCheckinSignatureError("");
+                }}
+                height={180}
+              />
+            </div>
+
+            {checkinSignatureError && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fca5a5',
+                color: '#b91c1c',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <AlertTriangle size={16} />
+                {checkinSignatureError}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button
-                onClick={() => setCheckinModalReq(null)}
+                onClick={() => {
+                  setCheckinModalReq(null);
+                  setCheckinSignature(null);
+                  setCheckinSignatureError("");
+                }}
                 style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleCheckin(checkinModalReq.request_id || checkinModalReq.id, checkinBadgeInput)}
-                style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#ffffff', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                disabled={!checkinSignature}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: checkinSignature ? '#2563eb' : '#94a3b8',
+                  color: '#ffffff',
+                  cursor: checkinSignature ? 'pointer' : 'not-allowed',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
               >
                 <CheckCircle size={16} /> Confirm Check-In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Checkout Signature Modal */}
+      {checkoutModalReq && (
+        <div className="security-modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
+        }}>
+          <div className="security-modal" style={{
+            background: '#ffffff', borderRadius: '16px', maxWidth: '480px', width: '100%',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: '#fee2e2', color: '#dc2626', padding: '8px', borderRadius: '10px' }}>
+                  <LogOut size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                    Permanent Checkout
+                  </h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    Handwritten stylus signature required
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setCheckoutModalReq(null);
+                  setCheckoutSignature(null);
+                  setCheckoutSignatureError("");
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', marginBottom: '18px', border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>Visitor Name:</span>
+                <strong style={{ fontSize: '14px', color: '#0f172a' }}>{checkoutModalReq.name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>Host (Person Visited):</span>
+                <span style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>{checkoutModalReq.host || checkoutModalReq.person_to_visit || checkoutModalReq.personToVisit || "N/A"}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>System Pass ID:</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '2px 8px', borderRadius: '999px' }}>
+                  V-{checkoutModalReq.request_id || checkoutModalReq.id}
+                </span>
+              </div>
+              {checkoutModalReq.checkIn && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>Check-In Time:</span>
+                  <span style={{ fontSize: '13px', color: '#334155' }}>{checkoutModalReq.checkIn}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <VisitorSignaturePad
+                mode="checkout"
+                height={180}
+                onSignatureChange={(dataUrl) => {
+                  setCheckoutSignature(dataUrl);
+                  if (dataUrl) setCheckoutSignatureError("");
+                }}
+              />
+            </div>
+
+            {checkoutSignatureError && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fca5a5',
+                color: '#b91c1c',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <AlertTriangle size={16} />
+                {checkoutSignatureError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setCheckoutModalReq(null);
+                  setCheckoutSignature(null);
+                  setCheckoutSignatureError("");
+                }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmPermanentCheckout(checkoutModalReq)}
+                disabled={!checkoutSignature}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: checkoutSignature ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : '#94a3b8',
+                  color: '#ffffff',
+                  cursor: checkoutSignature ? 'pointer' : 'not-allowed',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <LogOut size={16} /> Confirm Permanent Checkout
               </button>
             </div>
           </div>

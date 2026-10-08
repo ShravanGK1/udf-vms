@@ -9,7 +9,7 @@ import {
   Users, Clock, CheckCircle, Calendar, Bell,
   MoreVertical, LogOut, ShieldAlert, Plus, X,
   Phone, Mail, Building, Briefcase, UserCheck, FileText,
-  MapPin, Shield, Laptop, Car, Eye, Edit
+  MapPin, Shield, Laptop, Car, Eye, Edit, Package
 } from 'lucide-react';
 
 import '../SecurtiyDashboard/SecurityDashboard.css';
@@ -800,6 +800,15 @@ export default function HostDashboard() {
                   <span className="vh-label"><Laptop size={12} /> Device Details</span>
                   <span className="vh-value">
                     {[hoveredVisitor.device_type || hoveredVisitor.deviceType, hoveredVisitor.device_make || hoveredVisitor.deviceMake, (hoveredVisitor.device_serial_number || hoveredVisitor.deviceSerialNumber) ? `S/N: ${hoveredVisitor.device_serial_number || hoveredVisitor.deviceSerialNumber}` : null].filter(Boolean).join(" - ") || "Carrying Device"}
+                  </span>
+                </div>
+              )}
+
+              {(hoveredVisitor.has_material || hoveredVisitor.hasMaterial === "Yes" || hoveredVisitor.material_name || hoveredVisitor.materialName) && (
+                <div className="vh-item full-width">
+                  <span className="vh-label"><Package size={12} /> Material / Goods</span>
+                  <span className="vh-value">
+                    {[hoveredVisitor.material_name || hoveredVisitor.materialName, (hoveredVisitor.material_quantity || hoveredVisitor.materialQuantity) ? `Qty: ${hoveredVisitor.material_quantity || hoveredVisitor.materialQuantity}` : null, (hoveredVisitor.material_serial_number || hoveredVisitor.materialSerialNumber) ? `No: ${hoveredVisitor.material_serial_number || hoveredVisitor.materialSerialNumber}` : null].filter(Boolean).join(" - ") || "Carrying Material"}
                   </span>
                 </div>
               )}

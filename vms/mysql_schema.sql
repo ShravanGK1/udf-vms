@@ -41,7 +41,11 @@ CREATE TABLE visitors (
     has_device BOOLEAN DEFAULT FALSE,
     device_type VARCHAR(100),
     device_make VARCHAR(100),
-    device_serial_number VARCHAR(100)
+    device_serial_number VARCHAR(100),
+    has_material BOOLEAN DEFAULT FALSE,
+    material_name TEXT DEFAULT NULL,
+    material_quantity VARCHAR(100) DEFAULT NULL,
+    material_serial_number VARCHAR(100) DEFAULT NULL
 );
 
 
@@ -63,15 +67,23 @@ CREATE TABLE visitor_requests (
     device_type VARCHAR(100),
     device_make VARCHAR(100),
     device_serial_number VARCHAR(100),
+    has_material BOOLEAN DEFAULT FALSE,
+    material_name TEXT DEFAULT NULL,
+    material_quantity VARCHAR(100) DEFAULT NULL,
+    material_serial_number VARCHAR(100) DEFAULT NULL,
     is_temp_out BOOLEAN DEFAULT FALSE,
     temp_out_time DATETIME DEFAULT NULL,
     temp_in_time DATETIME DEFAULT NULL,
     parent_request_id INT DEFAULT NULL,
     transfer_from_host_id INT DEFAULT NULL,
     physical_badge_no VARCHAR(50) DEFAULT NULL,
+    signature_path VARCHAR(255) DEFAULT NULL,
+    checkout_signature_path VARCHAR(255) DEFAULT NULL,
+    checked_in_by INT DEFAULT NULL,
     FOREIGN KEY (visitor_id) REFERENCES visitors(visitor_id) ON DELETE CASCADE,
     FOREIGN KEY (host_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (checked_in_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 INSERT INTO users (user_id, email, password, role, name, department, status, profile_photo) VALUES ('6', 'onkarsavaratkar@gmail.com', 'Onkar@123', 'security', 'Onkar Savaratkar', 'Security', 'Active', 'http://localhost:5000/uploads_users/1773921436_Onkar.jfif');

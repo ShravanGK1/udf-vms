@@ -8,6 +8,7 @@ import os
 from datetime import datetime, timedelta, date
 import pymysql.cursors
 from routes.request_routes import auto_expire_past_requests
+from utils.signature_utils import save_signature_image
 
 security_bp = Blueprint("security", __name__)
 
@@ -119,6 +120,8 @@ def live_visitors():
                 vr.check_out_time,
                 vr.is_temp_out,
                 vr.physical_badge_no as "physical_badge_no",
+                vr.signature_path as "signature_path",
+                vr.checkout_signature_path as "checkout_signature_path",
                 v.visitor_name as name,
                 v.company_name as company,
                 v.company_name as "companyName",
@@ -140,6 +143,10 @@ def live_visitors():
                 v.device_type as "deviceType",
                 v.device_make as "deviceMake",
                 v.device_serial_number as "deviceSerialNumber",
+                v.has_material as "hasMaterial",
+                v.material_name as "materialName",
+                v.material_quantity as "materialQuantity",
+                v.material_serial_number as "materialSerialNumber",
                 v.vehicle_type as "vehicleType",
                 v.vehicle_number as "vehicleNumber",
                 v.vehicle_photo_front as "vehiclePhotoFront",
@@ -188,6 +195,8 @@ def live_visitors():
 
             r["badge"] = f"V-{r['request_id']}"
             r["physical_badge"] = r.get("physical_badge_no") or None
+            r["signature_url"] = f"/{r['signature_path']}" if r.get("signature_path") else None
+            r["checkout_signature_url"] = f"/{r['checkout_signature_path']}" if r.get("checkout_signature_path") else None
             r["status"] = status
             r["checkIn"] = check_in_time.strftime("%d %b %Y, %I:%M %p") if check_in_time and isinstance(check_in_time, datetime) else str(check_in_time or "-")
             if r.get("scheduled_date"):
@@ -326,23 +335,52 @@ def checkin_visitor(request_id):
     if not physical_badge:
         physical_badge = None
 
+    signature_data = data.get("signature")
+    try:
+        signature_path = save_signature_image(signature_data, request_id)
+    except ValueError as err:
+        conn.close()
+        return jsonify({"error": str(err)}), 400
+    except Exception as err:
+        conn.close()
+        return jsonify({"error": f"Failed to process signature: {str(err)}"}), 500
+
+    # Extract checked_in_by user ID
+    checked_in_by = data.get("checked_in_by") or data.get("user_id")
+    if not checked_in_by:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                import jwt
+                from config import SECRET_KEY
+                token = auth_header.split(" ")[1]
+                payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+                checked_in_by = payload.get("user_id")
+            except Exception:
+                pass
+
     if physical_badge:
         cursor.execute("""
             UPDATE visitor_requests
-            SET check_in_time = NOW(), physical_badge_no = %s
+            SET check_in_time = NOW(), physical_badge_no = %s, signature_path = %s, checked_in_by = %s
             WHERE request_id = %s
-        """, (physical_badge, request_id))
+        """, (physical_badge, signature_path, checked_in_by, request_id))
     else:
         cursor.execute("""
             UPDATE visitor_requests
-            SET check_in_time = NOW()
+            SET check_in_time = NOW(), signature_path = %s, checked_in_by = %s
             WHERE request_id = %s
-        """, (request_id,))
+        """, (signature_path, checked_in_by, request_id))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Visitor checked in successfully", "physical_badge_no": physical_badge})
+    return jsonify({
+        "message": "Visitor checked in successfully",
+        "physical_badge_no": physical_badge,
+        "signature_path": signature_path,
+        "signature_url": f"/{signature_path}" if signature_path else None
+    }), 200
 
 
 # ---------------------------------------------------
@@ -459,6 +497,7 @@ def validate_manual_checkout_time(manual_checkout_str):
 @security_bp.route("/api/security/checkout/<int:request_id>", methods=["POST"])
 def checkout_visitor(request_id):
     manual_checkout_val = None
+    signature_data = None
     try:
         if request.is_json:
             data = request.get_json() or {}
@@ -470,8 +509,22 @@ def checkout_visitor(request_id):
                 manual_checkout_val = manual_checkout.replace("T", " ")
                 if len(manual_checkout_val) == 16:
                     manual_checkout_val += ":00"
+            signature_data = data.get("checkout_signature") or data.get("signature")
     except Exception as e:
-        print("[ERROR] checkout_visitor parse manual time:", e)
+        print("[ERROR] checkout_visitor parse payload error:", e)
+
+    # Validate and save checkout signature (Mandatory for Permanent Checkout)
+    try:
+        checkout_signature_path = save_signature_image(
+            signature_data,
+            request_id,
+            prefix="checkout_sig_",
+            action_label="permanent checkout"
+        )
+    except ValueError as val_err:
+        return jsonify({"error": str(val_err)}), 400
+    except Exception as err:
+        return jsonify({"error": f"Failed to save checkout signature: {str(err)}"}), 500
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -480,14 +533,19 @@ def checkout_visitor(request_id):
         UPDATE visitor_requests
         SET check_out_time = NOW(),
             manual_check_out_time = COALESCE(%s, manual_check_out_time),
+            checkout_signature_path = %s,
             is_temp_out = FALSE
         WHERE request_id = %s
-    """, (manual_checkout_val, request_id))
+    """, (manual_checkout_val, checkout_signature_path, request_id))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Visitor checked out successfully"})
+    return jsonify({
+        "message": "Visitor checked out successfully",
+        "checkout_signature_path": checkout_signature_path,
+        "checkout_signature_url": f"/{checkout_signature_path}"
+    })
 
 
 @security_bp.route("/api/security/requests/<int:request_id>/manual-checkout", methods=["POST"])
@@ -972,18 +1030,6 @@ def approve_request(request_id):
                 WHERE request_id = %s
             """, (approver_id, request_id))
 
-        cursor.execute("""
-            UPDATE visitors
-            SET employee_id = %s
-            WHERE visitor_id = %s
-        """, (str(approver_id), visitor_id))
-
-        cursor.execute("""
-            UPDATE visitor_requests
-            SET host_id = %s
-            WHERE request_id = %s AND host_id IS NULL
-        """, (approver_id, request_id))
-
         conn.commit()
         return jsonify({"message": "Request approved"}), 200
     except Exception as e:
@@ -1027,6 +1073,10 @@ def get_request_details(request_id):
                 v.device_type as "deviceType",
                 v.device_make as "deviceMake",
                 v.device_serial_number as "deviceSerialNumber",
+                v.has_material,
+                v.material_name as "materialName",
+                v.material_quantity as "materialQuantity",
+                v.material_serial_number as "materialSerialNumber",
                 vr.check_in_time as "checkInTime",
                 vr.check_out_time as "checkOutTime",
                 vr.manual_check_out_time as "manualCheckOutTime",
@@ -1047,7 +1097,9 @@ def get_request_details(request_id):
                 v.vehicle_number as "vehicleNumber",
                 v.vehicle_photo_front as "vehiclePhotoFront",
                 v.vehicle_photo_side as "vehiclePhotoSide",
-                v.photo
+                v.photo,
+                vr.signature_path as "signature_path",
+                vr.checkout_signature_path as "checkout_signature_path"
             FROM visitor_requests vr
             JOIN visitors v ON vr.visitor_id = v.visitor_id
             WHERE vr.request_id = %s
@@ -1058,6 +1110,24 @@ def get_request_details(request_id):
 
         if not request_details:
             return jsonify({"error": "Request not found"}), 404
+
+        if request_details.get("signature_path"):
+            sig_p = str(request_details["signature_path"]).replace("\\", "/")
+            if not sig_p.startswith("/"):
+                sig_p = "/" + sig_p
+            request_details["signature_url"] = sig_p
+            request_details["signature_path"] = sig_p
+        else:
+            request_details["signature_url"] = None
+
+        if request_details.get("checkout_signature_path"):
+            csig_p = str(request_details["checkout_signature_path"]).replace("\\", "/")
+            if not csig_p.startswith("/"):
+                csig_p = "/" + csig_p
+            request_details["checkout_signature_url"] = csig_p
+            request_details["checkout_signature_path"] = csig_p
+        else:
+            request_details["checkout_signature_url"] = None
 
         # Convert datetime objects to string format
         if request_details.get("checkInTime"):
@@ -1079,6 +1149,7 @@ def get_request_details(request_id):
 
         # Convert bool to "Yes"/"No" for form
         request_details["hasDevice"] = "Yes" if request_details["has_device"] else "No"
+        request_details["hasMaterial"] = "Yes" if request_details.get("has_material") else "No"
         
         # Ensure numeric fields are strings for React select components
         if request_details.get("accessLevel") is not None:
@@ -1102,6 +1173,8 @@ def get_request_details(request_id):
 
         # Remove original extra fields
         del request_details["has_device"]
+        if "has_material" in request_details:
+            del request_details["has_material"]
 
         return jsonify(request_details)
 
@@ -1153,6 +1226,7 @@ def update_request_details(request_id):
         cursor = conn.cursor()
 
         has_device = True if data.get("hasDevice") == "Yes" else False
+        has_material = True if (data.get("hasMaterial") == "Yes" or str(data.get("hasMaterial")).lower() in ["true", "1", "yes"]) else False
         cursor.execute("""
             UPDATE visitors 
             SET 
@@ -1174,7 +1248,11 @@ def update_request_details(request_id):
                 has_device = %s,
                 device_type = %s,
                 device_make = %s,
-                device_serial_number = %s
+                device_serial_number = %s,
+                has_material = %s,
+                material_name = %s,
+                material_quantity = %s,
+                material_serial_number = %s
             WHERE visitor_id = (SELECT visitor_id FROM visitor_requests WHERE request_id = %s)
         """, (
             data.get("name"),
@@ -1196,6 +1274,10 @@ def update_request_details(request_id):
             data.get("deviceType"),
             data.get("deviceMake"),
             data.get("deviceSerialNumber"),
+            has_material,
+            data.get("materialName"),
+            data.get("materialQuantity"),
+            data.get("materialSerialNumber"),
             request_id
         ))
 

@@ -1122,4 +1122,56 @@ def remote_login():
         
         return jsonify({"message": f"Remote login authorized for {user['name']}.", "token": token}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/hosts", methods=["GET"])
+@admin_bp.route("/admin/hosts", methods=["GET"])
+def get_hosts():
+    try:
+        import pymysql.cursors
+        search = request.args.get("search", "").strip()
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "Database connection failed"}), 500
+            
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        query = """
+            SELECT user_id, name, email, role, department, status, profile_photo
+            FROM users
+            WHERE LOWER(role) IN ('host', 'admin', 'superadmin')
+              AND (LOWER(status) = 'active' OR status IS NULL)
+        """
+        params = []
+        if search:
+            query += " AND (LOWER(name) LIKE %s OR LOWER(department) LIKE %s OR LOWER(email) LIKE %s)"
+            search_param = f"%{search.lower()}%"
+            params.extend([search_param, search_param, search_param])
+            
+        query += " ORDER BY name ASC"
+        
+        cursor.execute(query, tuple(params))
+        hosts = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        result = []
+        for h in hosts:
+            result.append({
+                "id": h["user_id"],
+                "user_id": h["user_id"],
+                "name": h["name"],
+                "employee_code": f"EMP{h['user_id']:03d}",
+                "department": h["department"] or "General",
+                "role": h["role"],
+                "email": h["email"],
+                "status": h["status"] or "Active",
+                "profile_photo": h["profile_photo"] or ""
+            })
+            
+        return jsonify(result), 200
+    except Exception as e:
+        print("[ERROR] get_hosts:", e)
+        return jsonify({"error": str(e)}), 500
+

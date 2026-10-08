@@ -270,15 +270,34 @@ def get_reports():
                    vr.purpose, v.department,
                    vr.check_in_time, vr.check_out_time, 
                    TIMEDIFF(COALESCE(vr.manual_check_out_time, vr.check_out_time), vr.check_in_time) AS time_available,
-                   v.company_name, COALESCE(u_host.name, v.person_to_visit) AS person_to_visit,
+                   v.company_name,
+                   COALESCE(
+                       CASE WHEN LOWER(u_host.role) != 'security' THEN u_host.name ELSE NULL END,
+                       CASE WHEN LOWER(u_person.role) != 'security' AND v.person_to_visit IS NOT NULL AND v.person_to_visit != '' THEN v.person_to_visit ELSE NULL END,
+                       'Host information unavailable'
+                   ) AS person_to_visit,
                    vr.manual_check_out_time,
                    vr.status,
-                   u_host.name AS host_name,
-                   u_from.name AS transfer_from_host_name
+                   COALESCE(
+                       CASE WHEN LOWER(u_host.role) != 'security' THEN u_host.name ELSE NULL END,
+                       CASE WHEN LOWER(u_person.role) != 'security' AND v.person_to_visit IS NOT NULL AND v.person_to_visit != '' THEN v.person_to_visit ELSE NULL END,
+                       'Host information unavailable'
+                   ) AS host_name,
+                   u_from.name AS transfer_from_host_name,
+                   COALESCE(u_checkin.name, CASE WHEN LOWER(u_app.role) = 'security' THEN u_app.name ELSE NULL END, '-') AS checked_in_by,
+                   vr.signature_path,
+                   vr.checkout_signature_path,
+                   v.has_material,
+                   v.material_name,
+                   v.material_quantity,
+                   v.material_serial_number
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
             LEFT JOIN users u_host ON vr.host_id = u_host.user_id
+            LEFT JOIN users u_person ON LOWER(v.person_to_visit) = LOWER(u_person.name)
             LEFT JOIN users u_from ON vr.transfer_from_host_id = u_from.user_id
+            LEFT JOIN users u_checkin ON vr.checked_in_by = u_checkin.user_id
+            LEFT JOIN users u_app ON vr.approved_by = u_app.user_id
             WHERE {where_clause}
             ORDER BY vr.created_at DESC
             LIMIT 1000
@@ -288,6 +307,8 @@ def get_reports():
         # 🔄 Robust Clean-up for JSON serialization
         for r in cursor.fetchall():
             checkout_val = r[11] if r[11] else r[7] # Use manual_check_out_time if present, otherwise check_out_time
+            sig_p = r[16]
+            csig_p = r[17]
             row = {
                 "visitor_id": r[0],
                 "name": r[1],
@@ -305,7 +326,20 @@ def get_reports():
                 "date": r[6].strftime("%d %b %Y") if r[6] and hasattr(r[6], "strftime") else "-",
                 "status": r[12] or "-",
                 "host_name": r[13] or "-",
-                "transfer_from_host_name": r[14] or "-"
+                "transfer_from_host_name": r[14] or "-",
+                "checked_in_by": r[15] or "-",
+                "signature_path": sig_p,
+                "signature_url": f"/{sig_p}" if sig_p else None,
+                "checkout_signature_path": csig_p,
+                "checkout_signature_url": f"/{csig_p}" if csig_p else None,
+                "has_material": bool(r[18]) if r[18] is not None else False,
+                "hasMaterial": "Yes" if r[18] else "No",
+                "material_name": r[19] or "-",
+                "materialName": r[19] or "-",
+                "material_quantity": r[20] or "-",
+                "materialQuantity": r[20] or "-",
+                "material_serial_number": r[21] or "-",
+                "materialSerialNumber": r[21] or "-"
             }
             # Convert any non-stringable objects to strings
             for key, value in row.items():
@@ -344,6 +378,7 @@ def get_reports():
         return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
+
 @reports_bp.route("/api/reports/export-excel", methods=["GET"])
 def export_excel():
     conn = get_db_connection()
@@ -358,8 +393,12 @@ def export_excel():
                 v.visitor_name AS "VISITORS NAME",
                 v.mobile_number AS "CONTACT NUMBER",
                 v.company_name AS "COMPANY NAME",
-                COALESCE(u_host.name, v.person_to_visit) AS "PERSON VISITED",
-                u_host.name AS "HOST",
+                COALESCE(
+                    CASE WHEN LOWER(u_host.role) != 'security' THEN u_host.name ELSE NULL END,
+                    CASE WHEN LOWER(u_person.role) != 'security' AND v.person_to_visit IS NOT NULL AND v.person_to_visit != '' THEN v.person_to_visit ELSE NULL END,
+                    'Host information unavailable'
+                ) AS "PERSON VISITED",
+                COALESCE(u_checkin.name, CASE WHEN LOWER(u_app.role) = 'security' THEN u_app.name ELSE NULL END, '-') AS "CHECKED IN BY",
                 u_from.name AS "TRANSFER FROM",
                 vr.status AS "STATUS",
                 v.department AS "DEPARTMENT",
@@ -367,11 +406,18 @@ def export_excel():
                 vr.check_in_time AS "IN",
                 COALESCE(vr.manual_check_out_time, vr.check_out_time) AS "OUT",
                 vr.manual_check_out_time AS "MANUAL OUT",
-                TIMEDIFF(COALESCE(vr.manual_check_out_time, vr.check_out_time), vr.check_in_time) AS "TIME AVAILABLE"
+                TIMEDIFF(COALESCE(vr.manual_check_out_time, vr.check_out_time), vr.check_in_time) AS "TIME AVAILABLE",
+                CASE WHEN v.has_material THEN 'Yes' ELSE 'No' END AS "CARRYING MATERIAL",
+                COALESCE(v.material_name, '-') AS "MATERIAL NAME",
+                COALESCE(v.material_quantity, '-') AS "MATERIAL QUANTITY",
+                COALESCE(v.material_serial_number, '-') AS "CHALLAN / SERIAL NO"
             FROM visitor_requests vr
             JOIN visitors v ON vr.visitor_id = v.visitor_id
             LEFT JOIN users u_host ON vr.host_id = u_host.user_id
+            LEFT JOIN users u_person ON LOWER(v.person_to_visit) = LOWER(u_person.name)
             LEFT JOIN users u_from ON vr.transfer_from_host_id = u_from.user_id
+            LEFT JOIN users u_checkin ON vr.checked_in_by = u_checkin.user_id
+            LEFT JOIN users u_app ON vr.approved_by = u_app.user_id
             WHERE {where_clause}
             ORDER BY vr.created_at DESC
         """

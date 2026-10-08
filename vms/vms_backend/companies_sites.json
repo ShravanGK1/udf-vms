@@ -2,7 +2,7 @@
     {
         "code": "SG",
         "id": 1,
-        "name": "Wipro",
+        "name": "Test Company",
         "sites": [
             {
                 "address": "123 Test St",
@@ -21,11 +21,11 @@
                 "status": "Active"
             },
             {
-                "id": 1782725980531,
-                "name": "Kasarwadi",
                 "address": "Kasarwadi",
+                "id": 1782725980531,
                 "lat": 18.6036,
                 "lng": 73.8219,
+                "name": "Kasarwadi",
                 "status": "Active"
             }
         ]

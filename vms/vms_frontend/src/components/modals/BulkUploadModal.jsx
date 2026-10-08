@@ -31,6 +31,13 @@ const HEADER_MAPPING = {
   "device make": "deviceMake",
   "device serial": "deviceSerialNumber",
   "serial": "deviceSerialNumber",
+  "has material": "hasMaterial",
+  "carrying material": "hasMaterial",
+  "material name": "materialName",
+  "material description": "materialName",
+  "material quantity": "materialQuantity",
+  "material serial": "materialSerialNumber",
+  "challan number": "materialSerialNumber",
   "vehicle type": "vehicleType",
   "vehicle number": "vehicleNumber"
 };

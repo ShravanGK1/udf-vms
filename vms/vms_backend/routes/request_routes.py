@@ -38,6 +38,17 @@ def check_and_add_columns():
             if not cursor.fetchone():
                 print("Adding physical_badge_no column to visitor_requests...")
                 cursor.execute("ALTER TABLE visitor_requests ADD COLUMN physical_badge_no VARCHAR(50) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'checked_in_by'")
+            if not cursor.fetchone():
+                print("Adding checked_in_by column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN checked_in_by INT DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'checkout_signature_path'")
+            if not cursor.fetchone():
+                print("Adding checkout_signature_path column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN checkout_signature_path VARCHAR(255) DEFAULT NULL")
+
             cursor.execute("SHOW COLUMNS FROM visitors LIKE 'has_device'")
             if not cursor.fetchone():
                 print("Adding has_device column to visitors...")
@@ -57,6 +68,46 @@ def check_and_add_columns():
             if not cursor.fetchone():
                 print("Adding device_serial_number column to visitors...")
                 cursor.execute("ALTER TABLE visitors ADD COLUMN device_serial_number VARCHAR(100) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitors LIKE 'has_material'")
+            if not cursor.fetchone():
+                print("Adding has_material column to visitors...")
+                cursor.execute("ALTER TABLE visitors ADD COLUMN has_material BOOLEAN DEFAULT FALSE")
+
+            cursor.execute("SHOW COLUMNS FROM visitors LIKE 'material_name'")
+            if not cursor.fetchone():
+                print("Adding material_name column to visitors...")
+                cursor.execute("ALTER TABLE visitors ADD COLUMN material_name TEXT DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitors LIKE 'material_quantity'")
+            if not cursor.fetchone():
+                print("Adding material_quantity column to visitors...")
+                cursor.execute("ALTER TABLE visitors ADD COLUMN material_quantity VARCHAR(100) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitors LIKE 'material_serial_number'")
+            if not cursor.fetchone():
+                print("Adding material_serial_number column to visitors...")
+                cursor.execute("ALTER TABLE visitors ADD COLUMN material_serial_number VARCHAR(100) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'has_material'")
+            if not cursor.fetchone():
+                print("Adding has_material column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN has_material BOOLEAN DEFAULT FALSE")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'material_name'")
+            if not cursor.fetchone():
+                print("Adding material_name column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN material_name TEXT DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'material_quantity'")
+            if not cursor.fetchone():
+                print("Adding material_quantity column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN material_quantity VARCHAR(100) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'material_serial_number'")
+            if not cursor.fetchone():
+                print("Adding material_serial_number column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN material_serial_number VARCHAR(100) DEFAULT NULL")
 
             cursor.execute("SHOW TABLES LIKE 'system_settings'")
             if not cursor.fetchone():
@@ -117,13 +168,26 @@ def get_requests():
                    v.visitor_name, v.full_name, v.email, v.mobile_number, v.pabx_number,
                    v.company_name, v.unit, v.department, v.location,
                    v.id_proof_type, v.id_proof_number, v.access_level,
-                   v.reason_of_visit, v.employee_id, v.photo, v.person_to_visit,
-                   v.vehicle_type, v.vehicle_number, v.vehicle_photo_front, v.vehicle_photo_side,
-                   v.has_device, v.device_type, v.device_make, v.device_serial_number,
+                   v.reason_of_visit, v.employee_id, v.photo,
+                   COALESCE(
+                       CASE WHEN LOWER(u_host.role) != 'security' THEN u_host.name ELSE NULL END,
+                       CASE WHEN LOWER(u_person.role) != 'security' AND v.person_to_visit IS NOT NULL AND v.person_to_visit != '' THEN v.person_to_visit ELSE NULL END,
+                       'Host information unavailable'
+                   ) AS person_to_visit,
+                   COALESCE(
+                       CASE WHEN LOWER(u_host.role) != 'security' THEN u_host.name ELSE NULL END,
+                       CASE WHEN LOWER(u_person.role) != 'security' AND v.person_to_visit IS NOT NULL AND v.person_to_visit != '' THEN v.person_to_visit ELSE NULL END,
+                       'Host information unavailable'
+                   ) AS host_name,
+                   u_host.department AS host_department,
+                   u_checkin.name AS checked_in_by_name,
                    u.name AS transfer_from_host_name
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
+            LEFT JOIN users u_host ON vr.host_id = u_host.user_id
+            LEFT JOIN users u_person ON LOWER(v.person_to_visit) = LOWER(u_person.name)
             LEFT JOIN users u ON vr.transfer_from_host_id = u.user_id
+            LEFT JOIN users u_checkin ON vr.checked_in_by = u_checkin.user_id
             ORDER BY vr.created_at DESC
         """)
 
@@ -132,15 +196,27 @@ def get_requests():
         # 🔄 Clean and format data for JSON serialization
         from datetime import datetime, date, time
         for req in requests:
+            # Attach host object
+            if req.get("host_id"):
+                req["host"] = {
+                    "id": req["host_id"],
+                    "name": req.get("host_name") or req.get("person_to_visit"),
+                    "department": req.get("host_department") or ""
+                }
+            if req.get("checked_in_by"):
+                req["checked_in_by_info"] = {
+                    "id": req["checked_in_by"],
+                    "name": req.get("checked_in_by_name") or ""
+                }
             for key, value in req.items():
-                if value is not None:
+                if value is not None and key not in ["host", "checked_in_by_info"]:
                     if isinstance(value, datetime):
                         req[key] = value.strftime("%d %b %Y, %I:%M %p")
                     elif isinstance(value, date):
                         req[key] = value.strftime("%Y-%m-%d")
                     elif isinstance(value, time):
                         req[key] = value.strftime("%I:%M %p")
-                    elif not isinstance(value, (int, float, str, bool)):
+                    elif not isinstance(value, (int, float, str, bool, dict, list)):
                         req[key] = str(value)
 
         return jsonify(requests), 200
@@ -195,6 +271,41 @@ def create_request():
             if not re.match(r"^[A-Za-z]{2}\d{2}[A-Za-z]{1,2}\d{4}$", clean_vehicle):
                 return jsonify({"error": "Please enter a valid Indian vehicle registration number (e.g., MH12AB1234)"}), 400
 
+        # 5. Host Validation & Resolution
+        raw_host_id = data.get("host_id")
+        person_to_visit = data.get("person_to_visit") or data.get("personToVisit")
+        host_id = None
+
+        if raw_host_id and str(raw_host_id).strip() != "":
+            try:
+                host_id = int(raw_host_id)
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid host_id format"}), 400
+
+            cursor.execute("""
+                SELECT user_id, name, department, role, status
+                FROM users
+                WHERE user_id = %s AND LOWER(role) IN ('host', 'admin', 'superadmin') AND (LOWER(status) = 'active' OR status IS NULL)
+            """, (host_id,))
+            host_row = cursor.fetchone()
+            if not host_row:
+                return jsonify({"error": "Selected employee is not an eligible host."}), 400
+            person_to_visit = host_row["name"]
+        elif person_to_visit and str(person_to_visit).strip() != "":
+            cursor.execute("""
+                SELECT user_id, name, department, role, status
+                FROM users
+                WHERE LOWER(name) = LOWER(%s) AND LOWER(role) IN ('host', 'admin', 'superadmin') AND (LOWER(status) = 'active' OR status IS NULL)
+                LIMIT 1
+            """, (str(person_to_visit).strip(),))
+            host_row = cursor.fetchone()
+            if host_row:
+                host_id = host_row["user_id"]
+                person_to_visit = host_row["name"]
+
+        if not host_id:
+            return jsonify({"error": "Please select a valid host/person to visit."}), 400
+
         # Handle Photo Upload
         photo_path = None
         if 'photo' in request.files:
@@ -234,12 +345,16 @@ def create_request():
         cursor.execute("SELECT visitor_id FROM visitors WHERE mobile_number = %s LIMIT 1", (mobile_str,))
         existing_visitor = cursor.fetchone()
         has_device = True if data.get("hasDevice") == "Yes" else False
+        has_material = True if str(data.get("hasMaterial")).lower() in ["yes", "true", "1"] else False
+        material_name = data.get("materialName") or data.get("material_name")
+        material_quantity = data.get("materialQuantity") or data.get("material_quantity")
+        material_serial_number = data.get("materialSerialNumber") or data.get("material_serial_number")
 
         if existing_visitor:
             visitor_id = existing_visitor["visitor_id"]
             print(f"Using existing visitor ID: {visitor_id}")
             
-            # Update existing visitor details (specifically vehicle, photos, and devices if provided)
+            # Update existing visitor details (specifically vehicle, photos, devices, materials, and host)
             update_fields = []
             update_params = []
             
@@ -254,6 +369,12 @@ def create_request():
             add_field("device_type", data.get("deviceType"))
             add_field("device_make", data.get("deviceMake"))
             add_field("device_serial_number", data.get("deviceSerialNumber"))
+            add_field("has_material", has_material)
+            add_field("material_name", material_name)
+            add_field("material_quantity", material_quantity)
+            add_field("material_serial_number", material_serial_number)
+            add_field("person_to_visit", person_to_visit)
+            add_field("employee_id", str(host_id))
             if photo_path:
                 add_field("photo", photo_path)
             if vehicle_photo_front_path:
@@ -279,9 +400,9 @@ def create_request():
                 "id_proof_number": data.get("id_proof_number"),
                 "access_level": data.get("access_level"),
                 "reason_of_visit": data.get("purpose"),
-                "employee_id": data.get("host_id"),
+                "employee_id": str(host_id),
                 "photo": photo_path,
-                "person_to_visit": data.get("person_to_visit") or data.get("personToVisit"),
+                "person_to_visit": person_to_visit,
                 "vehicle_type": data.get("vehicle_type") or data.get("vehicleType"),
                 "vehicle_number": data.get("vehicle_number") or data.get("vehicleNumber"),
                 "vehicle_photo_front": vehicle_photo_front_path,
@@ -289,7 +410,11 @@ def create_request():
                 "has_device": has_device,
                 "device_type": data.get("deviceType"),
                 "device_make": data.get("deviceMake"),
-                "device_serial_number": data.get("deviceSerialNumber")
+                "device_serial_number": data.get("deviceSerialNumber"),
+                "has_material": has_material,
+                "material_name": material_name,
+                "material_quantity": material_quantity,
+                "material_serial_number": material_serial_number
             }
 
             cursor.execute("""
@@ -299,7 +424,8 @@ def create_request():
                     id_proof_number, access_level, reason_of_visit, employee_id,
                     photo, person_to_visit, vehicle_type, vehicle_number,
                     vehicle_photo_front, vehicle_photo_side, has_device,
-                    device_type, device_make, device_serial_number
+                    device_type, device_make, device_serial_number,
+                    has_material, material_name, material_quantity, material_serial_number
                 )
                 VALUES (
                     %(visitor_name)s, %(full_name)s, %(email)s, %(mobile_number)s, 
@@ -307,19 +433,13 @@ def create_request():
                     %(location)s, %(id_proof_type)s, %(id_proof_number)s, %(access_level)s, 
                     %(reason_of_visit)s, %(employee_id)s, %(photo)s, %(person_to_visit)s,
                     %(vehicle_type)s, %(vehicle_number)s, %(vehicle_photo_front)s, %(vehicle_photo_side)s,
-                    %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s
+                    %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s,
+                    %(has_material)s, %(material_name)s, %(material_quantity)s, %(material_serial_number)s
                 )
             """, visitor_data)
             visitor_id = cursor.lastrowid
 
         # 2️⃣ Insert request
-        # Ensure host_id is an integer or None
-        raw_host_id = data.get("host_id")
-        try:
-            host_id = int(raw_host_id) if raw_host_id and str(raw_host_id).strip() != "" else None
-        except (ValueError, TypeError):
-            host_id = None
-
         scheduled_date = data.get("scheduled_date")
         scheduled_time = data.get("scheduled_time")
 
@@ -347,7 +467,15 @@ def create_request():
             "scheduled_date": sched_date_val,
             "scheduled_time": sched_time_val,
             "is_multi_day": is_multi_day,
-            "valid_till": valid_till if valid_till else sched_date_val
+            "valid_till": valid_till if valid_till else sched_date_val,
+            "has_device": has_device,
+            "device_type": data.get("deviceType"),
+            "device_make": data.get("deviceMake"),
+            "device_serial_number": data.get("deviceSerialNumber"),
+            "has_material": has_material,
+            "material_name": material_name,
+            "material_quantity": material_quantity,
+            "material_serial_number": material_serial_number
         }
 
         cursor.execute("""
@@ -359,13 +487,24 @@ def create_request():
                 scheduled_time,
                 is_multi_day,
                 valid_till,
+                has_device,
+                device_type,
+                device_make,
+                device_serial_number,
+                has_material,
+                material_name,
+                material_quantity,
+                material_serial_number,
                 status,
                 created_at
             )
             VALUES (
                 %(visitor_id)s, %(host_id)s, %(purpose)s, 
                 %(scheduled_date)s, %(scheduled_time)s,
-                %(is_multi_day)s, %(valid_till)s, 'PENDING', NOW()
+                %(is_multi_day)s, %(valid_till)s,
+                %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s,
+                %(has_material)s, %(material_name)s, %(material_quantity)s, %(material_serial_number)s,
+                'PENDING', NOW()
             )
         """, request_data)
 
@@ -456,24 +595,6 @@ def approve_request(request_id):
                 WHERE request_id=%s
             """, (approver_id, request_id))
         
-        # Retrieve the approver's name to update visitors.person_to_visit
-        cursor.execute("SELECT name FROM users WHERE user_id = %s", (approver_id,))
-        approver_row = cursor.fetchone()
-        approver_name = approver_row["name"] if approver_row else ""
-
-        cursor.execute("""
-            UPDATE visitors
-            SET employee_id = %s,
-                person_to_visit = %s
-            WHERE visitor_id = %s
-        """, (str(approver_id), approver_name, visitor_id))
-
-        cursor.execute("""
-            UPDATE visitor_requests
-            SET host_id = %s
-            WHERE request_id = %s AND host_id IS NULL
-        """, (approver_id, request_id))
-
         conn.commit()
         return jsonify({"message": "Approved"}), 200
     except Exception as e:
@@ -878,6 +999,10 @@ def bulk_create_requests():
             existing_visitor = cursor.fetchone()
             vehicle_type = item.get("vehicle_type") or item.get("vehicleType")
             has_device = True if str(item.get("hasDevice")).lower() in ["yes", "true"] else False
+            has_material = True if str(item.get("hasMaterial")).lower() in ["yes", "true", "1"] else False
+            material_name = item.get("materialName") or item.get("material_name")
+            material_quantity = item.get("materialQuantity") or item.get("material_quantity")
+            material_serial_number = item.get("materialSerialNumber") or item.get("material_serial_number")
 
             if existing_visitor:
                 visitor_id = existing_visitor["visitor_id"]
@@ -899,13 +1024,18 @@ def bulk_create_requests():
                         has_device = %s,
                         device_type = %s,
                         device_make = %s,
-                        device_serial_number = %s
+                        device_serial_number = %s,
+                        has_material = %s,
+                        material_name = %s,
+                        material_quantity = %s,
+                        material_serial_number = %s
                     WHERE visitor_id = %s
                 """, (
                     name, name, email, item.get("company_name") or item.get("companyName"),
                     unit, item.get("department"), location, id_type, id_number,
                     person_to_visit, vehicle_type, vehicle_number, str(host_id) if host_id else None,
                     has_device, item.get("deviceType"), item.get("deviceMake"), item.get("deviceSerialNumber"),
+                    has_material, material_name, material_quantity, material_serial_number,
                     visitor_id
                 ))
             else:
@@ -915,15 +1045,17 @@ def bulk_create_requests():
                         company_name, unit, department, location, id_proof_type,
                         id_proof_number, access_level, reason_of_visit, employee_id,
                         person_to_visit, vehicle_type, vehicle_number,
-                        has_device, device_type, device_make, device_serial_number
+                        has_device, device_type, device_make, device_serial_number,
+                        has_material, material_name, material_quantity, material_serial_number
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     name, name, email, mobile_str,
                     item.get("company_name") or item.get("companyName"), unit, item.get("department"),
                     location, id_type, id_number, item.get("access_level") or "Visitor (Level 1)",
                     purpose, str(host_id) if host_id else None, person_to_visit, vehicle_type, vehicle_number,
-                    has_device, item.get("deviceType"), item.get("deviceMake"), item.get("deviceSerialNumber")
+                    has_device, item.get("deviceType"), item.get("deviceMake"), item.get("deviceSerialNumber"),
+                    has_material, material_name, material_quantity, material_serial_number
                 ))
                 visitor_id = cursor.lastrowid
 
@@ -934,15 +1066,25 @@ def bulk_create_requests():
                     purpose,
                     scheduled_date,
                     scheduled_time,
+                    has_device,
+                    device_type,
+                    device_make,
+                    device_serial_number,
+                    has_material,
+                    material_name,
+                    material_quantity,
+                    material_serial_number,
                     status,
                     created_at,
                     approved_by,
                     approved_at
                 )
-                VALUES (%s, %s, %s, %s, %s, 'APPROVED', NOW(), %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'APPROVED', NOW(), %s, NOW())
             """, (
                 visitor_id, host_id, purpose,
                 default_date, default_time,
+                has_device, item.get("deviceType"), item.get("deviceMake"), item.get("deviceSerialNumber"),
+                has_material, material_name, material_quantity, material_serial_number,
                 default_host_id
             ))
             created_request_ids.append(cursor.lastrowid)

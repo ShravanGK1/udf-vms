@@ -332,5 +332,149 @@
             "enable_face_recognition": false,
             "auto_purge_days": 90
         }
+    },
+    {
+        "id": 1791418418,
+        "client_name": "Manish_Test",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-10-08T00:00:00",
+        "created_at": "2026-10-08T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6Ik1hbmlzaF9UZXN0IiwiZXhwaXJlc19hdCI6IjIwMjctMTAtMDhUMDA6MDA6MDAiLCJtYXhfdXNlcnMiOjEwMCwibWF4X3NpdGVzIjoxMCwiYnVmZmVyX2RheXMiOjkwfQ.mjocfdBP0_jylQJgMVKmAfF0Y3icwETh-aD7lxHwQHfaD3PDNlWSPxCeBUluM31eJTZUV6R1hawPND2OhgnLnyqujURZqSvNgK9Jvii_39xgKUnQ7F4bPh6hfHHWXzs9EXd3yGxqpAlF5fTtxU7LNIuL757j-r-xYzS6URLfeg0InD9qNCyOzHYaWCiMIdMuvSuwcum2EITcV-7jSoLbH5gbdFx8vmLwT4F1D7-IbYuOnlupaFqzOAlmlOneLTSeXhFciK9JmpVCB92UvSTHyCr7QADq70c7lXGrXlEIHSGytRMadKxF3H13k_v1I4UnCbhcjxgDy8nvvCbCCMUSIg",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@manish_test.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1791418418,
+        "client_name": "Manish_Test",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-10-08T00:00:00",
+        "created_at": "2026-10-08T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6Ik1hbmlzaF9UZXN0IiwiZXhwaXJlc19hdCI6IjIwMjctMTAtMDhUMDA6MDA6MDAiLCJtYXhfdXNlcnMiOjEwMCwibWF4X3NpdGVzIjoxMCwiYnVmZmVyX2RheXMiOjkwfQ.mjocfdBP0_jylQJgMVKmAfF0Y3icwETh-aD7lxHwQHfaD3PDNlWSPxCeBUluM31eJTZUV6R1hawPND2OhgnLnyqujURZqSvNgK9Jvii_39xgKUnQ7F4bPh6hfHHWXzs9EXd3yGxqpAlF5fTtxU7LNIuL757j-r-xYzS6URLfeg0InD9qNCyOzHYaWCiMIdMuvSuwcum2EITcV-7jSoLbH5gbdFx8vmLwT4F1D7-IbYuOnlupaFqzOAlmlOneLTSeXhFciK9JmpVCB92UvSTHyCr7QADq70c7lXGrXlEIHSGytRMadKxF3H13k_v1I4UnCbhcjxgDy8nvvCbCCMUSIg",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@manish_test.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
+    },
+    {
+        "id": 1791418418,
+        "client_name": "Manish_Test",
+        "max_users": 100,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-10-08T00:00:00",
+        "created_at": "2026-10-08T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6Ik1hbmlzaF9UZXN0IiwiZXhwaXJlc19hdCI6IjIwMjctMTAtMDhUMDA6MDA6MDAiLCJtYXhfdXNlcnMiOjEwMCwibWF4X3NpdGVzIjoxMCwiYnVmZmVyX2RheXMiOjkwfQ.mjocfdBP0_jylQJgMVKmAfF0Y3icwETh-aD7lxHwQHfaD3PDNlWSPxCeBUluM31eJTZUV6R1hawPND2OhgnLnyqujURZqSvNgK9Jvii_39xgKUnQ7F4bPh6hfHHWXzs9EXd3yGxqpAlF5fTtxU7LNIuL757j-r-xYzS6URLfeg0InD9qNCyOzHYaWCiMIdMuvSuwcum2EITcV-7jSoLbH5gbdFx8vmLwT4F1D7-IbYuOnlupaFqzOAlmlOneLTSeXhFciK9JmpVCB92UvSTHyCr7QADq70c7lXGrXlEIHSGytRMadKxF3H13k_v1I4UnCbhcjxgDy8nvvCbCCMUSIg",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@manish_test.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
     }
 ]

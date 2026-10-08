@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import API from "../../../app/apiClient";
+import HostSelect from "../../common/HostSelect";
+
 
 import {
   User,
@@ -19,7 +21,8 @@ import {
   Calendar,
   Clock,
   Plus,
-  Trash2
+  Trash2,
+  Package
 } from "lucide-react";
 import "./VisitorPassForm.css";
 import CameraModal from "../../modals/CameraModal";
@@ -143,6 +146,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
     unit: "",
     department: "",
     location: "",
+    host_id: "",
     personToVisit: "",
     accessLevel: "",
     typeOfIDProof: "",
@@ -156,6 +160,10 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
     deviceType: "",
     deviceMake: "",
     deviceSerialNumber: "",
+    hasMaterial: "No",
+    materialName: "",
+    materialQuantity: "",
+    materialSerialNumber: "",
     vehicleType: "",
     vehicleNumber: "",
     vehiclePhotoFront: "",
@@ -164,6 +172,10 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
 
   const [devices, setDevices] = useState([
     { deviceType: "", deviceMake: "", deviceSerialNumber: "" }
+  ]);
+
+  const [materials, setMaterials] = useState([
+    { materialName: "", materialQuantity: "", materialSerialNumber: "" }
   ]);
 
   const handleDeviceChange = (index, field, value) => {
@@ -180,6 +192,22 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
 
   const removeDeviceRow = (index) => {
     setDevices(prev => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+
+  const handleMaterialChange = (index, field, value) => {
+    setMaterials(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addMaterialRow = () => {
+    setMaterials(prev => [...prev, { materialName: "", materialQuantity: "", materialSerialNumber: "" }]);
+  };
+
+  const removeMaterialRow = (index) => {
+    setMaterials(prev => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   };
 
   const isVisitorLive = (data) => {
@@ -230,6 +258,27 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                 });
               }
               setDevices(loadedDevices);
+            }
+
+            if (res.data.hasMaterial === "Yes" || res.data.has_material) {
+              const fetchedName = res.data.materialName || res.data.material_name || "";
+              const fetchedQty = res.data.materialQuantity || res.data.material_quantity || "";
+              const fetchedSerial = res.data.materialSerialNumber || res.data.material_serial_number || "";
+              
+              const names = fetchedName ? fetchedName.split(",").map(s => s.trim()) : [];
+              const quantities = fetchedQty ? fetchedQty.split(",").map(s => s.trim()) : [];
+              const serials = fetchedSerial ? fetchedSerial.split(",").map(s => s.trim()) : [];
+              const count = Math.max(names.length, quantities.length, serials.length, 1);
+              
+              const loadedMaterials = [];
+              for (let i = 0; i < count; i++) {
+                loadedMaterials.push({
+                  materialName: names[i] || "",
+                  materialQuantity: quantities[i] || "",
+                  materialSerialNumber: serials[i] || ""
+                });
+              }
+              setMaterials(loadedMaterials);
             }
           }
         } catch (err) {
@@ -333,6 +382,17 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                 <div class="pass-field">
                   <span class="field-label">Device Serial</span>
                   <span class="field-value">${formData.deviceSerialNumber}</span>
+                </div>
+              ` : ''}
+              ${(formData.hasMaterial === 'Yes' || formData.has_material) ? `
+                <div class="pass-divider"></div>
+                <div class="pass-field">
+                  <span class="field-label">Carrying Material</span>
+                  <span class="field-value">${formData.materialName || formData.material_name} (${formData.materialQuantity || formData.material_quantity || '1'})</span>
+                </div>
+                <div class="pass-field">
+                  <span class="field-label">Challan / Serial No</span>
+                  <span class="field-value">${formData.materialSerialNumber || formData.material_serial_number || '-'}</span>
                 </div>
               ` : ''}
               ${formData.vehicleNumber ? `
@@ -540,6 +600,10 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
 
     const newErrors = {};
 
+    if (!formData.host_id) {
+      newErrors.host_id = "Please select a host/person to visit.";
+    }
+
     if (!selectedCountry.regex.test(localNumber)) {
       newErrors.phone = `Please enter a valid phone number for ${selectedCountry.name} (e.g. ${selectedCountry.placeholder}).`;
     }
@@ -576,6 +640,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
       return;
     }
 
+    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
     const data = new FormData();
     // 1. Create (POST) Naming Convention
     data.append("visitor_name", formData.name);
@@ -598,7 +663,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
     data.append("isMultiDay", isMulti ? "Yes" : "No");
     data.append("valid_till", isMulti ? (formData.valid_till || formData.scheduled_date || todayStr) : (formData.scheduled_date || todayStr));
     data.append("access_level", formData.accessLevel);
-    data.append("host_id", user.user_id);
+    data.append("host_id", formData.host_id);
 
     if (formData.hasDevice === "Yes") {
       const combinedType = devices.map(d => d.deviceType.trim()).filter(Boolean).join(", ");
@@ -613,6 +678,29 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
       data.append("deviceType", "");
       data.append("deviceMake", "");
       data.append("deviceSerialNumber", "");
+    }
+
+    if (formData.hasMaterial === "Yes") {
+      const combinedMatName = materials.map(m => m.materialName.trim()).filter(Boolean).join(", ");
+      const combinedMatQty = materials.map(m => m.materialQuantity.trim()).filter(Boolean).join(", ");
+      const combinedMatSerial = materials.map(m => m.materialSerialNumber.trim()).filter(Boolean).join(", ");
+      data.append("hasMaterial", "Yes");
+      data.append("materialName", combinedMatName);
+      data.append("materialQuantity", combinedMatQty);
+      data.append("materialSerialNumber", combinedMatSerial);
+      data.append("has_material", "1");
+      data.append("material_name", combinedMatName);
+      data.append("material_quantity", combinedMatQty);
+      data.append("material_serial_number", combinedMatSerial);
+    } else {
+      data.append("hasMaterial", "No");
+      data.append("materialName", "");
+      data.append("materialQuantity", "");
+      data.append("materialSerialNumber", "");
+      data.append("has_material", "0");
+      data.append("material_name", "");
+      data.append("material_quantity", "");
+      data.append("material_serial_number", "");
     }
     data.append("vehicleType", formData.vehicleType);
     data.append("vehicleNumber", formData.vehicleNumber);
@@ -717,26 +805,22 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
           </div>
           {/* Person to Visit */}
           <div className="form-group">
-            <label>Person to Visit<span>*</span></label>
-            <div style={{ position: "relative" }}>
-              <User size={18} style={iconStyle} />
-              <input
-                type="text"
-                name="personToVisit"
-                list="visitor-history"
-                placeholder="Enter person name"
-                style={inputStyle}
-                value={formData.personToVisit}
-                onChange={handleChange}
-                required
-                disabled={readOnly}
-              />
-              <datalist id="visitor-history">
-                {visitHistory.map((name, idx) => (
-                  <option key={idx} value={name} />
-                ))}
-              </datalist>
-            </div>
+            <HostSelect
+              selectedHostId={formData.host_id}
+              onChange={(host) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  host_id: host ? host.id : "",
+                  personToVisit: host ? host.name : "",
+                  person_to_visit: host ? host.name : ""
+                }));
+                setFieldErrors((prev) => ({ ...prev, host_id: "" }));
+              }}
+              error={fieldErrors.host_id}
+              required={true}
+              label="Person to Visit"
+              disabled={readOnly}
+            />
           </div>
 
           {/* Multi-day Visit Toggle Checkbox */}
@@ -1383,6 +1467,154 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                           style={inputStyle}
                           value={device.deviceSerialNumber}
                           onChange={(e) => handleDeviceChange(idx, "deviceSerialNumber", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Has Material / Goods / Equipment? */}
+          <div className="form-group full-width">
+            <label>Carrying any Material/Goods/Equipment? <span>*</span></label>
+            <div style={{ position: "relative" }}>
+              <Package size={18} style={iconStyle} />
+              <select
+                name="hasMaterial"
+                required
+                style={inputStyle}
+                value={formData.hasMaterial}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (e.target.value === "Yes" && materials.length === 0) {
+                    setMaterials([{ materialName: "", materialQuantity: "", materialSerialNumber: "" }]);
+                  }
+                }}
+                disabled={readOnly}
+              >
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+          </div>
+
+          {formData.hasMaterial === "Yes" && (
+            <div className="form-group full-width" style={{ marginTop: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                  Material / Goods / Equipment Details ({materials.length}) <span>*</span>
+                </label>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={addMaterialRow}
+                    style={{
+                      background: "#f0fdf4",
+                      color: "#16a34a",
+                      border: "1px solid #bbf7d0",
+                      borderRadius: "6px",
+                      padding: "6px 14px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <Plus size={14} /> Add Another Material
+                  </button>
+                )}
+              </div>
+
+              {materials.map((mat, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "10px",
+                    padding: "16px",
+                    marginBottom: "12px",
+                    position: "relative"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Material #{idx + 1}
+                    </span>
+                    {!readOnly && materials.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMaterialRow(idx)}
+                        style={{
+                          background: "#fee2e2",
+                          border: "1px solid #fca5a5",
+                          borderRadius: "4px",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          padding: "4px 8px",
+                          fontSize: "12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                        title="Remove this material"
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="form-grid" style={{ gap: "12px" }}>
+                    {/* Material Name / Description */}
+                    <div className="form-group">
+                      <label style={{ fontSize: "12px" }}>Material Description / Item <span>*</span></label>
+                      <div style={{ position: "relative" }}>
+                        <Package size={18} style={iconStyle} />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Spare Parts, Cable Box, Demo Unit"
+                          style={inputStyle}
+                          value={mat.materialName}
+                          onChange={(e) => handleMaterialChange(idx, "materialName", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Material Quantity */}
+                    <div className="form-group">
+                      <label style={{ fontSize: "12px" }}>Quantity / Units <span>*</span></label>
+                      <div style={{ position: "relative" }}>
+                        <Hash size={18} style={iconStyle} />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. 2 Boxes, 5 Pcs, 10 Kg"
+                          style={inputStyle}
+                          value={mat.materialQuantity}
+                          onChange={(e) => handleMaterialChange(idx, "materialQuantity", e.target.value)}
+                          disabled={readOnly}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Challan / Serial Number */}
+                    <div className="form-group full-width">
+                      <label style={{ fontSize: "12px" }}>Challan / Invoice / Serial Number</label>
+                      <div style={{ position: "relative" }}>
+                        <Hash size={18} style={iconStyle} />
+                        <input
+                          type="text"
+                          placeholder="Enter Challan #, Invoice # or Serial # (Optional)"
+                          style={inputStyle}
+                          value={mat.materialSerialNumber}
+                          onChange={(e) => handleMaterialChange(idx, "materialSerialNumber", e.target.value)}
                           disabled={readOnly}
                         />
                       </div>

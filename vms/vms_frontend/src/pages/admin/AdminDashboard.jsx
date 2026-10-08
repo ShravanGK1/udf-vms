@@ -9,7 +9,7 @@ import {
   Users, UserCheck, Clock, AlertTriangle, Plus, Search, Building,
   ChevronRight, ChevronDown, BarChart3, MapPin, Download, Camera, X, Shield,
   RefreshCw, Eye, Edit, Printer, Phone, Mail, Laptop, Car, FileText,
-  Briefcase, CheckCircle, ClipboardList, Trash2, Save, Check
+  Briefcase, CheckCircle, ClipboardList, Trash2, Save, Check, Package
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import "../SecurtiyDashboard/SecurityDashboard.css";
@@ -543,6 +543,18 @@ const AdminDashboard = () => {
               <div class="row">
                 <span class="label">HAS MATERIAL</span>
                 <span class="val">${idCardData.hasMaterial || "No"}</span>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="rows">
+              <div class="row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span class="label">VISITOR SIGNATURE</span>
+                ${idCardData.signature_url || idCardData.signature_path ? `
+                  <div style="background: #ffffff; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; width: 100%; text-align: center;">
+                    <img src="${idCardData.signature_url || `/${idCardData.signature_path}`}" style="max-height: 45px; max-width: 100%; object-fit: contain;" alt="Signature" />
+                  </div>
+                ` : `<span style="font-size: 11px; color: #94a3b8; font-style: italic;">No signature available</span>`}
               </div>
             </div>
 
@@ -2163,6 +2175,38 @@ const AdminDashboard = () => {
                         </div>
                       </div>
 
+                      <div className="visitor-id-card-preview-divider" />
+
+                      {/* Visitor Signature Section */}
+                      <div className="visitor-id-card-preview-rows">
+                        <div className="visitor-id-card-preview-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                          <span className="visitor-id-card-preview-label">VISITOR SIGNATURE</span>
+                          {idCardData.signature_url || idCardData.signature_path ? (
+                            <div style={{
+                              background: '#ffffff',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              border: '1px solid #cbd5e1',
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              display: 'flex',
+                              justify: 'center',
+                              alignItems: 'center'
+                            }}>
+                              <img
+                                src={idCardData.signature_url || `/${idCardData.signature_path}`}
+                                alt="Visitor Signature"
+                                style={{ maxHeight: '55px', maxWidth: '100%', objectFit: 'contain' }}
+                              />
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                              No signature available
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
                       <div
                         className="visitor-id-card-preview-footer-tag-new"
                         style={{
@@ -2296,6 +2340,15 @@ const AdminDashboard = () => {
                   <span className="vh-label"><Laptop size={12} /> Device Details</span>
                   <span className="vh-value">
                     {[hoveredVisitor.deviceType, hoveredVisitor.deviceMake, hoveredVisitor.deviceSerialNumber ? `S/N: ${hoveredVisitor.deviceSerialNumber}` : null].filter(Boolean).join(" - ") || "Carrying Device"}
+                  </span>
+                </div>
+              )}
+
+              {(hoveredVisitor.hasMaterial === "Yes" || hoveredVisitor.has_material || hoveredVisitor.materialName || hoveredVisitor.material_name) && (
+                <div className="vh-item full-width">
+                  <span className="vh-label"><Package size={12} /> Material / Goods</span>
+                  <span className="vh-value">
+                    {[hoveredVisitor.materialName || hoveredVisitor.material_name, (hoveredVisitor.materialQuantity || hoveredVisitor.material_quantity) ? `Qty: ${hoveredVisitor.materialQuantity || hoveredVisitor.material_quantity}` : null, (hoveredVisitor.materialSerialNumber || hoveredVisitor.material_serial_number) ? `No: ${hoveredVisitor.materialSerialNumber || hoveredVisitor.material_serial_number}` : null].filter(Boolean).join(" - ") || "Carrying Material"}
                   </span>
                 </div>
               )}

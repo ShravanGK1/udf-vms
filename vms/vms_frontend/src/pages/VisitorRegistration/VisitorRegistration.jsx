@@ -3,6 +3,8 @@ import API from "../../app/apiClient";
 import { User, Mail, Phone, MapPin, Building, Briefcase, Hash, Save, ClipboardList, Laptop, CheckCircle, Languages, ChevronDown, Camera, Calendar, Clock, Plus, Trash2 } from "lucide-react";
 import "./VisitorRegistration.css";
 import CameraModal from "../../components/modals/CameraModal";
+import HostSelect from "../../components/common/HostSelect";
+
 
 const translations = {
   English: {
@@ -378,6 +380,7 @@ export default function VisitorRegistration() {
     typeOfIDProof: "",
     idProofNumber: "",
     reasonOfVisit: "",
+    host_id: "",
     person_to_visit: "",
     scheduled_date: todayStr,
     scheduled_time: nowTimeStr,
@@ -584,6 +587,10 @@ export default function VisitorRegistration() {
     
     const newErrors = {};
 
+    if (!formData.host_id) {
+      newErrors.host_id = "Please select a host/person to visit.";
+    }
+
     if (!selectedCountry.regex.test(localNumber)) {
       newErrors.phone = `Please enter a valid phone number for ${selectedCountry.name} (e.g. ${selectedCountry.placeholder}).`;
     }
@@ -633,6 +640,7 @@ export default function VisitorRegistration() {
     data.append("id_proof_type", formData.typeOfIDProof);
     data.append("id_proof_number", formData.idProofNumber);
     data.append("purpose", formData.reasonOfVisit);
+    data.append("host_id", formData.host_id);
     data.append("person_to_visit", formData.person_to_visit);
     data.append("scheduled_date", formData.scheduled_date || todayStr);
     data.append("scheduled_time", formData.scheduled_time || nowTimeStr);
@@ -737,24 +745,21 @@ export default function VisitorRegistration() {
             </div>
 
             <div className="form-group">
-              <label>{t.personToVisit} <span>*</span></label>
-              <div style={{ position: "relative" }}>
-                <User size={18} className="input-icon" />
-                <input
-                  type="text"
-                  name="person_to_visit"
-                  list="visitor-history"
-                  placeholder={t.placeholderPerson}
-                  value={formData.person_to_visit}
-                  onChange={handleChange}
-                  required
-                />
-                <datalist id="visitor-history">
-                  {visitHistory.map((name, index) => (
-                    <option key={index} value={name} />
-                  ))}
-                </datalist>
-              </div>
+              <HostSelect
+                selectedHostId={formData.host_id}
+                onChange={(host) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    host_id: host ? host.id : "",
+                    person_to_visit: host ? host.name : ""
+                  }));
+                  setFieldErrors((prev) => ({ ...prev, host_id: "" }));
+                }}
+                error={fieldErrors.host_id}
+                required={true}
+                label={t.personToVisit}
+                placeholder={t.placeholderPerson}
+              />
             </div>
 
             {/* Multi-day Visit Toggle Checkbox */}

@@ -89,6 +89,7 @@ const ExportReport = () => {
       <td>${v.phone || "-"}</td>
       <td>${v.company || "-"}</td>
       <td>${v.person_visited || "-"}</td>
+      <td>${v.checked_in_by || "-"}</td>
       <td>${v.department || "-"}</td>
       <td>${v.date || "-"}</td>
       <td>${v.check_in || "-"}</td>
@@ -118,6 +119,7 @@ const ExportReport = () => {
               <th>CONTACT NUMBER</th>
               <th>COMPANY NAME</th>
               <th>PERSON VISITED</th>
+              <th>CHECKED IN BY</th>
               <th>DEPARTMENT</th>
               <th>DATE</th>
               <th>IN</th>
@@ -402,6 +404,7 @@ const ExportReport = () => {
                             <th>CONTACT NUMBER</th>
                             <th>COMPANY NAME</th>
                             <th>PERSON VISITED</th>
+                            <th>CHECKED IN BY</th>
                             <th>DEPARTMENT</th>
                             <th>DATE</th>
                             <th>IN/OUT</th>
@@ -424,6 +427,9 @@ const ExportReport = () => {
                               <td>{v.company || "—"}</td>
                               <td>
                                 <div className="host">{v.person_visited || "—"}</div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: "13px", color: "#475569" }}>{v.checked_in_by || "—"}</div>
                               </td>
                               <td>
                                 <div className="dept">{v.department || "General"}</div>

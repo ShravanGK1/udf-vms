@@ -5,6 +5,10 @@ from werkzeug.utils import secure_filename
 import os
 import time
 import re
+try:
+    from utils.auth_utils import get_current_user_from_request, get_user_site_scope, is_site_authorized
+except ImportError:
+    from auth_utils import get_current_user_from_request, get_user_site_scope, is_site_authorized
 
 request_bp = Blueprint("request_bp", __name__)
 
@@ -163,12 +167,43 @@ def get_requests():
         auto_expire_past_requests(cursor)
         conn.commit()
 
-        cursor.execute("""
+        user_id, role = get_current_user_from_request(request)
+        site_filter_sql = ""
+        params = []
+
+        req_site_id = request.args.get("site_id") or request.headers.get("X-Site-ID")
+
+        if user_id:
+            scope_type, site_ids = get_user_site_scope(user_id, role)
+            if req_site_id and req_site_id != "all":
+                try:
+                    s_id = int(req_site_id)
+                    if scope_type == "ALL" or s_id in site_ids:
+                        site_filter_sql = "WHERE (vr.site_id = %s OR vr.site_id IS NULL)"
+                        params.append(s_id)
+                    else:
+                        site_filter_sql = "WHERE 1=0" # Unauthorized site requested
+                except (ValueError, TypeError):
+                    pass
+            elif scope_type == "SCOPED":
+                format_strings = ','.join(['%s'] * len(site_ids))
+                site_filter_sql = f"WHERE (vr.site_id IN ({format_strings}) OR vr.site_id IS NULL)"
+                params.extend(site_ids)
+        elif req_site_id and req_site_id != "all":
+            try:
+                s_id = int(req_site_id)
+                site_filter_sql = "WHERE (vr.site_id = %s OR vr.site_id IS NULL)"
+                params.append(s_id)
+            except (ValueError, TypeError):
+                pass
+
+        query = f"""
             SELECT vr.*, 
                    v.visitor_name, v.full_name, v.email, v.mobile_number, v.pabx_number,
                    v.company_name, v.unit, v.department, v.location,
                    v.id_proof_type, v.id_proof_number, v.access_level,
                    v.reason_of_visit, v.employee_id, v.photo,
+                   s.name AS site_name,
                    COALESCE(
                        CASE WHEN LOWER(u_host.role) != 'security' THEN u_host.name ELSE NULL END,
                        CASE WHEN LOWER(u_person.role) != 'security' AND v.person_to_visit IS NOT NULL AND v.person_to_visit != '' THEN v.person_to_visit ELSE NULL END,
@@ -184,14 +219,17 @@ def get_requests():
                    u.name AS transfer_from_host_name
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
+            LEFT JOIN sites s ON vr.site_id = s.site_id
             LEFT JOIN users u_host ON vr.host_id = u_host.user_id
             LEFT JOIN users u_person ON LOWER(v.person_to_visit) = LOWER(u_person.name)
             LEFT JOIN users u ON vr.transfer_from_host_id = u.user_id
             LEFT JOIN users u_checkin ON vr.checked_in_by = u_checkin.user_id
+            {site_filter_sql}
             ORDER BY vr.created_at DESC
-        """)
-
+        """
+        cursor.execute(query, tuple(params))
         requests = cursor.fetchall()
+
 
         # 🔄 Clean and format data for JSON serialization
         from datetime import datetime, date, time
@@ -460,9 +498,21 @@ def create_request():
         is_multi_day = True if str(is_multi_day_raw).lower() in ["1", "true", "yes"] else False
         valid_till = data.get("valid_till") or data.get("validTill") or sched_date_val
 
+        # Determine site_id
+        target_site_id = data.get("site_id") or data.get("siteId") or request.headers.get("X-Site-ID")
+        if not target_site_id and host_id:
+            cursor.execute("SELECT site_id FROM user_sites WHERE user_id = %s LIMIT 1", (host_id,))
+            user_site_row = cursor.fetchone()
+            target_site_id = user_site_row["site_id"] if user_site_row else 1
+        try:
+            target_site_id = int(target_site_id) if target_site_id else 1
+        except (ValueError, TypeError):
+            target_site_id = 1
+
         request_data = {
             "visitor_id": visitor_id,
             "host_id": host_id,
+            "site_id": target_site_id,
             "purpose": data.get("purpose"),
             "scheduled_date": sched_date_val,
             "scheduled_time": sched_time_val,
@@ -482,6 +532,7 @@ def create_request():
             INSERT INTO visitor_requests (
                 visitor_id,
                 host_id,
+                site_id,
                 purpose,
                 scheduled_date,
                 scheduled_time,
@@ -499,7 +550,7 @@ def create_request():
                 created_at
             )
             VALUES (
-                %(visitor_id)s, %(host_id)s, %(purpose)s, 
+                %(visitor_id)s, %(host_id)s, %(site_id)s, %(purpose)s, 
                 %(scheduled_date)s, %(scheduled_time)s,
                 %(is_multi_day)s, %(valid_till)s,
                 %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s,
@@ -530,19 +581,30 @@ def create_request():
 
 @request_bp.route("/api/visitor-requests/<int:request_id>/approve", methods=["PUT"])
 def approve_request(request_id):
-    data = request.get_json()
+    data = request.get_json() or {}
     conn = get_db_connection()
 
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         approver_id = data.get("approved_by")
 
-        # Check if this is a transfer request
-        cursor.execute("SELECT parent_request_id, visitor_id FROM visitor_requests WHERE request_id = %s", (request_id,))
+        # Site RBAC Authorization check
+        user_id, role = get_current_user_from_request(request)
+        if not user_id and approver_id:
+            user_id = approver_id
+            cursor.execute("SELECT role FROM users WHERE user_id = %s", (approver_id,))
+            u_row = cursor.fetchone()
+            if u_row:
+                role = u_row["role"]
+
+        cursor.execute("SELECT site_id, parent_request_id, visitor_id FROM visitor_requests WHERE request_id = %s", (request_id,))
         request_row = cursor.fetchone()
         
         if not request_row:
             return jsonify({"error": "Request not found"}), 404
+
+        if user_id and not is_site_authorized(user_id, role, request_row.get("site_id")):
+            return jsonify({"error": "Forbidden: You are not authorized to approve requests for this site"}), 403
             
         parent_request_id = request_row["parent_request_id"]
         visitor_id = request_row["visitor_id"]
@@ -606,18 +668,35 @@ def approve_request(request_id):
 
 @request_bp.route("/api/visitor-requests/<int:request_id>/reject", methods=["PUT"])
 def reject_request(request_id):
-    data = request.get_json()
+    data = request.get_json() or {}
     conn = get_db_connection()
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        user_id, role = get_current_user_from_request(request)
+        approver_id = data.get("approved_by")
+        if not user_id and approver_id:
+            user_id = approver_id
+            cursor.execute("SELECT role FROM users WHERE user_id = %s", (approver_id,))
+            u_row = cursor.fetchone()
+            if u_row:
+                role = u_row["role"]
+
+        cursor.execute("SELECT site_id FROM visitor_requests WHERE request_id = %s", (request_id,))
+        request_row = cursor.fetchone()
+        if not request_row:
+            return jsonify({"error": "Request not found"}), 404
+
+        if user_id and not is_site_authorized(user_id, role, request_row.get("site_id")):
+            return jsonify({"error": "Forbidden: You are not authorized to reject requests for this site"}), 403
+
         cursor.execute("""
             UPDATE visitor_requests
             SET status='REJECTED',
                 approved_by=%s,
                 approved_at=NOW()
             WHERE request_id=%s
-        """, (data.get("approved_by"), request_id))
+        """, (approver_id, request_id))
 
         conn.commit()
         return jsonify({"message": "Rejected"}), 200
@@ -625,8 +704,13 @@ def reject_request(request_id):
     finally:
         conn.close()
 
+
 @request_bp.route("/api/visitor-requests/<int:request_id>/transfer", methods=["POST"])
 def transfer_visitor(request_id):
+    user_id, role = get_current_user_from_request(request)
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
     data = request.get_json() or {}
     to_host_id = data.get("to_host_id")
     purpose = data.get("purpose")
@@ -643,16 +727,20 @@ def transfer_visitor(request_id):
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-        # 1. Verify original request and check if visitor is currently inside or approved
+        # 1. Verify original request and check site authorization
         cursor.execute("""
-            SELECT visitor_id, host_id, check_in_time, check_out_time, status 
+            SELECT visitor_id, host_id, check_in_time, check_out_time, status, site_id 
             FROM visitor_requests 
             WHERE request_id = %s
         """, (request_id,))
+
         original_req = cursor.fetchone()
 
         if not original_req:
             return jsonify({"error": "Original visit request not found"}), 404
+
+        if not is_site_authorized(user_id, role, original_req.get("site_id")):
+            return jsonify({"error": "Unauthorized to access this visit request"}), 403
 
         if original_req["check_out_time"] or original_req["status"] == "Checked Out":
             return jsonify({"error": "Visitor has already checked out"}), 400
@@ -665,11 +753,15 @@ def transfer_visitor(request_id):
         if cursor.fetchone():
             return jsonify({"error": "A transfer request is already pending for this visitor"}), 400
 
-        # 3. Verify target host exists
-        cursor.execute("SELECT name FROM users WHERE user_id = %s AND role = 'host'", (to_host_id,))
+        # 3. Verify target host exists and belongs to same customer
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (user_id,))
+        c_row = cursor.fetchone()
+        caller_cust_id = c_row["customer_id"] if (c_row and c_row.get("customer_id")) else 1
+
+        cursor.execute("SELECT name, customer_id FROM users WHERE user_id = %s AND LOWER(role) IN ('host', 'admin', 'superadmin')", (to_host_id,))
         target_host = cursor.fetchone()
-        if not target_host:
-            return jsonify({"error": "Target host not found or user is not a host"}), 404
+        if not target_host or target_host.get("customer_id") != caller_cust_id:
+            return jsonify({"error": "Target host not found or user is not a host in your organization"}), 404
 
         # 4. Insert new request
         cursor.execute("""
@@ -682,21 +774,25 @@ def transfer_visitor(request_id):
                 status,
                 created_at,
                 parent_request_id,
-                transfer_from_host_id
+                transfer_from_host_id,
+                site_id
             )
             VALUES (
-                %s, %s, %s, CURRENT_DATE, CURRENT_TIME, 'PENDING_TRANSFER', NOW(), %s, %s
+                %s, %s, %s, CURRENT_DATE, CURRENT_TIME, 'PENDING_TRANSFER', NOW(), %s, %s, %s
             )
         """, (
             original_req["visitor_id"],
             to_host_id,
             f"Transfer: {purpose}",
             request_id,
-            original_req["host_id"]
+            original_req["host_id"],
+            original_req.get("site_id") or 1
         ))
 
         new_request_id = cursor.lastrowid
         conn.commit()
+
+
 
         return jsonify({
             "message": "Transfer request sent successfully",

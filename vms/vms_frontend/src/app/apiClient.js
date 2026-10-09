@@ -7,8 +7,14 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = sessionStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  const activeSiteId = sessionStorage.getItem("active_site_id");
+  if (activeSiteId && activeSiteId !== "all") {
+    config.headers["X-Site-ID"] = activeSiteId;
+  }
   return config;
 });
+
 
 apiClient.interceptors.response.use(
   (response) => response,

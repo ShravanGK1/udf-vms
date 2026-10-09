@@ -41,6 +41,12 @@ def login():
 
         token = generate_token(user)
 
+        # Get authorized site IDs and full site objects for multi-site RBAC
+        from utils.auth_utils import get_user_site_scope, get_user_authorized_sites
+        scope_type, site_ids = get_user_site_scope(user["user_id"], user["role"])
+        user["site_ids"] = site_ids if scope_type != "ALL" else "ALL"
+        user["sites"] = get_user_authorized_sites(user["user_id"], user["role"])
+
         return jsonify({
             "message": "Login successful",
             "token": token,
@@ -88,6 +94,15 @@ def register():
         user = cursor.fetchone()
 
         token = generate_token(user)
+
+        # Assign default site to user_sites
+        cursor.execute("INSERT IGNORE INTO user_sites (user_id, site_id) VALUES (%s, 1)", (user_id,))
+        conn.commit()
+
+        from utils.auth_utils import get_user_site_scope, get_user_authorized_sites
+        scope_type, site_ids = get_user_site_scope(user["user_id"], user["role"])
+        user["site_ids"] = site_ids if scope_type != "ALL" else "ALL"
+        user["sites"] = get_user_authorized_sites(user["user_id"], user["role"])
 
         return jsonify({
             "message": "Registration successful",

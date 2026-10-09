@@ -4,6 +4,8 @@ from flask import send_file
 import pandas as pd
 import io
 
+from utils.auth_utils import get_current_user_from_request, get_user_site_scope
+
 reports_bp = Blueprint("reports", __name__)
 
 def get_period_filter(period, table_alias="vr"):
@@ -18,6 +20,33 @@ def get_period_filter(period, table_alias="vr"):
         return f"YEAR({col}) = YEAR(CURRENT_DATE)"
     return "1=1"
 
+def build_report_site_filter(req, table_alias="vr"):
+    user_id, role = get_current_user_from_request(req)
+    req_site_id = req.args.get("site_id") or req.headers.get("X-Site-ID")
+
+    if user_id:
+        scope_type, site_ids = get_user_site_scope(user_id, role)
+        if req_site_id and req_site_id != "all":
+            try:
+                s_id = int(req_site_id)
+                if scope_type == "ALL" or s_id in site_ids:
+                    return f" ({table_alias}.site_id = {s_id} OR {table_alias}.site_id IS NULL) "
+                else:
+                    return " 1=0 "
+            except (ValueError, TypeError):
+                pass
+        elif scope_type == "SCOPED":
+            ids_str = ','.join(map(str, site_ids))
+            return f" ({table_alias}.site_id IN ({ids_str}) OR {table_alias}.site_id IS NULL) "
+    elif req_site_id and req_site_id != "all":
+        try:
+            s_id = int(req_site_id)
+            return f" ({table_alias}.site_id = {s_id} OR {table_alias}.site_id IS NULL) "
+        except (ValueError, TypeError):
+            pass
+
+    return " 1=1 "
+
 @reports_bp.route("/api/reports", methods=["GET"])
 def get_reports():
     conn = get_db_connection()
@@ -27,37 +56,39 @@ def get_reports():
     try:
         cursor = conn.cursor()
         period = request.args.get("period", "daily")
+        site_filter = build_report_site_filter(request, "vr")
 
         # ------------------ SUMMARY ------------------
 
         # TOTAL
-        cursor.execute("SELECT COUNT(*) FROM visitor_requests")
+        cursor.execute(f"SELECT COUNT(*) FROM visitor_requests vr WHERE {site_filter}")
         total = cursor.fetchone()[0]
 
         # TODAY
-        cursor.execute("""
-            SELECT COUNT(*) FROM visitor_requests
-            WHERE DATE(check_in_time) = CURRENT_DATE
+        cursor.execute(f"""
+            SELECT COUNT(*) FROM visitor_requests vr
+            WHERE {site_filter} AND DATE(check_in_time) = CURRENT_DATE
         """)
         today = cursor.fetchone()[0]
 
         # MTD
-        cursor.execute("""
-            SELECT COUNT(*) FROM visitor_requests
-            WHERE DATE_FORMAT(check_in_time, '%Y-%m-01') = DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+        cursor.execute(f"""
+            SELECT COUNT(*) FROM visitor_requests vr
+            WHERE {site_filter} AND DATE_FORMAT(check_in_time, '%Y-%m-01') = DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
         """)
         mtd = cursor.fetchone()[0]
 
         # YTD
-        cursor.execute("""
-            SELECT COUNT(*) FROM visitor_requests
-            WHERE YEAR(check_in_time) = YEAR(CURRENT_DATE)
+        cursor.execute(f"""
+            SELECT COUNT(*) FROM visitor_requests vr
+            WHERE {site_filter} AND YEAR(check_in_time) = YEAR(CURRENT_DATE)
         """)
         ytd = cursor.fetchone()[0]
 
         # PERIOD COUNT (selected period)
-        where_clause = get_period_filter(period, "vr")
+        where_clause = f"{get_period_filter(period, 'vr')} AND {site_filter}"
         cursor.execute(f"SELECT COUNT(*) FROM visitor_requests vr WHERE {where_clause}")
+
         period_count = cursor.fetchone()[0]
 
         # AVG DAILY (for the selected period)
@@ -387,8 +418,10 @@ def export_excel():
         
     try:
         period = request.args.get("period", "daily")
-        where_clause = get_period_filter(period, "vr")
+        site_filter = build_report_site_filter(request, "vr")
+        where_clause = f"{get_period_filter(period, 'vr')} AND {site_filter}"
         query = f"""
+
             SELECT 
                 v.visitor_name AS "VISITORS NAME",
                 v.mobile_number AS "CONTACT NUMBER",

@@ -9,18 +9,46 @@ visitor_bp = Blueprint("visitors", __name__)
 
 @visitor_bp.route("/api/visitors", methods=["GET"])
 def get_visitors():
+    from utils.auth_utils import get_current_user_from_request, get_user_site_scope
+    user_id, role = get_current_user_from_request(request)
+    if not user_id:
+        return jsonify({"message": "Authentication required"}), 401
+
     conn = get_db_connection()
     if not conn:
         return jsonify({"message": "Database connection failed"}), 500
 
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM visitors ORDER BY visitor_id DESC")
+        scope_type, site_ids = get_user_site_scope(user_id, role)
+
+        if scope_type in ('ALL', 'CUSTOMER_ALL') or not site_ids:
+            cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (user_id,))
+            c_row = cursor.fetchone()
+            cust_id = c_row["customer_id"] if (c_row and c_row.get("customer_id")) else 1
+            cursor.execute("""
+                SELECT DISTINCT v.* 
+                FROM visitors v
+                JOIN visitor_requests vr ON v.visitor_id = vr.visitor_id
+                WHERE vr.customer_id = %s OR vr.site_id IN (SELECT site_id FROM sites WHERE customer_id = %s)
+                ORDER BY v.visitor_id DESC
+            """, (cust_id, cust_id))
+        else:
+            format_strings = ','.join(['%s'] * len(site_ids))
+            cursor.execute(f"""
+                SELECT DISTINCT v.* 
+                FROM visitors v
+                JOIN visitor_requests vr ON v.visitor_id = vr.visitor_id
+                WHERE vr.site_id IN ({format_strings})
+                ORDER BY v.visitor_id DESC
+            """, tuple(site_ids))
+
         visitors = cursor.fetchall()
         return jsonify(visitors), 200
 
     finally:
         conn.close()
+
 
 
 @visitor_bp.route("/api/visitors/lookup/<mobile>", methods=["GET"])

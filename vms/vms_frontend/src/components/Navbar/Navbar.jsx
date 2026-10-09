@@ -5,8 +5,9 @@ import { useDispatch } from "react-redux";
 import { logout } from "../../auth/authSlice";
 import { Shield, User, Settings, LogOut, ChevronDown, Bell, CalendarClock, X, Sun, Moon, BookOpen, ShieldAlert, RefreshCw } from "lucide-react";
 import apiClient from "../../app/apiClient";
-import UserManualModal from "../UserManual/UserManualModal";
+import SiteSelector from "../common/SiteSelector";
 import "./Navbar.css";
+
 
 const roleLabels = {
   admin: "Admin",
@@ -162,7 +163,10 @@ const Navbar = ({ role, userName }) => {
         </div>
 
         <div className="vms-nav-actions">
+          <SiteSelector />
+
           <button className="vms-notification-btn" title="Notifications">
+
             <Bell size={20} />
             <span className="vms-notification-dot" />
           </button>
@@ -226,7 +230,12 @@ const Navbar = ({ role, userName }) => {
                     <div className="vms-dropdown-label">Switch Dashboard</div>
                     {location.pathname !== "/superadmin/dashboard" && (
                       <button className="vms-dropdown-item" onClick={() => { navigate("/superadmin/dashboard"); setDropdownOpen(false); }}>
-                        <Shield size={16} /> Super Admin Dashboard
+                        <Shield size={16} /> Super Admin Console
+                      </button>
+                    )}
+                    {location.pathname !== "/admin/dashboard" && (
+                      <button className="vms-dropdown-item" onClick={() => { navigate("/admin/dashboard"); setDropdownOpen(false); }}>
+                        <Building size={16} /> Site Admin Dashboard
                       </button>
                     )}
                     <div className="vms-dropdown-divider" />

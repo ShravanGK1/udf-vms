@@ -9,8 +9,31 @@ from datetime import datetime, timedelta, date
 import pymysql.cursors
 from routes.request_routes import auto_expire_past_requests
 from utils.signature_utils import save_signature_image
+from utils.auth_utils import get_current_user_from_request, get_user_site_scope, is_site_authorized
 
 security_bp = Blueprint("security", __name__)
+
+def build_security_site_filter(req):
+    user_id, role = get_current_user_from_request(req)
+    req_site_id = req.args.get("site_id") or req.headers.get("X-Site-ID")
+
+    if not user_id:
+        # Require authenticated identity for protected routes
+        return " 1=0 ", []
+
+    scope_type, site_ids = get_user_site_scope(user_id, role)
+    if req_site_id and req_site_id != "all":
+        try:
+            s_id = int(req_site_id)
+            if s_id in site_ids:
+                return " (vr.site_id = %s OR vr.site_id IS NULL) ", [s_id]
+            else:
+                return " 1=0 ", []
+        except (ValueError, TypeError):
+            return " 1=0 ", []
+    else:
+        format_strings = ','.join(['%s'] * len(site_ids))
+        return f" (vr.site_id IN ({format_strings}) OR vr.site_id IS NULL) ", list(site_ids)
 
 
 # ---------------------------------------------------
@@ -27,38 +50,45 @@ def security_dashboard():
         auto_expire_past_requests(cursor)
         conn.commit()
 
-        cursor.execute("""
+        filter_sql, params = build_security_site_filter(request)
+
+        cursor.execute(f"""
             SELECT COUNT(*)
-            FROM visitor_requests
-            WHERE check_in_time IS NOT NULL
+            FROM visitor_requests vr
+            WHERE {filter_sql}
+            AND check_in_time IS NOT NULL
             AND check_out_time IS NULL
-        """)
+        """, tuple(params))
         visitors_inside = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT COUNT(*)
-            FROM visitor_requests
-            WHERE status = 'APPROVED'
+            FROM visitor_requests vr
+            WHERE {filter_sql}
+            AND status = 'APPROVED'
             AND check_in_time IS NULL
             AND scheduled_date = CURRENT_DATE
-        """)
+        """, tuple(params))
         expected_today = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT COUNT(*)
-            FROM visitor_requests
-            WHERE status = 'PENDING'
+            FROM visitor_requests vr
+            WHERE {filter_sql}
+            AND status = 'PENDING'
             AND scheduled_date = CURRENT_DATE
-        """)
+        """, tuple(params))
         pending_approval = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT check_in_time, is_multi_day, valid_till 
-            FROM visitor_requests 
-            WHERE check_in_time IS NOT NULL 
+            FROM visitor_requests vr
+            WHERE {filter_sql}
+            AND check_in_time IS NOT NULL 
             AND check_out_time IS NULL
-        """)
+        """, tuple(params))
         live_visitors_times = cursor.fetchall()
+
         overstay = 0
         now = datetime.now()
         for row in live_visitors_times:
@@ -107,7 +137,9 @@ def live_visitors():
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-        cursor.execute("""
+        filter_sql, params = build_security_site_filter(request)
+
+        cursor.execute(f"""
             SELECT
                 vr.request_id,
                 vr.is_multi_day,
@@ -156,10 +188,11 @@ def live_visitors():
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
             LEFT JOIN users approver ON vr.approved_by = approver.user_id
-            WHERE vr.check_in_time IS NOT NULL
+            WHERE {filter_sql}
+            AND vr.check_in_time IS NOT NULL
             AND vr.check_out_time IS NULL
             ORDER BY vr.check_in_time DESC
-        """)
+        """, tuple(params))
 
         rows = cursor.fetchall()
         visitors = []
@@ -228,7 +261,9 @@ def expected_visitors():
     auto_expire_past_requests(cursor)
     conn.commit()
 
-    cursor.execute("""
+    filter_sql, params = build_security_site_filter(request)
+
+    cursor.execute(f"""
     SELECT
     vr.request_id,
     v.visitor_name,
@@ -240,11 +275,12 @@ def expected_visitors():
     v.employee_id
     FROM visitor_requests vr
     LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
-    WHERE vr.status = 'APPROVED'
+    WHERE {filter_sql}
+    AND vr.status = 'APPROVED'
     AND vr.check_in_time IS NULL
     AND vr.scheduled_date = CURRENT_DATE
     ORDER BY vr.scheduled_time
-""")
+""", tuple(params))
     rows = cursor.fetchall()
 
     visitors = []
@@ -279,7 +315,9 @@ def pending_requests():
     auto_expire_past_requests(cursor)
     conn.commit()
 
-    cursor.execute("""
+    filter_sql, params = build_security_site_filter(request)
+
+    cursor.execute(f"""
     SELECT
     vr.request_id,
     v.visitor_name,
@@ -291,10 +329,11 @@ def pending_requests():
     v.employee_id
     FROM visitor_requests vr
     JOIN visitors v ON vr.visitor_id = v.visitor_id
-    WHERE vr.status = 'PENDING'
+    WHERE {filter_sql}
+    AND vr.status = 'PENDING'
     AND vr.scheduled_date = CURRENT_DATE
     ORDER BY vr.created_at DESC
-""")
+""", tuple(params))
 
     rows = cursor.fetchall()
 
@@ -319,6 +358,22 @@ def pending_requests():
     return jsonify(requests)
 
 
+    conn.close()
+    return jsonify(requests)
+
+
+def check_request_site_authorization(cursor, request_id, req):
+    user_id, role = get_current_user_from_request(req)
+    if user_id:
+        cursor.execute("SELECT site_id FROM visitor_requests WHERE request_id = %s", (request_id,))
+        r = cursor.fetchone()
+        if not r:
+            return False, jsonify({"error": "Request not found"}), 404
+        site_id = r[0] if isinstance(r, (tuple, list)) else r.get("site_id")
+        if not is_site_authorized(user_id, role, site_id):
+            return False, jsonify({"error": "Forbidden: You are not authorized for this site"}), 403
+    return True, None, None
+
 # ---------------------------------------------------
 # CHECK IN VISITOR
 # ---------------------------------------------------
@@ -327,6 +382,11 @@ def pending_requests():
 def checkin_visitor(request_id):
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    ok, err_resp, err_code = check_request_site_authorization(cursor, request_id, request)
+    if not ok:
+        conn.close()
+        return err_resp, err_code
 
     data = request.get_json() or {}
     physical_badge = data.get("physical_badge_no") or data.get("physical_badge") or data.get("badge")
@@ -389,6 +449,14 @@ def checkin_visitor(request_id):
 @security_bp.route("/api/security/reassign-badge/<int:request_id>", methods=["PUT", "POST"])
 def reassign_badge(request_id):
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        ok, err_resp, err_code = check_request_site_authorization(cursor, request_id, request)
+        if not ok:
+            conn.close()
+            return err_resp, err_code
+
         data = request.get_json() or {}
         physical_badge = data.get("physical_badge_no") or data.get("physical_badge") or data.get("badge")
         if isinstance(physical_badge, str):
@@ -396,8 +464,6 @@ def reassign_badge(request_id):
         if not physical_badge:
             physical_badge = None
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
         cursor.execute("""
             UPDATE visitor_requests
             SET physical_badge_no = %s
@@ -408,6 +474,7 @@ def reassign_badge(request_id):
         return jsonify({"message": "Physical badge updated successfully", "physical_badge_no": physical_badge})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 # ---------------------------------------------------
@@ -422,8 +489,9 @@ def expired_visits():
         conn.commit()
         
         filter_type = request.args.get("filter", "all")
+        filter_sql, params = build_security_site_filter(request)
         
-        query = """
+        query = f"""
             SELECT
             vr.request_id,
             v.visitor_name,
@@ -434,7 +502,8 @@ def expired_visits():
             v.access_level
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
-            WHERE (
+            WHERE {filter_sql}
+            AND (
                 vr.status = 'EXPIRED'
                 OR (vr.check_in_time IS NULL AND vr.scheduled_date < CURRENT_DATE)
             )
@@ -451,7 +520,7 @@ def expired_visits():
             
         query += " ORDER BY vr.created_at DESC"
         
-        cursor.execute(query)
+        cursor.execute(query, tuple(params))
         
         rows = cursor.fetchall()
         expired = []
@@ -496,6 +565,14 @@ def validate_manual_checkout_time(manual_checkout_str):
 
 @security_bp.route("/api/security/checkout/<int:request_id>", methods=["POST"])
 def checkout_visitor(request_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    ok, err_resp, err_code = check_request_site_authorization(cursor, request_id, request)
+    if not ok:
+        conn.close()
+        return err_resp, err_code
+
     manual_checkout_val = None
     signature_data = None
     try:
@@ -505,6 +582,7 @@ def checkout_visitor(request_id):
             if manual_checkout and manual_checkout != "-":
                 err = validate_manual_checkout_time(manual_checkout)
                 if err:
+                    conn.close()
                     return jsonify({"error": err}), 400
                 manual_checkout_val = manual_checkout.replace("T", " ")
                 if len(manual_checkout_val) == 16:
@@ -522,12 +600,11 @@ def checkout_visitor(request_id):
             action_label="permanent checkout"
         )
     except ValueError as val_err:
+        conn.close()
         return jsonify({"error": str(val_err)}), 400
     except Exception as err:
+        conn.close()
         return jsonify({"error": f"Failed to save checkout signature: {str(err)}"}), 500
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
 
     cursor.execute("""
         UPDATE visitor_requests
@@ -551,14 +628,24 @@ def checkout_visitor(request_id):
 @security_bp.route("/api/security/requests/<int:request_id>/manual-checkout", methods=["POST"])
 def set_manual_checkout_time(request_id):
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        ok, err_resp, err_code = check_request_site_authorization(cursor, request_id, request)
+        if not ok:
+            conn.close()
+            return err_resp, err_code
+
         data = request.get_json() or {}
         manual_checkout = data.get("manualCheckOutTime")
         if not manual_checkout:
+            conn.close()
             return jsonify({"error": "Manual check out time is required"}), 400
 
         if manual_checkout != "-":
             err = validate_manual_checkout_time(manual_checkout)
             if err:
+                conn.close()
                 return jsonify({"error": err}), 400
 
         manual_checkout_val = None
@@ -570,8 +657,6 @@ def set_manual_checkout_time(request_id):
             except Exception:
                 manual_checkout_val = manual_checkout
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
         cursor.execute("""
             UPDATE visitor_requests
             SET manual_check_out_time = %s
@@ -595,6 +680,12 @@ def temp_checkout(request_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        ok, err_resp, err_code = check_request_site_authorization(cursor, request_id, request)
+        if not ok:
+            conn.close()
+            return err_resp, err_code
+
         cursor.execute("UPDATE visitor_requests SET is_temp_out = TRUE, temp_out_time = NOW(), temp_in_time = NULL WHERE request_id = %s", (request_id,))
         conn.commit()
         conn.close()
@@ -607,6 +698,12 @@ def temp_checkin(request_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        ok, err_resp, err_code = check_request_site_authorization(cursor, request_id, request)
+        if not ok:
+            conn.close()
+            return err_resp, err_code
+
         cursor.execute("UPDATE visitor_requests SET is_temp_out = FALSE, temp_in_time = NOW() WHERE request_id = %s", (request_id,))
         conn.commit()
         conn.close()
@@ -627,7 +724,10 @@ def search_visitors():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    filter_sql, params = build_security_site_filter(request)
+    params_list = [f"%{query}%"] + list(params)
+
+    cursor.execute(f"""
         SELECT
         vr.request_id,
         v.visitor_name,
@@ -639,7 +739,8 @@ def search_visitors():
         FROM visitor_requests vr
         JOIN visitors v ON vr.visitor_id = v.visitor_id
         WHERE LOWER(v.visitor_name) LIKE LOWER(%s)
-    """, (f"%{query}%",))
+        AND {filter_sql}
+    """, tuple(params_list))
 
     rows = cursor.fetchall()
 
@@ -664,6 +765,7 @@ def search_visitors():
 
     conn.close()
     return jsonify(visitors)
+
 
 
 # ---------------------------------------------------

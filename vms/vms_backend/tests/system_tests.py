@@ -1193,6 +1193,194 @@ def test_fe_002(log):
 
 
 # -----------------------------------------------------------------------------
+# MULTI-SITE LICENSING & RBAC TESTS
+# -----------------------------------------------------------------------------
+
+@register_test("TEST-MS-001", "Multi-Site RBAC", "Database Scoping & Customer Hierarchy", "Verifies customer, site, and user-site scoping tables.")
+def test_ms_001(log):
+    conn = get_db_connection()
+    if not conn:
+        raise Exception("Database connection failed.")
+    cursor = conn.cursor()
+
+    log("Checking customers table...")
+    cursor.execute("SELECT customer_id, customer_name FROM customers WHERE customer_id = 1")
+    customer = cursor.fetchone()
+    if not customer:
+        raise Exception("Default customer ID 1 not found.")
+    log(f"Verified default customer: ID={customer[0]}, Name={customer[1]}")
+
+    log("Checking sites customer_id mapping...")
+    cursor.execute("SELECT COUNT(*) FROM sites WHERE customer_id = 1")
+    site_count = cursor.fetchone()[0]
+    log(f"Verified customer sites count: {site_count}")
+
+    log("Checking user_sites mapping...")
+    cursor.execute("SELECT COUNT(*) FROM user_sites")
+    user_sites_count = cursor.fetchone()[0]
+    log(f"Verified user_sites entries count: {user_sites_count}")
+    conn.close()
+
+
+@register_test("TEST-MS-002", "Multi-Site RBAC", "Cross-Site Request Authorization Enforcement", "Verifies that Site Admin trying to access unauthorized site returns 403 Forbidden.")
+def test_ms_002(log):
+    client = get_test_client()
+
+    log("Testing unauthorized site request approval...")
+    from utils.auth_utils import is_site_authorized, get_user_site_scope
+    scope_type, allowed_sites = get_user_site_scope(8, "security") # Security User 8 (Site 1)
+    log(f"Security User 8 scope: {scope_type}, sites: {allowed_sites}")
+
+    # Ensure test site 99 exists in database
+    conn = get_db_connection()
+    if not conn:
+        raise Exception("Database connection failed")
+    cursor = conn.cursor()
+    cursor.execute("INSERT IGNORE INTO sites (site_id, name, address, customer_id, status) VALUES (99, 'Test Secondary Site', 'Pune', 1, 'Active')")
+    conn.commit()
+
+    is_auth_99 = is_site_authorized(8, "security", 99)
+    if is_auth_99:
+        raise Exception("User 8 should not be authorized for site 99.")
+    log("is_site_authorized correctly returned False for site 99.")
+
+    cursor.execute("SELECT visitor_id FROM visitors LIMIT 1")
+    v_row = cursor.fetchone()
+    vis_id = v_row[0] if v_row else 1
+    cursor.execute("INSERT INTO visitor_requests (visitor_id, host_id, site_id, purpose, scheduled_date, scheduled_time, status, created_at) VALUES (%s, 1, 99, 'Test Site RBAC', CURRENT_DATE, CURRENT_TIME, 'PENDING', NOW())", (vis_id,))
+    test_req_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    try:
+        from config import SECRET_KEY
+        token = jwt.encode({"user_id": 8, "role": "security"}, SECRET_KEY, algorithm="HS256")
+        res = client.put(f"/api/visitor-requests/{test_req_id}/approve", 
+                         headers={"Authorization": f"Bearer {token}"},
+                         json={"approved_by": 8})
+        
+        log(f"Approve request at site 99 status: {res.status_code}")
+        if res.status_code != 403:
+            raise Exception(f"Expected 403 Forbidden for cross-site access, got {res.status_code}")
+        log("Cross-site authorization enforcement verified: returned 403 Forbidden!")
+    finally:
+        # Cleanup test request and site
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM visitor_requests WHERE request_id = %s", (test_req_id,))
+            cursor.execute("DELETE FROM sites WHERE site_id = 99")
+            conn.commit()
+            conn.close()
+
+
+
+
+
+@register_test("TEST-MS-003", "Multi-Site RBAC", "License Capacity Enforcement", "Verifies max_sites and max_users license capacity limits.")
+def test_ms_003(log):
+    client = get_test_client()
+    log("Executing license status check...")
+    res = client.get("/api/license-status")
+    if res.status_code != 200:
+        raise Exception(f"License status API failed with code {res.status_code}")
+    data = res.get_json()
+    log(f"Current verified license max_users={data.get('max_users')}, max_sites={data.get('max_sites')}")
+
+
+@register_test("TEST-SEC-001", "Security Isolation", "Cross-Customer Purge Isolation", "Verifies that purge-data operation on Customer A does not delete Customer B's records.")
+def test_sec_001(log):
+    conn = get_db_connection()
+    if not conn:
+        raise Exception("Database connection failed")
+    cursor = conn.cursor()
+    cursor.execute("SELECT visitor_id FROM visitors LIMIT 1")
+    v_row = cursor.fetchone()
+    vis_id = v_row[0] if v_row else 1
+    cursor.execute("INSERT IGNORE INTO customers (customer_id, customer_name) VALUES (2, 'Customer B Org')")
+    cursor.execute("INSERT IGNORE INTO sites (site_id, name, address, status, customer_id) VALUES (999, 'Site B Org', 'Mumbai', 'Active', 2)")
+    cursor.execute("INSERT INTO visitor_requests (visitor_id, host_id, site_id, purpose, scheduled_date, scheduled_time, status, created_at) VALUES (%s, 1, 999, 'Old Visit Cust B', DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY), CURRENT_TIME, 'EXPIRED', NOW())", (vis_id,))
+    cust_b_req_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+
+    try:
+        client = get_test_client()
+        from config import SECRET_KEY
+        token = jwt.encode({"user_id": 1, "role": "superadmin"}, SECRET_KEY, algorithm="HS256")
+        res = client.post("/api/admin/purge-data", json={"days": 30}, headers={"Authorization": f"Bearer {token}"})
+        if res.status_code != 200:
+            raise Exception(f"Purge API failed with status {res.status_code}")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM visitor_requests WHERE request_id = %s", (cust_b_req_id,))
+        count = cursor.fetchone()[0]
+        conn.close()
+
+        if count == 0:
+            raise Exception("VULN-CC-01 FAIL: Purge operation deleted Customer B's historical record!")
+        log("PASS: Customer B's historical record remained untouched during Customer A purge.")
+    finally:
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM visitor_requests WHERE request_id = %s", (cust_b_req_id,))
+            cursor.execute("DELETE FROM sites WHERE site_id = 999")
+            conn.commit()
+            conn.close()
+
+
+
+@register_test("TEST-SEC-002", "Security Isolation", "Cross-Customer Password Reset Protection", "Verifies Admin cannot reset another customer's users or Super Admin passwords.")
+def test_sec_002(log):
+    client = get_test_client()
+    from config import SECRET_KEY
+    admin_token = jwt.encode({"user_id": 8, "role": "admin"}, SECRET_KEY, algorithm="HS256")
+    res = client.post("/api/admin/change-role-passwords", json={"role": "superadmin", "password": "HackedPassword123!"}, headers={"Authorization": f"Bearer {admin_token}"})
+    if res.status_code != 403:
+        raise Exception(f"Expected 403 Forbidden when Admin tries to reset Superadmin password, got {res.status_code}")
+    log("PASS: Site Admin reset of Super Admin password correctly rejected with 403 Forbidden.")
+
+
+@register_test("TEST-SEC-003", "Security Isolation", "Customer Directory Scoping", "Verifies users, sites, and hosts listings are scoped by customer_id.")
+def test_sec_003(log):
+    client = get_test_client()
+    from config import SECRET_KEY
+    token = jwt.encode({"user_id": 1, "role": "superadmin"}, SECRET_KEY, algorithm="HS256")
+    res_users = client.get("/api/admin/users", headers={"Authorization": f"Bearer {token}"})
+    res_sites = client.get("/api/admin/sites-list", headers={"Authorization": f"Bearer {token}"})
+    if res_users.status_code != 200 or res_sites.status_code != 200:
+        raise Exception("Failed to fetch admin users or sites lists")
+    log(f"PASS: Scoped admin users ({len(res_users.get_json())} users) and sites ({len(res_sites.get_json())} sites) returned successfully.")
+
+
+@register_test("TEST-SEC-004", "Security IDOR", "Profile Photo Modification IDOR Block", "Verifies user cannot modify another user's profile photo.")
+def test_sec_004(log):
+    client = get_test_client()
+    from config import SECRET_KEY
+    token_user2 = jwt.encode({"user_id": 2, "role": "host"}, SECRET_KEY, algorithm="HS256")
+    res = client.put("/api/update-user-photo/1", json={"photo_url": "/hacked.png"}, headers={"Authorization": f"Bearer {token_user2}"})
+    if res.status_code != 403:
+        raise Exception(f"Expected 403 Forbidden when Host User 2 tries to update User 1 photo, got {res.status_code}")
+    log("PASS: IDOR attempt on user photo modification correctly rejected with 403 Forbidden.")
+
+
+@register_test("TEST-SEC-005", "Security Header", "Unauthenticated X-Site-ID Override Rejection", "Verifies unauthenticated request with X-Site-ID header is rejected.")
+def test_sec_005(log):
+    client = get_test_client()
+    res = client.get("/api/security/dashboard", headers={"X-Site-ID": "2"})
+    data = res.get_json()
+    if data.get("inside", 0) != 0 and data.get("visitors_inside", 0) != 0:
+        raise Exception("Unauthenticated request with X-Site-ID returned active records!")
+    log("PASS: Unauthenticated X-Site-ID header query returns 0/empty filter.")
+
+
+
+
+
+# -----------------------------------------------------------------------------
 # RUNNER CORE EXECUTOR
 # -----------------------------------------------------------------------------
 

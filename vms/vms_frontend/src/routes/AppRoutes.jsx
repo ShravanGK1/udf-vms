@@ -122,7 +122,7 @@ export default function AppRoutes() {
         </Route>
 
         {/* Role-Specific Layout Routes */}
-        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+        <Route element={<ProtectedRoute allowedRoles={["admin", "superadmin"]} />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
           </Route>

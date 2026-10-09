@@ -3,6 +3,24 @@ CREATE DATABASE IF NOT EXISTS vms;
 USE vms;
 SET FOREIGN_KEY_CHECKS=0;
 
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL UNIQUE,
+    code VARCHAR(50) DEFAULT 'MAIN',
+    status VARCHAR(50) DEFAULT 'Active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sites (
+    site_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    customer_id INT DEFAULT 1,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE
+);
+
 CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE,
@@ -12,7 +30,17 @@ CREATE TABLE users (
     department VARCHAR(100),
     status VARCHAR(20) DEFAULT 'Active',
     profile_photo VARCHAR(255),
-    remote_login_token VARCHAR(512) DEFAULT NULL
+    remote_login_token VARCHAR(512) DEFAULT NULL,
+    customer_id INT DEFAULT 1,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_sites (
+    user_id INT NOT NULL,
+    site_id INT NOT NULL,
+    PRIMARY KEY (user_id, site_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES sites(site_id) ON DELETE CASCADE
 );
 
 CREATE TABLE visitors (
@@ -80,10 +108,12 @@ CREATE TABLE visitor_requests (
     signature_path VARCHAR(255) DEFAULT NULL,
     checkout_signature_path VARCHAR(255) DEFAULT NULL,
     checked_in_by INT DEFAULT NULL,
+    site_id INT DEFAULT NULL,
     FOREIGN KEY (visitor_id) REFERENCES visitors(visitor_id) ON DELETE CASCADE,
     FOREIGN KEY (host_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (checked_in_by) REFERENCES users(user_id) ON DELETE SET NULL
+    FOREIGN KEY (checked_in_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (site_id) REFERENCES sites(site_id) ON DELETE SET NULL
 );
 
 INSERT INTO users (user_id, email, password, role, name, department, status, profile_photo) VALUES ('6', 'onkarsavaratkar@gmail.com', 'Onkar@123', 'security', 'Onkar Savaratkar', 'Security', 'Active', 'http://localhost:5000/uploads_users/1773921436_Onkar.jfif');

@@ -48,17 +48,55 @@ def get_users():
     c_row = cursor.fetchone()
     cust_id = c_row[0] if (c_row and c_row[0]) else 1
 
-    cursor.execute("""
-        SELECT user_id, name, email, role, department, status, profile_photo
-        FROM users
-        WHERE customer_id = %s
-        ORDER BY user_id DESC
-    """, (cust_id,))
+    req_site_id = request.headers.get("X-Site-ID") or request.args.get("site_id")
+
+    if role not in ['superadmin', 'global_admin']:
+        scope_type, site_ids = get_user_site_scope(caller_id, role)
+        if req_site_id and req_site_id != "all":
+            try:
+                sid = int(req_site_id)
+                target_ids = [sid] if sid in site_ids else [-1]
+            except (ValueError, TypeError):
+                target_ids = site_ids
+        else:
+            target_ids = site_ids
+
+        format_strings = ','.join(['%s'] * len(target_ids))
+        cursor.execute(f"""
+            SELECT DISTINCT u.user_id, u.name, u.email, u.role, u.department, u.status, u.profile_photo
+            FROM users u
+            JOIN user_sites us ON u.user_id = us.user_id
+            WHERE u.customer_id = %s AND us.site_id IN ({format_strings})
+            ORDER BY u.user_id DESC
+        """, (cust_id, *target_ids))
+    elif req_site_id and req_site_id != "all":
+        try:
+            sid = int(req_site_id)
+            cursor.execute("""
+                SELECT DISTINCT u.user_id, u.name, u.email, u.role, u.department, u.status, u.profile_photo
+                FROM users u
+                JOIN user_sites us ON u.user_id = us.user_id
+                WHERE u.customer_id = %s AND us.site_id = %s
+                ORDER BY u.user_id DESC
+            """, (cust_id, sid))
+        except (ValueError, TypeError):
+            cursor.execute("""
+                SELECT user_id, name, email, role, department, status, profile_photo
+                FROM users
+                WHERE customer_id = %s
+                ORDER BY user_id DESC
+            """, (cust_id,))
+    else:
+        cursor.execute("""
+            SELECT user_id, name, email, role, department, status, profile_photo
+            FROM users
+            WHERE customer_id = %s
+            ORDER BY user_id DESC
+        """, (cust_id,))
 
     users = cursor.fetchall()
 
     result = []
-
     for u in users:
         scope_type, site_ids = get_user_site_scope(u[0], u[3])
         user_sites = get_user_authorized_sites(u[0], u[3])
@@ -80,123 +118,232 @@ def get_users():
     return jsonify(result)
 
 
-
 # ---------------- SITES ----------------
 @admin_bp.route("/admin/sites", methods=["GET"])
 def get_sites():
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id:
+        return jsonify([]), 401
+
     conn = get_db_connection()
-    cursor = conn.cursor()
+    if not conn:
+        return jsonify([])
 
-    # Fetch unique units already used in the visitors table
-    cursor.execute("""
-        SELECT unit, COUNT(*)
-        FROM visitors
-        WHERE unit IS NOT NULL AND unit != ''
-        GROUP BY unit
-        ORDER BY COUNT(*) DESC
-    """)
+    try:
+        cursor = conn.cursor()
+        if caller_role in ['superadmin', 'global_admin']:
+            cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+            c_row = cursor.fetchone()
+            cust_id = c_row[0] if (c_row and c_row[0]) else 1
+            cursor.execute("SELECT site_id, name, address, status FROM sites WHERE customer_id = %s ORDER BY site_id ASC", (cust_id,))
+        else:
+            scope_type, site_ids = get_user_site_scope(caller_id, caller_role)
+            format_strings = ','.join(['%s'] * len(site_ids))
+            cursor.execute(f"SELECT site_id, name, address, status FROM sites WHERE site_id IN ({format_strings}) ORDER BY site_id ASC", tuple(site_ids))
 
-    rows = cursor.fetchall()
-    result = []
-
-    # Add units from the database
-    for r in rows:
-        site_name = r[0]
-        result.append({
-            "name": site_name,          
-            "address": site_name,       
-            "visitors": r[1],      
-            "status": "Active"     
-        })
-
-    cursor.close()
-    conn.close()
-
-    return jsonify(result)
+        rows = cursor.fetchall()
+        result = []
+        for r in rows:
+            cursor.execute("""
+                SELECT COUNT(*) FROM visitor_requests 
+                WHERE site_id = %s AND status = 'APPROVED' AND check_in_time IS NOT NULL AND check_out_time IS NULL
+            """, (r[0],))
+            v_cnt = cursor.fetchone()[0]
+            result.append({
+                "id": r[0],
+                "site_id": r[0],
+                "name": r[1],
+                "address": r[2],
+                "visitors": v_cnt,
+                "status": r[3]
+            })
+        return jsonify(result)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ---------------- DASHBOARD STATS ----------------
 @admin_bp.route("/admin/stats", methods=["GET"])
 def dashboard_stats():
+    caller_id, caller_role = get_current_user_from_request(request)
+    req_site_id = request.headers.get("X-Site-ID") or request.args.get("site_id")
 
     conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM users")
-    total_users = cursor.fetchone()[0]
+    try:
+        scope_type, allowed_site_ids = get_user_site_scope(caller_id, caller_role) if caller_id else ("ALL", [])
 
-    cursor.execute("SELECT COUNT(*) FROM visitors WHERE status='active'")
-    active_visitors = cursor.fetchone()[0]
+        target_site_ids = None
+        if req_site_id and req_site_id != "all":
+            try:
+                sid = int(req_site_id)
+                if caller_role in ['superadmin', 'global_admin'] or sid in allowed_site_ids:
+                    target_site_ids = [sid]
+                else:
+                    target_site_ids = [-1]
+            except (ValueError, TypeError):
+                pass
+        elif caller_role not in ['superadmin', 'global_admin'] and scope_type == "SCOPED":
+            target_site_ids = allowed_site_ids
 
-    cursor.execute("SELECT COUNT(*) FROM visitor_requests WHERE status='PENDING'")
-    pending = cursor.fetchone()[0]
+        # 1. Users count
+        if target_site_ids:
+            fmt = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"SELECT COUNT(DISTINCT user_id) FROM user_sites WHERE site_id IN ({fmt})", tuple(target_site_ids))
+            total_users = cursor.fetchone()[0]
+        else:
+            cursor.execute("SELECT COUNT(*) FROM users")
+            total_users = cursor.fetchone()[0]
 
-    stats = {
-        "users": total_users,
-        "visitors": active_visitors,
-        "pending": pending,
-        "alerts": 3
-    }
+        # 2. Active visitors count (Approved, Checked-in, Not Checked-out)
+        if target_site_ids:
+            fmt = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM visitor_requests 
+                WHERE site_id IN ({fmt}) 
+                AND status = 'APPROVED' 
+                AND check_in_time IS NOT NULL 
+                AND check_out_time IS NULL
+            """, tuple(target_site_ids))
+            active_visitors = cursor.fetchone()[0]
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) FROM visitor_requests 
+                WHERE status = 'APPROVED' 
+                AND check_in_time IS NOT NULL 
+                AND check_out_time IS NULL
+            """)
+            active_visitors = cursor.fetchone()[0]
 
-    cursor.close()
-    conn.close()
+        # 3. Pending requests
+        if target_site_ids:
+            fmt = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"SELECT COUNT(*) FROM visitor_requests WHERE site_id IN ({fmt}) AND status = 'PENDING'", tuple(target_site_ids))
+            pending = cursor.fetchone()[0]
+        else:
+            cursor.execute("SELECT COUNT(*) FROM visitor_requests WHERE status = 'PENDING'")
+            pending = cursor.fetchone()[0]
 
-    return jsonify(stats)
+        # 4. Security alerts (e.g. overstay >= 8 hours)
+        if target_site_ids:
+            fmt = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM visitor_requests 
+                WHERE site_id IN ({fmt})
+                AND status = 'APPROVED'
+                AND check_in_time IS NOT NULL
+                AND check_out_time IS NULL
+                AND TIMESTAMPDIFF(HOUR, check_in_time, NOW()) >= 8
+            """, tuple(target_site_ids))
+            alerts = cursor.fetchone()[0]
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) FROM visitor_requests 
+                WHERE status = 'APPROVED'
+                AND check_in_time IS NOT NULL
+                AND check_out_time IS NULL
+                AND TIMESTAMPDIFF(HOUR, check_in_time, NOW()) >= 8
+            """)
+            alerts = cursor.fetchone()[0]
+
+        stats = {
+            "users": total_users,
+            "visitors": active_visitors,
+            "pending": pending,
+            "alerts": alerts
+        }
+        return jsonify(stats)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @admin_bp.route("/admin/charts", methods=["GET"])
 def admin_charts():
+    caller_id, caller_role = get_current_user_from_request(request)
+    req_site_id = request.headers.get("X-Site-ID") or request.args.get("site_id")
 
     conn = get_db_connection()
+    if not conn:
+        return jsonify({"visitData": [], "purposeData": []}), 500
     cursor = conn.cursor()
 
-    # WEEKLY VISITORS
-    cursor.execute("""
-        SELECT
-            DATE_FORMAT(scheduled_date, '%a') AS day,
-            COUNT(*)
-        FROM visitor_requests
-        WHERE scheduled_date >= CURRENT_DATE - INTERVAL 6 DAY
-        GROUP BY day
-        ORDER BY MIN(scheduled_date)
-    """)
+    try:
+        scope_type, allowed_site_ids = get_user_site_scope(caller_id, caller_role) if caller_id else ("ALL", [])
+        target_site_ids = None
+        if req_site_id and req_site_id != "all":
+            try:
+                sid = int(req_site_id)
+                if caller_role in ['superadmin', 'global_admin'] or sid in allowed_site_ids:
+                    target_site_ids = [sid]
+                else:
+                    target_site_ids = [-1]
+            except (ValueError, TypeError):
+                pass
+        elif caller_role not in ['superadmin', 'global_admin'] and scope_type == "SCOPED":
+            target_site_ids = allowed_site_ids
 
-    weekly = cursor.fetchall()
+        # WEEKLY VISITORS
+        if target_site_ids:
+            fmt = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"""
+                SELECT
+                    SUBSTRING(DAYNAME(scheduled_date), 1, 3) AS day,
+                    COUNT(*)
+                FROM visitor_requests
+                WHERE scheduled_date >= CURRENT_DATE - INTERVAL 6 DAY
+                AND site_id IN ({fmt})
+                GROUP BY day
+                ORDER BY MIN(scheduled_date)
+            """, tuple(target_site_ids))
+        else:
+            cursor.execute("""
+                SELECT
+                    SUBSTRING(DAYNAME(scheduled_date), 1, 3) AS day,
+                    COUNT(*)
+                FROM visitor_requests
+                WHERE scheduled_date >= CURRENT_DATE - INTERVAL 6 DAY
+                GROUP BY day
+                ORDER BY MIN(scheduled_date)
+            """)
 
-    visitData = []
+        weekly = cursor.fetchall()
+        visitData = [{"day": w[0], "visitors": w[1]} for w in weekly]
 
-    for w in weekly:
-        visitData.append({
-            "day": w[0],
-            "visitors": w[1]
+        # VISIT PURPOSE
+        if target_site_ids:
+            fmt = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"""
+                SELECT purpose, COUNT(*)
+                FROM visitor_requests
+                WHERE site_id IN ({fmt})
+                GROUP BY purpose
+            """, tuple(target_site_ids))
+        else:
+            cursor.execute("""
+                SELECT purpose, COUNT(*)
+                FROM visitor_requests
+                GROUP BY purpose
+            """)
+
+        purposes = cursor.fetchall()
+        colors = ["#2563eb", "#7c3aed", "#0891b2", "#f59e0b"]
+        purposeData = [
+            {"name": p[0], "value": p[1], "color": colors[i % len(colors)]}
+            for i, p in enumerate(purposes)
+        ]
+
+        return jsonify({
+            "visitData": visitData,
+            "purposeData": purposeData
         })
-
-    # VISIT PURPOSE
-    cursor.execute("""
-        SELECT purpose, COUNT(*)
-        FROM visitor_requests
-        GROUP BY purpose
-    """)
-
-    purposes = cursor.fetchall()
-
-    colors = ["#2563eb", "#7c3aed", "#0891b2", "#f59e0b"]
-
-    purposeData = []
-
-    for i, p in enumerate(purposes):
-        purposeData.append({
-            "name": p[0],
-            "value": p[1],
-            "color": colors[i % len(colors)]
-        })
-
-    conn.close()
-
-    return jsonify({
-        "visitData": visitData,
-        "purposeData": purposeData
-    })
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @admin_bp.route("/upload-photo", methods=["POST"])
@@ -349,9 +496,17 @@ def add_user():
             elif isinstance(site_ids_input, str):
                 target_site_ids = [int(s.strip()) for s in site_ids_input.split(",") if s.strip().isdigit()]
         if not target_site_ids:
-            cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s LIMIT 1", (caller_cust_id,))
-            s_row = cursor.fetchone()
-            target_site_ids = [s_row[0]] if s_row else [1]
+            if caller_role not in ['superadmin', 'global_admin']:
+                scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
+                active_s = request.headers.get("X-Site-ID")
+                if active_s and active_s.isdigit() and int(active_s) in caller_sites:
+                    target_site_ids = [int(active_s)]
+                else:
+                    target_site_ids = [caller_sites[0]] if caller_sites else [1]
+            else:
+                cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s LIMIT 1", (caller_cust_id,))
+                s_row = cursor.fetchone()
+                target_site_ids = [s_row[0]] if s_row else [1]
 
         for s_id in target_site_ids:
             cursor.execute("INSERT IGNORE INTO user_sites (user_id, site_id) VALUES (%s, %s)", (user_id, s_id))
@@ -540,19 +695,33 @@ def get_sites_list():
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
-        c_row = cursor.fetchone()
-        cust_id = c_row[0] if (c_row and c_row[0]) else 1
+        if caller_role in ['superadmin', 'global_admin']:
+            cursor = conn.cursor()
+            cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+            c_row = cursor.fetchone()
+            cust_id = c_row[0] if (c_row and c_row[0]) else 1
 
-        cursor.execute("SELECT site_id, name, address, status FROM sites WHERE customer_id = %s ORDER BY site_id DESC", (cust_id,))
-        rows = cursor.fetchall()
-        result = [{"id": r[0], "name": r[1], "address": r[2], "status": r[3]} for r in rows]
-        return jsonify(result), 200
+            cursor.execute("SELECT site_id, name, address, status FROM sites WHERE customer_id = %s ORDER BY site_id DESC", (cust_id,))
+            rows = cursor.fetchall()
+            cursor.close()
+            result = [{"id": r[0], "site_id": r[0], "name": r[1], "address": r[2], "status": r[3]} for r in rows]
+            return jsonify(result), 200
+        else:
+            auth_sites = get_user_authorized_sites(caller_id, caller_role)
+            result = [
+                {
+                    "id": s["site_id"],
+                    "site_id": s["site_id"],
+                    "name": s["name"],
+                    "address": s.get("address", ""),
+                    "status": s.get("status", "Active")
+                }
+                for s in auth_sites
+            ]
+            return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
-        cursor.close()
         conn.close()
 
 @admin_bp.route("/admin/sites-list", methods=["POST"])

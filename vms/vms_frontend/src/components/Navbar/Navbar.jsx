@@ -3,7 +3,7 @@ import companyLogo from "../../assets/logo.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../auth/authSlice";
-import { Shield, User, Settings, LogOut, ChevronDown, Bell, CalendarClock, X, Sun, Moon, BookOpen, ShieldAlert, RefreshCw } from "lucide-react";
+import { Shield, User, Settings, LogOut, ChevronDown, Bell, CalendarClock, X, Sun, Moon, BookOpen, ShieldAlert, RefreshCw, Building } from "lucide-react";
 import apiClient from "../../app/apiClient";
 import SiteSelector from "../common/SiteSelector";
 import "./Navbar.css";

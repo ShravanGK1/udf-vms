@@ -1,46 +1,47 @@
 .site-selector-pill {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg-hover, rgba(99, 102, 241, 0.08));
-  border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 8px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   position: relative;
   transition: all 0.2s ease-in-out;
+  backdrop-filter: blur(8px);
 }
 
 .site-selector-pill:hover {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .site-icon {
-  color: #6366f1;
+  color: #ffffff !important;
   flex-shrink: 0;
 }
 
 .site-select-dropdown {
   background: transparent;
   border: none;
-  color: var(--text-primary, #1e293b);
+  color: #ffffff;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   outline: none;
-  padding-right: 18px;
+  padding-right: 20px;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  max-width: 220px;
+  max-width: 240px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .site-select-dropdown option {
-  background: var(--bg-card, #ffffff);
-  color: var(--text-primary, #1e293b);
+  background: #ffffff;
+  color: #0f172a;
   font-weight: 500;
   padding: 8px;
 }
@@ -49,17 +50,29 @@
   position: absolute;
   right: 8px;
   pointer-events: none;
-  color: #6366f1;
+  color: #ffffff !important;
 }
 
 .site-selector-pill.single-site {
-  padding: 4px 12px;
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.25);
-  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.site-selector-pill.single-site:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 .site-name-single {
   font-size: 0.85rem;
   font-weight: 600;
+  color: #ffffff !important;
+  letter-spacing: 0.01em;
 }
+

@@ -1,0 +1,84 @@
+# Caddyfile - Production Reverse Proxy & Static Asset Server
+# Visitor Management System (VMS) On-Premise Distribution
+# Provides automatic HTTPS for Secure Context webcam access on LAN
+{
+	# Global options
+	admin off
+	auto_https disable_redirects
+	log {
+		output file "C:/ProgramData/VMS/logs/caddy.log" {
+			roll_size 10mb
+			roll_keep 5
+		}
+		level INFO
+	}
+}
+
+# 1. HTTP Listener (Port 8089)
+:8089 {
+	# Reverse proxy backend API
+	handle /api/* {
+		reverse_proxy 127.0.0.1:5000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto http
+		}
+	}
+
+	# Reverse proxy visitor photos and uploads
+	handle /uploads/* {
+		reverse_proxy 127.0.0.1:5000
+	}
+
+	handle /uploads_users/* {
+		reverse_proxy 127.0.0.1:5000
+	}
+
+	# Serve built static React frontend assets with SPA fallback
+	handle {
+		root * "C:/Program Files/VMS/frontend/dist"
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		X-XSS-Protection "1; mode=block"
+	}
+}
+
+:8009, localhost:8009, 127.0.0.1:8009 {
+	tls internal
+
+	# Reverse proxy backend API
+	handle /api/* {
+		reverse_proxy 127.0.0.1:5000 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	# Reverse proxy visitor photos and uploads
+	handle /uploads/* {
+		reverse_proxy 127.0.0.1:5000
+	}
+
+	handle /uploads_users/* {
+		reverse_proxy 127.0.0.1:5000
+	}
+
+	# Serve built static React frontend assets with SPA fallback
+	handle {
+		root * "C:/Program Files/VMS/frontend/dist"
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}

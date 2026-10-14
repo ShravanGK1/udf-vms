@@ -1,0 +1,20 @@
+<service>
+  <id>VMS-Database</id>
+  <name>VMS Database Service</name>
+  <description>Provides the local, secure database engine for the Visitor Management System (VMS).</description>
+  <executable>%BASE%\..\..\bin\database\bin\mysqld.exe</executable>
+  <arguments>--defaults-file="%BASE%\..\..\config\my.ini" --standalone</arguments>
+  <workingdirectory>%BASE%\..\..\bin\database</workingdirectory>
+  <logpath>C:\ProgramData\VMS\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+  <stopargument>--defaults-file="%BASE%\..\..\config\my.ini" -u root shutdown</stopargument>
+  <stopexecutable>%BASE%\..\..\bin\database\bin\mysqladmin.exe</stopexecutable>
+  <env name="VMS_INSTALL_DIR" value="%BASE%\..\.."/>
+  <onfailure action="restart" delay="5 sec"/>
+  <onfailure action="restart" delay="15 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <startmode>Automatic</startmode>
+</service>

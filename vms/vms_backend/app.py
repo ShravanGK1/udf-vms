@@ -13,9 +13,10 @@ from routes.security_routes import security_bp
 from routes.admin_routes import admin_bp
 from utils.license_verifier import verify_system_license
 from routes.test_runner_routes import test_runner_bp
+from routes.setup_routes import setup_bp
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://192.168.1.152:5173", "http://localhost:5174"]}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://192.168.1.152:5173", "http://localhost:5174", "http://localhost:8089", "https://localhost:8009", "http://127.0.0.1:8089", "https://127.0.0.1:8009"]}}, supports_credentials=True)
 
 BYPASS_ROUTES = [
     "/",
@@ -27,7 +28,9 @@ BYPASS_ROUTES = [
     "/api/auth/register",
     "/api/auth/poll-remote-login",
     "/api/active-visitors-count",
-    "/api/hosts"
+    "/api/hosts",
+    "/api/setup/status",
+    "/api/setup/initialize"
 ]
 
 @app.before_request
@@ -237,6 +240,7 @@ app.register_blueprint(security_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(admin_bp, url_prefix="/api")
 app.register_blueprint(test_runner_bp)
+app.register_blueprint(setup_bp)
 
 # Run database password migration for existing records on startup
 from utils.password_utils import migrate_existing_passwords

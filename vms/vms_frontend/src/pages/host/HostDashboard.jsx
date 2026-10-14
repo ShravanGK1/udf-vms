@@ -388,7 +388,7 @@ export default function HostDashboard() {
                           <div className="visitor-avatar">
                             {req.photo ? (
                               <img 
-                                src={`http://localhost:5000/${req.photo}`} 
+                                src={`/${req.photo}`} 
                                 alt="avatar" 
                                 style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                                 onError={(e) => { e.target.style.display = 'none'; }}
@@ -493,7 +493,7 @@ export default function HostDashboard() {
                               <div className="visitor-avatar" style={{ width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}>
                                 {visit.photo ? (
                                   <img 
-                                    src={`http://localhost:5000/${visit.photo}`} 
+                                    src={`/${visit.photo}`} 
                                     alt="avatar" 
                                     style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                                     onError={(e) => { e.target.style.display = 'none'; }}
@@ -602,7 +602,7 @@ export default function HostDashboard() {
                               <div className="visitor-avatar" style={{ width: '36px', height: '36px', fontSize: '0.8rem', flexShrink: 0 }}>
                                 {visit.photo ? (
                                   <img 
-                                    src={`http://localhost:5000/${visit.photo}`} 
+                                    src={`/${visit.photo}`} 
                                     alt="avatar" 
                                     style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                                     onError={(e) => { e.target.style.display = 'none'; }}
@@ -709,7 +709,7 @@ export default function HostDashboard() {
               <div className="vh-avatar">
                 {hoveredVisitor.photo ? (
                   <img
-                    src={`http://localhost:5000/${hoveredVisitor.photo}`}
+                    src={`/${hoveredVisitor.photo}`}
                     alt="visitor"
                     onError={(e) => {
                       e.target.style.display = 'none';

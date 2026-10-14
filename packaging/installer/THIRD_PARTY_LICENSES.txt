@@ -1,0 +1,65 @@
+================================================================================
+VISITOR MANAGEMENT SYSTEM (VMS) - THIRD-PARTY SOFTWARE LICENSES & NOTICES
+================================================================================
+
+This product bundles the following open-source and third-party software components.
+All components are redistributed in accordance with their respective licensing terms.
+
+--------------------------------------------------------------------------------
+1. MariaDB Community Server (Portable Distribution)
+License: GNU General Public License, version 2 (GPLv2)
+Copyright (c) MariaDB Corporation Ab and its affiliates.
+Redistribution Notice:
+MariaDB is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software Foundation;
+version 2 of the License.
+Source code for MariaDB is available at: https://github.com/MariaDB/server
+
+--------------------------------------------------------------------------------
+2. Python (Embeddable Package for Windows x86-64)
+License: Python Software Foundation License Version 2 (PSF)
+Copyright (c) 2001-2024 Python Software Foundation. All rights reserved.
+Redistribution Notice:
+PSF grants Licensee a nonexclusive, royalty-free license to reproduce, prepare
+derivative works, distribute, and perform Python solely in accordance with the terms
+of the PSF License Agreement.
+Full license text: https://docs.python.org/3/license.html
+
+--------------------------------------------------------------------------------
+3. Caddy Web Server
+License: Apache License, Version 2.0
+Copyright (c) 2015-present Matthew Holt and The Caddy Authors
+Redistribution Notice:
+Licensed under the Apache License, Version 2.0. You may obtain a copy of the License
+at http://www.apache.org/licenses/LICENSE-2.0.
+
+--------------------------------------------------------------------------------
+4. WinSW (Windows Service Wrapper)
+License: The MIT License (MIT)
+Copyright (c) 2008-present Kohsuke Kawaguchi, CloudBees, Inc., Sun Microsystems,
+and other contributors.
+Full license text: https://github.com/winsw/winsw/blob/v3/LICENSE.txt
+
+--------------------------------------------------------------------------------
+5. Waitress WSGI Server
+License: Zope Public License (ZPL) Version 2.1
+Copyright (c) 2011-present Zope Foundation and Contributors.
+Full license text: https://github.com/Pylons/waitress/blob/master/LICENSE.txt
+
+--------------------------------------------------------------------------------
+6. Frontend Frameworks & Libraries
+- React 19: MIT License, Copyright (c) Meta Platforms, Inc.
+- Vite: MIT License, Copyright (c) 2019-present Evan You & Vite Contributors
+- Tailwind CSS: MIT License, Copyright (c) Tailwind Labs, Inc.
+- Lucide React: ISC License, Copyright (c) Lucide Project
+- Axios: MIT License, Copyright (c) 2014-present Matt Zabriskie
+
+--------------------------------------------------------------------------------
+7. Backend Python Packages
+- Flask, Werkzeug, Jinja2, Click, itsdangerous: BSD 3-Clause License (Pallets Projects)
+- PyMySQL: MIT License (Yutaka Matsubara & Contributors)
+- DBUtils: MIT License (Christoph Zwerschke)
+- Cryptography: Apache License 2.0 / BSD 3-Clause (Python Cryptographic Authority)
+- PyJWT: MIT License (José Padilla)
+- ReportLab: BSD-like open-source license (ReportLab Europe Ltd)
+================================================================================

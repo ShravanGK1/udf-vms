@@ -16,6 +16,7 @@ import VisitorRegistration from "../pages/VisitorRegistration/VisitorRegistratio
 import DashboardSelection from "../pages/DashboardSelection/DashboardSelection";
 import ProtectedRoute from "../routes/ProtectedRoute";
 import LicenseActivationPage from "../pages/LicenseRestricted/LicenseActivationPage";
+import SetupWizard from "../pages/Setup/SetupWizard";
 import apiClient from "../app/apiClient";
 
 const PublicRoute = ({ children }) => {
@@ -37,12 +38,29 @@ const PublicRoute = ({ children }) => {
 };
 
 export default function AppRoutes() {
+  const [setupStatus, setSetupStatus] = useState({
+    loading: true,
+    setupRequired: false
+  });
+
   const [licenseStatus, setLicenseStatus] = useState({
     loading: true,
     active: false,
     errorType: null,
     errorMessage: ""
   });
+
+  const checkSetup = async () => {
+    try {
+      const res = await apiClient.get("/setup/status");
+      const isRequired = Boolean(res.data?.setup_required);
+      setSetupStatus({ loading: false, setupRequired: isRequired });
+      return isRequired;
+    } catch (err) {
+      setSetupStatus({ loading: false, setupRequired: false });
+      return false;
+    }
+  };
 
   const checkLicense = async () => {
     try {
@@ -77,34 +95,49 @@ export default function AppRoutes() {
     }
   };
 
+  const initSystemCheck = async () => {
+    const isSetupNeeded = await checkSetup();
+    if (!isSetupNeeded) {
+      await checkLicense();
+    } else {
+      setLicenseStatus({ loading: false, active: true, errorType: null, errorMessage: "" });
+    }
+  };
+
   useEffect(() => {
-    checkLicense();
+    initSystemCheck();
   }, []);
 
-  if (licenseStatus.loading) {
+  if (setupStatus.loading || (licenseStatus.loading && !setupStatus.setupRequired)) {
     return (
       <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", justifyContent: "center", alignItems: "center", color: "#f1f5f9", fontFamily: "sans-serif" }}>
         <div style={{ textAlign: "center" }}>
           <h2>Loading VMS System...</h2>
-          <p style={{ color: "#64748b" }}>Verifying subscription signature security bounds</p>
+          <p style={{ color: "#64748b" }}>Verifying system setup and security bounds</p>
         </div>
       </div>
     );
   }
 
+  // 1. First-Run Setup Gate
+  if (setupStatus.setupRequired) {
+    return <SetupWizard onSetupComplete={() => initSystemCheck()} />;
+  }
+
+  // 2. License Activation Gate
   if (!licenseStatus.active) {
     return (
       <LicenseActivationPage
         errorType={licenseStatus.errorType}
         errorMessage={licenseStatus.errorMessage}
-        onActivated={() => checkLicense()}
+        onActivated={() => initSystemCheck()}
       />
     );
   }
 
   return (
     <Routes>
-
+      <Route path="/setup" element={setupStatus.setupRequired ? <SetupWizard onSetupComplete={() => initSystemCheck()} /> : <Navigate to="/" replace />} />
       <Route path="/" element={
         <PublicRoute>
           <AuthPage />

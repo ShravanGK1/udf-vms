@@ -476,5 +476,53 @@
             "enable_face_recognition": false,
             "auto_purge_days": 90
         }
+    },
+    {
+        "id": 1791873241,
+        "client_name": "Rohan_Test",
+        "max_users": 500,
+        "max_sites": 10,
+        "machine_uuid": "Universal",
+        "expires_at": "2027-10-13T00:00:00",
+        "created_at": "2026-10-13T00:00:00",
+        "license_key": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRfbmFtZSI6IlJvaGFuX1Rlc3QiLCJleHBpcmVzX2F0IjoiMjAyNy0xMC0xM1QwMDowMDowMCIsIm1heF91c2VycyI6NTAwLCJtYXhfc2l0ZXMiOjEwLCJidWZmZXJfZGF5cyI6OTB9.gM4GIlF4xwA9wA_GwSXkGQX7KEnSBbGgFp_8LkrvmeVt7UBZAOJTEdEREveMvpCL7p0w6g1QsFsCrb0T8j2-e1sdSjP_UFbJaCLHGaGR9z5mKdOd9rWHkKuXmOxdscvCJtktuC8fTQ9clXlAa9VcOh42IO54Fgu4Acg4zdb652XULYMxvqUA_DsFQQuysWvZcCQZkEnuZERGfYe7mVGbFbGC4frHpywH2MgSj-TxG0vXJ4sQ7QT9X9EXPezSGiUKdW_P20LU2qMxX8-iQoryo7U3vZiYqe01OpTG00f_uPh171Ymyx4nf7W8qZDiPozAeo-gUoA1b4KyTHersruPUg",
+        "will_terminate": false,
+        "terminated_early": false,
+        "buffer_days": 90,
+        "sites": [],
+        "permissions": {
+            "superadmin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "manage_licenses",
+                "system_settings",
+                "data_purging"
+            ],
+            "admin": [
+                "view_dashboard",
+                "manage_users",
+                "approve_requests",
+                "check_in_out",
+                "system_settings"
+            ],
+            "host": [
+                "view_dashboard",
+                "approve_requests"
+            ],
+            "security": [
+                "view_dashboard",
+                "check_in_out"
+            ]
+        },
+        "settings": {
+            "max_visitors": 500,
+            "session_timeout": 60,
+            "support_email": "support@rohan_test.com",
+            "enable_sms": true,
+            "enable_face_recognition": false,
+            "auto_purge_days": 90
+        }
     }
 ]

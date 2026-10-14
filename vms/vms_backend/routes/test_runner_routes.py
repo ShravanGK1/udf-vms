@@ -1,7 +1,11 @@
-# routes/test_runner_routes.py
-
 from flask import Blueprint, jsonify, Response
-from tests.system_tests import TEST_CASES, run_test_case
+
+try:
+    from tests.system_tests import TEST_CASES, run_test_case
+except ImportError:
+    TEST_CASES = []
+    def run_test_case(test_id):
+        return {"status": "SKIPPED", "message": "System tests not included in production bundle"}
 
 test_runner_bp = Blueprint("test_runner", __name__)
 

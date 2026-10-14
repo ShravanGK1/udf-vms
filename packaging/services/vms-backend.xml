@@ -1,0 +1,25 @@
+<service>
+  <id>VMS-Backend</id>
+  <name>VMS Backend Application Service</name>
+  <description>Executes the multithreaded Waitress WSGI application server for the Visitor Management System.</description>
+  <executable>%BASE%\..\..\bin\python\python.exe</executable>
+  <arguments>%BASE%\..\..\backend\run_windows.py</arguments>
+  <workingdirectory>%BASE%\..\..\backend</workingdirectory>
+  <env name="VMS_INSTALL_DIR" value="%BASE%\..\.."/>
+  <env name="VMS_DATA_DIR" value="C:\ProgramData\VMS"/>
+  <env name="VMS_LOG_DIR" value="C:\ProgramData\VMS\logs"/>
+  <env name="VMS_BACKEND_HOST" value="127.0.0.1"/>
+  <env name="VMS_BACKEND_PORT" value="5000"/>
+  <env name="DB_HOST" value="127.0.0.1"/>
+  <env name="DB_PORT" value="3307"/>
+  <logpath>C:\ProgramData\VMS\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+  <onfailure action="restart" delay="5 sec"/>
+  <onfailure action="restart" delay="15 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <startmode>Automatic</startmode>
+  <depend>VMS-Database</depend>
+</service>

@@ -6,9 +6,15 @@ from flask import Flask, request, jsonify, send_from_directory, session, redirec
 
 # Helper to load .env file manually
 def load_dotenv():
-    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
-    if not os.path.exists(env_path):
-        env_path = os.path.join(os.path.dirname(__file__), ".env")
+    vms_data_dir = os.environ.get("VMS_DATA_DIR")
+    if vms_data_dir and os.path.exists(os.path.join(vms_data_dir, ".env")):
+        env_path = os.path.join(vms_data_dir, ".env")
+    elif os.path.exists(r"C:\ProgramData\VMS\.env"):
+        env_path = r"C:\ProgramData\VMS\.env"
+    else:
+        env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+        if not os.path.exists(env_path):
+            env_path = os.path.join(os.path.dirname(__file__), ".env")
     if os.path.exists(env_path):
         with open(env_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -119,11 +125,11 @@ _db_pool = PooledDB(
     maxcached=10,
     maxshared=10,
     blocking=True,
-    host=os.environ.get("DB_HOST", "localhost"),
+    host=os.environ.get("DB_HOST", "127.0.0.1"),
     user=os.environ.get("DB_USER", "root"),
-    password=os.environ.get("DB_PASSWORD", "root"),
+    password=os.environ.get("DB_PASSWORD", ""),
     database=os.environ.get("DB_NAME", "vms"),
-    port=int(os.environ.get("DB_PORT", 3306)),
+    port=int(os.environ.get("DB_PORT", 3307)),
     autocommit=True
 )
 

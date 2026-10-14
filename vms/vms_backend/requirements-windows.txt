@@ -1,0 +1,40 @@
+# Pinned dependencies for Windows Production Runtime
+# Tested with Python 3.11.x (x86_64) on Windows 10/11 & Windows Server
+# Core Web Framework & WSGI
+Flask==3.1.3
+waitress==3.0.2
+flask-cors==6.0.2
+Flask-Limiter==4.1.1
+Werkzeug==3.1.8
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+itsdangerous==2.2.0
+blinker==1.9.0
+click==8.3.3
+limits==5.8.0
+ordered-set==4.1.0
+
+# Database Connectivity
+pymysql==1.1.0
+DBUtils==3.1.0
+
+# Security, Cryptography & Licensing
+cryptography==46.0.5
+PyJWT==2.12.1
+python-dotenv==1.2.2
+
+# Document & Report Generation
+pandas==3.0.2
+numpy==2.4.4
+xlsxwriter==3.2.9
+reportlab==4.4.10
+qrcode==8.2
+
+# Utilities & Compatibilities
+Deprecated==1.3.1
+packaging==26.2
+python-dateutil==2.9.0.post0
+six==1.17.0
+typing_extensions==4.15.0
+wrapt==2.1.2
+requests==2.32.5

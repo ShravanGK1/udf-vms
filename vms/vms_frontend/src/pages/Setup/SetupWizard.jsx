@@ -13,9 +13,12 @@ import {
   ArrowRight,
   ArrowLeft,
   Loader2,
-  Check
+  Check,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import apiClient from "../../app/apiClient";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import "./SetupWizard.css";
 
 export default function SetupWizard({ onSetupComplete }) {
@@ -41,6 +44,8 @@ export default function SetupWizard({ onSetupComplete }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successInfo, setSuccessInfo] = useState(null);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Check setup status on load to prevent unauthorized reopening
   useEffect(() => {
@@ -194,6 +199,7 @@ export default function SetupWizard({ onSetupComplete }) {
 
   return (
     <div className="setup-wizard-container">
+      <ThemeToggle floating />
       <div className="setup-wizard-card">
         {/* Header */}
         <div className="setup-header">
@@ -326,12 +332,21 @@ export default function SetupWizard({ onSetupComplete }) {
               <div className="setup-input-wrapper">
                 <Lock size={18} className="setup-input-icon" />
                 <input
-                  type="password"
-                  className="setup-input"
+                  type={showAdminPassword ? "text" : "password"}
+                  className="setup-input setup-input-has-toggle"
                   placeholder="Create a strong password"
                   value={formData.admin_password}
                   onChange={(e) => handleChange("admin_password", e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="setup-password-toggle"
+                  onClick={() => setShowAdminPassword((prev) => !prev)}
+                  aria-label={showAdminPassword ? "Hide password" : "Show password"}
+                  title={showAdminPassword ? "Hide password" : "Show password"}
+                >
+                  {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -340,12 +355,21 @@ export default function SetupWizard({ onSetupComplete }) {
               <div className="setup-input-wrapper">
                 <Lock size={18} className="setup-input-icon" />
                 <input
-                  type="password"
-                  className="setup-input"
+                  type={showConfirmPassword ? "text" : "password"}
+                  className="setup-input setup-input-has-toggle"
                   placeholder="Re-enter password"
                   value={formData.confirm_password}
                   onChange={(e) => handleChange("confirm_password", e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="setup-password-toggle"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 

@@ -249,3 +249,101 @@
   color: #ef4444;
   margin-top: 4px;
 }
+
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] .host-select-label,
+.dark .host-select-label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .host-select-trigger,
+.dark .host-select-trigger {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .host-select-trigger:hover,
+.dark .host-select-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .host-select-trigger.open,
+.dark .host-select-trigger.open {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="dark"] .host-select-trigger.disabled,
+.dark .host-select-trigger.disabled {
+  background-color: #1e293b;
+  opacity: 0.6;
+}
+
+[data-theme="dark"] .selected-host-name,
+.dark .selected-host-name {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .selected-host-badge,
+.dark .selected-host-badge {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+[data-theme="dark"] .host-select-placeholder,
+.dark .host-select-placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] .host-select-dropdown,
+.dark .host-select-dropdown {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .host-select-search-wrapper,
+.dark .host-select-search-wrapper {
+  background-color: #1e293b;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .host-select-search-input,
+.dark .host-select-search-input {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .host-select-state-message,
+.dark .host-select-state-message {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .host-select-option:hover,
+.dark .host-select-option:hover {
+  background-color: #1e293b;
+}
+
+[data-theme="dark"] .host-select-option.selected,
+.dark .host-select-option.selected {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+[data-theme="dark"] .host-option-name,
+.dark .host-option-name {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .host-option-code,
+.dark .host-option-code {
+  background-color: #1e293b;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .host-option-sub,
+.dark .host-option-sub {
+  color: #94a3b8;
+}
+

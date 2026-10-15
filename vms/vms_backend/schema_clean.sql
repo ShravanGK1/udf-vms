@@ -18,8 +18,11 @@ CREATE TABLE IF NOT EXISTS `customers` (
 CREATE TABLE IF NOT EXISTS `sites` (
     `site_id` INT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) UNIQUE NOT NULL,
+    `code` VARCHAR(50) DEFAULT NULL,
     `address` VARCHAR(255) NOT NULL,
     `status` VARCHAR(50) DEFAULT 'Active',
+    `lat` DECIMAL(10, 6) DEFAULT NULL,
+    `lng` DECIMAL(10, 6) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `customer_id` INT DEFAULT 1,
     CONSTRAINT `fk_sites_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`) ON DELETE CASCADE

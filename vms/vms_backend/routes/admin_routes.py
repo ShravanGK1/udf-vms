@@ -18,6 +18,10 @@ except ImportError:
         get_user_authorized_sites,
         is_site_authorized
     )
+try:
+    from utils.password_utils import is_valid_password
+except ImportError:
+    from password_utils import is_valid_password
 
 
 admin_bp = Blueprint("admin", __name__)
@@ -118,28 +122,33 @@ def get_users():
     return jsonify(result)
 
 
-# ---------------- SITES ----------------
-@admin_bp.route("/admin/sites", methods=["GET"])
-def get_sites():
-    caller_id, caller_role = get_current_user_from_request(request)
-    if not caller_id:
-        return jsonify([]), 401
-
+def get_sites_data_for_user(caller_id, caller_role):
     conn = get_db_connection()
     if not conn:
-        return jsonify([])
-
+        return []
     try:
         cursor = conn.cursor()
         if caller_role in ['superadmin', 'global_admin']:
             cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
             c_row = cursor.fetchone()
             cust_id = c_row[0] if (c_row and c_row[0]) else 1
-            cursor.execute("SELECT site_id, name, address, status FROM sites WHERE customer_id = %s ORDER BY site_id ASC", (cust_id,))
+            cursor.execute("""
+                SELECT site_id, name, address, status, code, lat, lng, created_at 
+                FROM sites 
+                WHERE customer_id = %s 
+                ORDER BY site_id DESC
+            """, (cust_id,))
         else:
             scope_type, site_ids = get_user_site_scope(caller_id, caller_role)
+            if not site_ids:
+                return []
             format_strings = ','.join(['%s'] * len(site_ids))
-            cursor.execute(f"SELECT site_id, name, address, status FROM sites WHERE site_id IN ({format_strings}) ORDER BY site_id ASC", tuple(site_ids))
+            cursor.execute(f"""
+                SELECT site_id, name, address, status, code, lat, lng, created_at 
+                FROM sites 
+                WHERE site_id IN ({format_strings}) 
+                ORDER BY site_id DESC
+            """, tuple(site_ids))
 
         rows = cursor.fetchall()
         result = []
@@ -153,14 +162,32 @@ def get_sites():
                 "id": r[0],
                 "site_id": r[0],
                 "name": r[1],
-                "address": r[2],
-                "visitors": v_cnt,
-                "status": r[3]
+                "address": r[2] or "",
+                "status": r[3] or "Active",
+                "code": r[4] or "",
+                "lat": float(r[5]) if r[5] is not None else 18.5204,
+                "lng": float(r[6]) if r[6] is not None else 73.8567,
+                "created_at": r[7].isoformat() if r[7] else None,
+                "visitors": v_cnt
             })
-        return jsonify(result)
+        return result
     finally:
         cursor.close()
         conn.close()
+
+
+# ---------------- SITES ----------------
+@admin_bp.route("/admin/sites", methods=["GET"])
+def get_sites():
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id:
+        return jsonify([]), 401
+
+    try:
+        sites_data = get_sites_data_for_user(caller_id, caller_role)
+        return jsonify(sites_data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------------- DASHBOARD STATS ----------------
@@ -455,12 +482,63 @@ def add_user():
     if not all([name, email, password, role, department]):
         cursor.close()
         conn.close()
-        return jsonify({"error": "All fields are mandatory"}), 400
+        return jsonify({"error": "All fields (Full Name, Email, Password, Role, Department) are mandatory"}), 400
+
+    if not site_ids_input:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Site assignment is mandatory. Please select an authorized site."}), 400
+
+    target_site_ids = []
+    if isinstance(site_ids_input, list):
+        target_site_ids = [int(s) for s in site_ids_input if str(s).isdigit()]
+    elif isinstance(site_ids_input, int):
+        target_site_ids = [site_ids_input]
+    elif isinstance(site_ids_input, str):
+        target_site_ids = [int(s.strip()) for s in site_ids_input.split(",") if s.strip().isdigit()]
+
+    if not target_site_ids:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Invalid site assignment. Please select a valid site."}), 400
+
+    # Authorization Check: Verify caller has permission to assign each selected site
+    if caller_role not in ['superadmin', 'global_admin']:
+        scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
+        for s_id in target_site_ids:
+            if s_id not in caller_sites:
+                cursor.close()
+                conn.close()
+                return jsonify({"error": f"Unauthorized: You do not have permission to assign users to site #{s_id}."}), 403
+
+    # Database Verification: Verify selected sites exist and are Active for this customer
+    format_s = ','.join(['%s'] * len(target_site_ids))
+    cursor.execute(
+        f"SELECT site_id, name, status FROM sites WHERE customer_id = %s AND site_id IN ({format_s})",
+        (caller_cust_id, *target_site_ids)
+    )
+    db_sites_found = {r[0]: {"name": r[1], "status": r[2]} for r in cursor.fetchall()}
+    for s_id in target_site_ids:
+        if s_id not in db_sites_found:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": f"Selected site #{s_id} does not exist in your organization."}), 400
+        if db_sites_found[s_id]["status"].lower() != "active":
+            cursor.close()
+            conn.close()
+            return jsonify({"error": f"Site '{db_sites_found[s_id]['name']}' is currently inactive and cannot be assigned to new users."}), 400
 
     if str(role).lower() in ['superadmin', 'global_admin'] and caller_role != 'superadmin':
         cursor.close()
         conn.close()
         return jsonify({"error": "Site Admins cannot create Super Admin accounts"}), 403
+
+    # Check if email is already registered
+    cursor.execute("SELECT user_id FROM users WHERE email = %s", (email.strip().lower(),))
+    if cursor.fetchone():
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "A user with this email address already exists."}), 409
 
     # Enforce license max_users limit for this customer
     from utils.license_verifier import verify_system_license
@@ -485,34 +563,19 @@ def add_user():
         cursor.execute("""
             INSERT INTO users (name, email, password, role, department, status, profile_photo, customer_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (name, email, password, role, department, "Active", image_url, caller_cust_id))
+        """, (name.strip(), email.strip().lower(), password, role, department, "Active", image_url, caller_cust_id))
         user_id = cursor.lastrowid
 
         # Insert user site assignments into user_sites
-        target_site_ids = []
-        if site_ids_input:
-            if isinstance(site_ids_input, list):
-                target_site_ids = [int(s) for s in site_ids_input]
-            elif isinstance(site_ids_input, str):
-                target_site_ids = [int(s.strip()) for s in site_ids_input.split(",") if s.strip().isdigit()]
-        if not target_site_ids:
-            if caller_role not in ['superadmin', 'global_admin']:
-                scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
-                active_s = request.headers.get("X-Site-ID")
-                if active_s and active_s.isdigit() and int(active_s) in caller_sites:
-                    target_site_ids = [int(active_s)]
-                else:
-                    target_site_ids = [caller_sites[0]] if caller_sites else [1]
-            else:
-                cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s LIMIT 1", (caller_cust_id,))
-                s_row = cursor.fetchone()
-                target_site_ids = [s_row[0]] if s_row else [1]
-
         for s_id in target_site_ids:
             cursor.execute("INSERT IGNORE INTO user_sites (user_id, site_id) VALUES (%s, %s)", (user_id, s_id))
 
         conn.commit()
-        return jsonify({"message": "User created successfully", "user_id": user_id}), 201
+        return jsonify({
+            "message": "User created successfully",
+            "user_id": user_id,
+            "assigned_sites": target_site_ids
+        }), 201
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
@@ -521,24 +584,12 @@ def add_user():
         conn.close()
 
 
-@admin_bp.route("/admin/users/<int:user_id>/sites", methods=["PUT"])
-def update_user_sites(user_id):
+@admin_bp.route("/admin/users/<int:user_id>", methods=["GET"])
+def get_user_detail(user_id):
     caller_id, caller_role = get_current_user_from_request(request)
     if not caller_id or caller_role not in ['superadmin', 'admin']:
         return jsonify({"error": "Unauthorized"}), 403
 
-    data = request.get_json() or {}
-    site_ids_input = data.get("site_ids") or data.get("site_id")
-    
-    site_ids = []
-    if site_ids_input:
-        if isinstance(site_ids_input, list):
-            site_ids = [int(s) for s in site_ids_input]
-        elif isinstance(site_ids_input, str):
-            site_ids = [int(s.strip()) for s in site_ids_input.split(",") if s.strip().isdigit()]
-        elif isinstance(site_ids_input, int):
-            site_ids = [site_ids_input]
-            
     conn = get_db_connection()
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
@@ -548,25 +599,440 @@ def update_user_sites(user_id):
         c_row = cursor.fetchone()
         caller_cust_id = c_row[0] if (c_row and c_row[0]) else 1
 
-        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (user_id,))
-        t_row = cursor.fetchone()
-        if not t_row or t_row[0] != caller_cust_id:
-            return jsonify({"error": "Target user does not belong to your organization"}), 403
+        cursor.execute("""
+            SELECT user_id, name, email, role, department, status, profile_photo, customer_id
+            FROM users WHERE user_id = %s AND customer_id = %s
+        """, (user_id, caller_cust_id))
+        u = cursor.fetchone()
+        if not u:
+            return jsonify({"error": "User not found"}), 404
 
-        if site_ids:
-            format_strings = ','.join(['%s'] * len(site_ids))
-            cursor.execute(f"SELECT COUNT(*) FROM sites WHERE site_id IN ({format_strings}) AND customer_id = %s", tuple(site_ids) + (caller_cust_id,))
-            valid_count = cursor.fetchone()[0]
-            if valid_count != len(site_ids):
-                return jsonify({"error": "One or more target sites do not belong to your organization"}), 403
+        scope_type, site_ids = get_user_site_scope(u[0], u[3])
+        user_sites = get_user_authorized_sites(u[0], u[3])
+        return jsonify({
+            "id": u[0],
+            "name": u[1],
+            "email": u[2],
+            "role": u[3],
+            "department": u[4],
+            "status": u[5],
+            "profile_photo": u[6],
+            "site_ids": site_ids if scope_type != "ALL" else "ALL",
+            "sites": user_sites
+        }), 200
+    finally:
+        cursor.close()
+        conn.close()
 
-        cursor.execute("DELETE FROM user_sites WHERE user_id = %s", (user_id,))
-        for sid in site_ids:
-            cursor.execute("INSERT INTO user_sites (user_id, site_id) VALUES (%s, %s)", (user_id, sid))
-        cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)", 
-                       ("Super Admin", f"Updated site assignments for user ID {user_id}", str(site_ids)))
+
+@admin_bp.route("/admin/users/<int:user_id>", methods=["PUT"])
+def update_user_details(user_id):
+    import re
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role not in ['superadmin', 'admin']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        caller_cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        cursor.execute("SELECT user_id, name, email, role, department, status, profile_photo, customer_id FROM users WHERE user_id = %s", (user_id,))
+        target_user = cursor.fetchone()
+        if not target_user or target_user[7] != caller_cust_id:
+            return jsonify({"error": "Target employee not found in your organization"}), 404
+
+        target_role = target_user[3]
+
+        # Site admin privilege check: cannot modify a superadmin
+        if caller_role not in ['superadmin', 'global_admin'] and target_role in ['superadmin', 'global_admin']:
+            return jsonify({"error": "Unauthorized: Site Admins cannot edit Super Admin accounts"}), 403
+
+        if request.is_json:
+            data = request.get_json() or {}
+            name = data.get("name")
+            email = data.get("email")
+            role = data.get("role")
+            department = data.get("department")
+            status = data.get("status")
+            site_ids_input = data.get("site_ids") or data.get("site_id")
+            photo = None
+        else:
+            name = request.form.get("name")
+            email = request.form.get("email")
+            role = request.form.get("role")
+            department = request.form.get("department")
+            status = request.form.get("status")
+            site_ids_input = request.form.get("site_ids") or request.form.get("site_id")
+            photo = request.files.get("photo")
+
+        # Validate mandatory fields
+        if not name or not str(name).strip():
+            return jsonify({"error": "Full Name is required."}), 400
+        if not email or not str(email).strip():
+            return jsonify({"error": "Email address is required."}), 400
+        if not role or not str(role).strip():
+            return jsonify({"error": "Role is required."}), 400
+        if not department or not str(department).strip():
+            return jsonify({"error": "Department is required."}), 400
+
+        name = str(name).strip()
+        email = str(email).strip().lower()
+        role = str(role).strip().lower()
+        department = str(department).strip()
+
+        # Email format validation
+        email_regex = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+        if not re.match(email_regex, email):
+            return jsonify({"error": "Invalid email address format."}), 400
+
+        # Unique email check
+        cursor.execute("SELECT user_id FROM users WHERE email = %s AND user_id != %s", (email, user_id))
+        if cursor.fetchone():
+            return jsonify({"error": "This email address is already in use by another user."}), 409
+
+        # Role validation
+        valid_roles = ['admin', 'security', 'host']
+        if caller_role in ['superadmin', 'global_admin']:
+            valid_roles.extend(['superadmin', 'global_admin'])
+
+        if role not in valid_roles:
+            return jsonify({"error": f"Invalid role specified. Allowed roles: {', '.join(valid_roles)}"}), 400
+
+        if role in ['superadmin', 'global_admin'] and caller_role not in ['superadmin', 'global_admin']:
+            return jsonify({"error": "Unauthorized: Site Admins cannot assign the Super Admin role."}), 403
+
+        # Status validation if provided
+        new_status = target_user[5]
+        if status:
+            clean_status = str(status).strip().capitalize()
+            if clean_status in ['Active', 'Inactive']:
+                if clean_status == 'Inactive' and int(caller_id) == int(user_id):
+                    return jsonify({"error": "You cannot deactivate your own account."}), 400
+                new_status = clean_status
+
+        # Profile photo upload if provided
+        photo_url = target_user[6]
+        if photo and allowed_file(photo.filename):
+            filename = f"{int(time.time())}_{secure_filename(photo.filename)}"
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            photo.save(filepath)
+            photo_url = f"/uploads_users/{filename}"
+
+        # Site assignment validation if provided
+        target_site_ids = None
+        if site_ids_input is not None:
+            if isinstance(site_ids_input, list):
+                target_site_ids = [int(s) for s in site_ids_input if str(s).isdigit()]
+            elif isinstance(site_ids_input, int):
+                target_site_ids = [site_ids_input]
+            elif isinstance(site_ids_input, str):
+                target_site_ids = [int(s.strip()) for s in site_ids_input.split(",") if s.strip().isdigit()]
+
+            if not target_site_ids:
+                return jsonify({"error": "Invalid site assignment. Please select a valid site."}), 400
+
+            # Caller site authorization check
+            if caller_role not in ['superadmin', 'global_admin']:
+                scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
+                for s_id in target_site_ids:
+                    if s_id not in caller_sites:
+                        return jsonify({"error": f"Unauthorized: You do not have permission to assign site #{s_id}."}), 403
+
+            # Verify sites exist and belong to customer
+            format_s = ','.join(['%s'] * len(target_site_ids))
+            cursor.execute(f"SELECT site_id, name, status FROM sites WHERE customer_id = %s AND site_id IN ({format_s})", (caller_cust_id, *target_site_ids))
+            found_sites = {r[0]: {"name": r[1], "status": r[2]} for r in cursor.fetchall()}
+            for s_id in target_site_ids:
+                if s_id not in found_sites:
+                    return jsonify({"error": f"Site #{s_id} does not exist in your organization."}), 400
+                if found_sites[s_id]["status"].lower() != "active":
+                    return jsonify({"error": f"Site '{found_sites[s_id]['name']}' is inactive and cannot be assigned."}), 400
+
+        # Persist updates in transaction
+        cursor.execute("""
+            UPDATE users
+            SET name = %s, email = %s, role = %s, department = %s, status = %s, profile_photo = %s
+            WHERE user_id = %s AND customer_id = %s
+        """, (name, email, role, department, new_status, photo_url, user_id, caller_cust_id))
+
+        if target_site_ids is not None:
+            cursor.execute("DELETE FROM user_sites WHERE user_id = %s", (user_id,))
+            for s_id in target_site_ids:
+                cursor.execute("INSERT IGNORE INTO user_sites (user_id, site_id) VALUES (%s, %s)", (user_id, s_id))
+
+        cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)",
+                       (f"User #{caller_id} ({caller_role})", f"Updated details for employee {name} (ID {user_id})", f"Role: {role}, Dept: {department}, Status: {new_status}"))
         conn.commit()
-        return jsonify({"message": "User site assignments updated successfully"}), 200
+
+        scope_type, updated_site_ids = get_user_site_scope(user_id, role)
+        updated_sites = get_user_authorized_sites(user_id, role)
+
+        return jsonify({
+            "message": "Employee details updated successfully",
+            "user": {
+                "id": user_id,
+                "name": name,
+                "email": email,
+                "role": role,
+                "department": department,
+                "status": new_status,
+                "profile_photo": photo_url,
+                "site_ids": updated_site_ids if scope_type != "ALL" else "ALL",
+                "sites": updated_sites
+            }
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@admin_bp.route("/admin/users/<int:user_id>/site", methods=["PATCH", "PUT"])
+@admin_bp.route("/admin/users/<int:user_id>/sites", methods=["PUT"])
+def transfer_user_site(user_id):
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role not in ['superadmin', 'admin']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    site_ids_input = data.get("site_ids") or data.get("site_id")
+
+    if not site_ids_input:
+        return jsonify({"error": "Target site is required for transfer."}), 400
+
+    target_site_ids = []
+    if isinstance(site_ids_input, list):
+        target_site_ids = [int(s) for s in site_ids_input if str(s).isdigit()]
+    elif isinstance(site_ids_input, int):
+        target_site_ids = [site_ids_input]
+    elif isinstance(site_ids_input, str):
+        target_site_ids = [int(s.strip()) for s in site_ids_input.split(",") if s.strip().isdigit()]
+
+    if not target_site_ids:
+        return jsonify({"error": "Invalid site assignment. Please select a valid site."}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        caller_cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        cursor.execute("SELECT user_id, name, role, customer_id FROM users WHERE user_id = %s", (user_id,))
+        target_user = cursor.fetchone()
+        if not target_user or target_user[3] != caller_cust_id:
+            return jsonify({"error": "Target employee not found in your organization"}), 404
+
+        target_name = target_user[1]
+        target_role = target_user[2]
+
+        if caller_role not in ['superadmin', 'global_admin'] and target_role in ['superadmin', 'global_admin']:
+            return jsonify({"error": "Unauthorized: Site Admins cannot transfer Super Admin site assignments"}), 403
+
+        # Site authorization for caller
+        if caller_role not in ['superadmin', 'global_admin']:
+            scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
+            for s_id in target_site_ids:
+                if s_id not in caller_sites:
+                    return jsonify({"error": f"Unauthorized: You do not have permission to assign site #{s_id}."}), 403
+
+        # Verify sites exist, belong to customer, and are Active
+        format_s = ','.join(['%s'] * len(target_site_ids))
+        cursor.execute(f"SELECT site_id, name, status FROM sites WHERE customer_id = %s AND site_id IN ({format_s})", (caller_cust_id, *target_site_ids))
+        found_sites = {r[0]: {"name": r[1], "status": r[2]} for r in cursor.fetchall()}
+        for s_id in target_site_ids:
+            if s_id not in found_sites:
+                return jsonify({"error": f"Site #{s_id} does not exist in your organization."}), 400
+            if found_sites[s_id]["status"].lower() != "active":
+                return jsonify({"error": f"Site '{found_sites[s_id]['name']}' is inactive and cannot be assigned."}), 400
+
+        # Update user_sites
+        cursor.execute("DELETE FROM user_sites WHERE user_id = %s", (user_id,))
+        for s_id in target_site_ids:
+            cursor.execute("INSERT IGNORE INTO user_sites (user_id, site_id) VALUES (%s, %s)", (user_id, s_id))
+
+        site_names = [found_sites[s]["name"] for s in target_site_ids if s in found_sites]
+        cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)",
+                       (f"User #{caller_id} ({caller_role})", f"Transferred employee {target_name} (ID {user_id}) to site(s)", ", ".join(site_names)))
+        conn.commit()
+
+        scope_type, updated_site_ids = get_user_site_scope(user_id, target_role)
+        updated_sites = get_user_authorized_sites(user_id, target_role)
+
+        return jsonify({
+            "message": f"Employee {target_name} successfully transferred to {', '.join(site_names)}.",
+            "user_id": user_id,
+            "site_ids": updated_site_ids if scope_type != "ALL" else "ALL",
+            "sites": updated_sites
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@admin_bp.route("/admin/users/<int:user_id>/status", methods=["PATCH"])
+def update_user_status(user_id):
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role not in ['superadmin', 'admin']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    status_input = data.get("status")
+    if status_input is None and "is_active" in data:
+        status_input = "Active" if data["is_active"] else "Inactive"
+
+    if not status_input or str(status_input).strip().capitalize() not in ['Active', 'Inactive']:
+        return jsonify({"error": "Invalid status. Allowed values are 'Active' or 'Inactive'."}), 400
+
+    new_status = str(status_input).strip().capitalize()
+
+    # Prevent self-deactivation
+    if new_status == 'Inactive' and int(caller_id) == int(user_id):
+        return jsonify({"error": "You cannot deactivate your own account."}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        caller_cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        cursor.execute("SELECT user_id, name, role, status, customer_id FROM users WHERE user_id = %s", (user_id,))
+        target_user = cursor.fetchone()
+        if not target_user or target_user[4] != caller_cust_id:
+            return jsonify({"error": "Target employee not found in your organization"}), 404
+
+        target_name = target_user[1]
+        target_role = target_user[2]
+
+        # Privilege checks for Site Admin
+        if caller_role not in ['superadmin', 'global_admin']:
+            if target_role in ['superadmin', 'global_admin']:
+                return jsonify({"error": "Unauthorized: Site Admins cannot change the status of Super Admin accounts"}), 403
+            scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
+            scope_type_t, target_sites = get_user_site_scope(user_id, target_role)
+            if target_sites and not any(sid in caller_sites for sid in target_sites):
+                return jsonify({"error": "Unauthorized: You do not have permission to manage this employee's status"}), 403
+
+        # Last Super Admin protection
+        if new_status == 'Inactive' and target_role in ['superadmin', 'global_admin']:
+            cursor.execute("""
+                SELECT COUNT(*) FROM users
+                WHERE customer_id = %s AND role IN ('superadmin', 'global_admin') AND status = 'Active' AND user_id != %s
+            """, (caller_cust_id, user_id))
+            active_superadmins_left = cursor.fetchone()[0]
+            if active_superadmins_left == 0:
+                return jsonify({"error": "Cannot deactivate the only active Super Admin account."}), 400
+
+        cursor.execute("UPDATE users SET status = %s WHERE user_id = %s AND customer_id = %s", (new_status, user_id, caller_cust_id))
+        action_verb = "Activated" if new_status == "Active" else "Deactivated"
+        cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)",
+                       (f"User #{caller_id} ({caller_role})", f"{action_verb} employee account", f"{target_name} (ID {user_id}, {target_role})"))
+        conn.commit()
+
+        return jsonify({
+            "message": f"Employee {target_name} has been {action_verb.lower()} successfully.",
+            "user_id": user_id,
+            "status": new_status
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+# ---------------- USER PASSWORD RESET ----------------
+@admin_bp.route("/admin/users/<int:user_id>/reset-password", methods=["POST"])
+def reset_user_password(user_id):
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role not in ['superadmin', 'admin']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    new_password = (data.get("password") or data.get("new_password") or "").strip()
+    confirm_password = (data.get("confirm_password") or data.get("confirmNewPassword") or "").strip()
+
+    if not new_password:
+        return jsonify({"error": "New password is required."}), 400
+
+    if confirm_password and new_password != confirm_password:
+        return jsonify({"error": "New password and confirmation password do not match."}), 400
+
+    if not is_valid_password(new_password):
+        return jsonify({
+            "error": "Password must be at least 8 characters, contain at least one uppercase letter, one number, and one special character."
+        }), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        caller_cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        cursor.execute("SELECT user_id, name, email, role, customer_id FROM users WHERE user_id = %s", (user_id,))
+        target_user = cursor.fetchone()
+        if not target_user or target_user[4] != caller_cust_id:
+            return jsonify({"error": "Target employee not found in your organization."}), 404
+
+        target_name = target_user[1]
+        target_email = target_user[2]
+        target_role = target_user[3]
+
+        # Privilege checks for Site Admin
+        if caller_role not in ['superadmin', 'global_admin']:
+            if target_role in ['superadmin', 'global_admin']:
+                return jsonify({"error": "Unauthorized: Site Admins cannot reset passwords for Super Admin accounts."}), 403
+
+            scope_type, caller_sites = get_user_site_scope(caller_id, caller_role)
+            scope_type_t, target_sites = get_user_site_scope(user_id, target_role)
+            if target_sites and not any(sid in caller_sites for sid in target_sites):
+                return jsonify({"error": "Unauthorized: You do not have permission to reset passwords for employees outside your assigned site(s)."}), 403
+
+        # Update target user password
+        cursor.execute(
+            "UPDATE users SET password = %s WHERE user_id = %s AND customer_id = %s",
+            (new_password, user_id, caller_cust_id)
+        )
+
+        # Audit log event without recording plaintext password
+        cursor.execute(
+            "INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)",
+            (f"User #{caller_id} ({caller_role})", "Reset employee password", f"{target_name} ({target_email}, ID {user_id}, {target_role})")
+        )
+        conn.commit()
+
+        return jsonify({
+            "message": f"Password for {target_name} has been reset successfully.",
+            "user_id": user_id
+        }), 200
+
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
@@ -579,26 +1045,28 @@ def update_user_sites(user_id):
 @admin_bp.route("/admin/superadmin-stats", methods=["GET"])
 def get_superadmin_stats():
     try:
-        # Sync DB sites with config file first
-        sync_db_sites()
-
-        # 1. Get real users count
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database connection failed"}), 500
-        
+
+        caller_id, caller_role = get_current_user_from_request(request)
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
+
+        cust_id = 1
+        if caller_id:
+            cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+            c_row = cursor.fetchone()
+            if c_row and c_row[0]:
+                cust_id = c_row[0]
+
+        # 1. Get real users count for this customer
+        cursor.execute("SELECT COUNT(*) FROM users WHERE customer_id = %s", (cust_id,))
         db_users_count = cursor.fetchone()[0]
-        
-        # 2. Get unique sites count
-        try:
-            cursor.execute("SELECT COUNT(*) FROM sites")
-            db_sites_count = cursor.fetchone()[0]
-        except Exception:
-            cursor.execute("SELECT COUNT(DISTINCT unit) FROM visitors WHERE unit IS NOT NULL AND unit != ''")
-            db_sites_count = cursor.fetchone()[0]
-        
+
+        # 2. Get unique sites count for this customer
+        cursor.execute("SELECT COUNT(*) FROM sites WHERE customer_id = %s", (cust_id,))
+        db_sites_count = cursor.fetchone()[0]
+
         # 3. Get monthly traffic trends from visitor_requests
         cursor.execute("""
             SELECT DATE_FORMAT(scheduled_date, '%b') as month, COUNT(*) 
@@ -608,41 +1076,35 @@ def get_superadmin_stats():
             ORDER BY MIN(scheduled_date)
         """)
         rows = cursor.fetchall()
-        
+
+        # 4. Get real customer name from DB
+        company_name = "Enterprise"
+        cursor.execute("SELECT customer_name FROM customers WHERE customer_id = %s", (cust_id,))
+        cust_row = cursor.fetchone()
+        if cust_row and cust_row[0]:
+            company_name = cust_row[0]
+
         cursor.close()
         conn.close()
-        
-        # 4. Get license info
+
+        # 5. Get license info
         from utils.license_verifier import verify_system_license
         license_info = verify_system_license()
-        
+
         expiry_date = "N/A"
         max_users = "N/A"
         license_status = "Inactive"
-        
-        if license_info["status"] == "ACTIVE":
+
+        if license_info.get("status") == "ACTIVE":
             license_status = "Active"
-            raw_expiry = license_info["data"].get("expires_at", "2027-05-26")
-            expiry_date = raw_expiry.split("T")[0] if "T" in raw_expiry else raw_expiry
-            max_users = license_info["data"].get("max_users", 100)
-        elif license_info["status"] == "EXPIRED":
+            raw_expiry = license_info.get("data", {}).get("expires_at", "2027-05-26")
+            expiry_date = raw_expiry.split("T")[0] if "T" in str(raw_expiry) else str(raw_expiry)
+            max_users = license_info.get("data", {}).get("max_users", 100)
+        elif license_info.get("status") == "EXPIRED":
             license_status = "Expired"
             expiry_date = license_info.get("error", "Expired")
-            
-        # Get active company name from license key payload if available
-        company_name = "Sumeet Group"
-        from utils.license_verifier import get_license_details
-        lic_key, _, _, _ = get_license_details()
-        if lic_key:
-            try:
-                import jwt
-                payload = jwt.decode(lic_key, options={"verify_signature": False})
-                if payload and "client_name" in payload:
-                    company_name = payload["client_name"]
-            except Exception:
-                pass
 
-        # Build dynamic licenses list containing only own company details
+        # Dynamic license entry for this customer
         dynamic_licenses = [
             {
                 "company": company_name,
@@ -652,17 +1114,16 @@ def get_superadmin_stats():
                 "expiry": expiry_date
             }
         ]
-        
-        # Aggregated stats
-        total_users_sum = sum(l["users"] for l in dynamic_licenses)
-        total_sites_sum = sum(l["sites"] for l in dynamic_licenses)
-        
+
+        total_users_sum = db_users_count
+        total_sites_sum = db_sites_count
+
         # Build monthly traffic data (fall back to mock if no DB traffic records)
         month_map = {"Jan": 0, "Feb": 0, "Mar": 0, "Apr": 0, "May": 0, "Jun": 0, "Jul": 0, "Aug": 0, "Sep": 0, "Oct": 0, "Nov": 0, "Dec": 0}
         for r in rows:
             if r[0] in month_map:
                 month_map[r[0]] = r[1]
-                
+
         traffic_data = []
         months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
         for m in months:
@@ -670,9 +1131,10 @@ def get_superadmin_stats():
                 "month": m,
                 "visitors": month_map[m] if month_map[m] > 0 else (1200 + months.index(m) * 150)
             })
-            
+
         return jsonify({
             "licenses": dynamic_licenses,
+            "companyName": company_name,
             "totalCompanies": len(dynamic_licenses),
             "totalSites": total_sites_sum,
             "totalUsers": total_users_sum,
@@ -680,7 +1142,7 @@ def get_superadmin_stats():
             "trafficData": traffic_data,
             "licenseDetails": license_info
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -691,82 +1153,222 @@ def get_sites_list():
     if not caller_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed"}), 500
     try:
-        if caller_role in ['superadmin', 'global_admin']:
-            cursor = conn.cursor()
-            cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
-            c_row = cursor.fetchone()
-            cust_id = c_row[0] if (c_row and c_row[0]) else 1
-
-            cursor.execute("SELECT site_id, name, address, status FROM sites WHERE customer_id = %s ORDER BY site_id DESC", (cust_id,))
-            rows = cursor.fetchall()
-            cursor.close()
-            result = [{"id": r[0], "site_id": r[0], "name": r[1], "address": r[2], "status": r[3]} for r in rows]
-            return jsonify(result), 200
-        else:
-            auth_sites = get_user_authorized_sites(caller_id, caller_role)
-            result = [
-                {
-                    "id": s["site_id"],
-                    "site_id": s["site_id"],
-                    "name": s["name"],
-                    "address": s.get("address", ""),
-                    "status": s.get("status", "Active")
-                }
-                for s in auth_sites
-            ]
-            return jsonify(result), 200
+        sites_data = get_sites_data_for_user(caller_id, caller_role)
+        return jsonify(sites_data), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
+
 
 @admin_bp.route("/admin/sites-list", methods=["POST"])
+@admin_bp.route("/admin/sites", methods=["POST"])
 def add_site():
     caller_id, caller_role = get_current_user_from_request(request)
-    if not caller_id or caller_role not in ['superadmin', 'admin']:
-        return jsonify({"error": "Unauthorized"}), 403
+    if not caller_id or caller_role not in ['superadmin', 'global_admin']:
+        return jsonify({"error": "Forbidden: Super Admin authorization required to create sites"}), 403
 
     conn = get_db_connection()
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
     cursor = conn.cursor()
 
-    cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
-    c_row = cursor.fetchone()
-    cust_id = c_row[0] if (c_row and c_row[0]) else 1
-
-    # Enforce license max_sites limit for this customer
-    from utils.license_verifier import verify_system_license
-    license_info = verify_system_license()
-    if license_info.get("status") == "ACTIVE":
-        max_sites = license_info.get("data", {}).get("max_sites", 10)
-        cursor.execute("SELECT COUNT(*) FROM sites WHERE customer_id = %s AND status = 'Active'", (cust_id,))
-        current_active_sites = cursor.fetchone()[0]
-        if current_active_sites >= max_sites:
-            cursor.close()
-            conn.close()
-            return jsonify({"error": f"Site creation limit reached for active license (Maximum: {max_sites} sites)."}), 400
-
-    data = request.get_json() or {}
-    name = data.get("name")
-    address = data.get("address")
-    status = data.get("status", "Active")
-    if not name or not address:
-        cursor.close()
-        conn.close()
-        return jsonify({"error": "Name and address are required"}), 400
     try:
-        cursor.execute("INSERT INTO sites (name, address, status, customer_id) VALUES (%s, %s, %s, %s)", (name, address, status, cust_id))
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        data = request.get_json() or {}
+        name = (data.get("name") or "").strip()
+        address = (data.get("address") or "").strip()
+        code = (data.get("code") or "").strip().upper()
+        status = data.get("status", "Active")
+        lat = data.get("lat")
+        lng = data.get("lng")
+
+        if not name or not address:
+            return jsonify({"error": "Site name and address are required"}), 400
+
+        # Unique name validation within customer
+        cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s AND LOWER(name) = LOWER(%s)", (cust_id, name))
+        if cursor.fetchone():
+            return jsonify({"error": f"A site with the name '{name}' already exists."}), 409
+
+        # Unique code validation within customer if code provided
+        if code:
+            cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s AND LOWER(code) = LOWER(%s)", (cust_id, code))
+            if cursor.fetchone():
+                return jsonify({"error": f"A site with the code '{code}' already exists."}), 409
+        else:
+            # Generate clean code based on site name
+            prefix = "".join([c for c in name if c.isalnum()]).upper()[:4] or "SITE"
+            code = f"{prefix}-{int(time.time()) % 1000:03d}"
+
+        # Enforce license max_sites limit for this customer
+        from utils.license_verifier import verify_system_license
+        license_info = verify_system_license()
+        if license_info.get("status") == "ACTIVE":
+            max_sites = license_info.get("data", {}).get("max_sites", 10)
+            cursor.execute("SELECT COUNT(*) FROM sites WHERE customer_id = %s AND status = 'Active'", (cust_id,))
+            current_active_sites = cursor.fetchone()[0]
+            if current_active_sites >= max_sites:
+                return jsonify({"error": f"Site creation limit reached for active license (Maximum: {max_sites} sites)."}), 400
+
+        try:
+            lat_val = float(lat) if lat is not None and str(lat).strip() != "" else 18.5204
+        except (ValueError, TypeError):
+            lat_val = 18.5204
+
+        try:
+            lng_val = float(lng) if lng is not None and str(lng).strip() != "" else 73.8567
+        except (ValueError, TypeError):
+            lng_val = 73.8567
+
+        cursor.execute("""
+            INSERT INTO sites (name, code, address, status, customer_id, lat, lng) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (name, code, address, status, cust_id, lat_val, lng_val))
         conn.commit()
         site_id = cursor.lastrowid
+
+        # Associate creator with site
+        cursor.execute("INSERT IGNORE INTO user_sites (user_id, site_id) VALUES (%s, %s)", (caller_id, site_id))
+        
+        # Audit log
         cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)", 
-                       ("Super Admin", f"Created new site: {name}", address))
+                       ("Super Admin", f"Created new site: {name} ({code})", address))
         conn.commit()
-        return jsonify({"message": "Site added successfully", "id": site_id}), 201
+        return jsonify({
+            "message": "Site created successfully",
+            "site_id": site_id,
+            "id": site_id,
+            "name": name,
+            "code": code,
+            "address": address,
+            "status": status,
+            "lat": lat_val,
+            "lng": lng_val
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@admin_bp.route("/admin/sites/<int:site_id>", methods=["PUT"])
+@admin_bp.route("/admin/sites-list/<int:site_id>", methods=["PUT"])
+def update_site(site_id):
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role not in ['superadmin', 'global_admin']:
+        return jsonify({"error": "Forbidden: Super Admin authorization required to update sites"}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        cursor.execute("SELECT site_id, name, code, address, status FROM sites WHERE site_id = %s AND customer_id = %s", (site_id, cust_id))
+        existing = cursor.fetchone()
+        if not existing:
+            return jsonify({"error": "Site not found or does not belong to your organization"}), 404
+
+        data = request.get_json() or {}
+        name = (data.get("name") or "").strip()
+        address = (data.get("address") or "").strip()
+        code = (data.get("code") or "").strip().upper()
+        status = data.get("status", existing[4] or "Active")
+        lat = data.get("lat")
+        lng = data.get("lng")
+
+        if not name or not address:
+            return jsonify({"error": "Site name and address are required"}), 400
+
+        # Uniqueness check for name excluding this site
+        cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s AND LOWER(name) = LOWER(%s) AND site_id != %s", (cust_id, name, site_id))
+        if cursor.fetchone():
+            return jsonify({"error": f"Another site with the name '{name}' already exists."}), 409
+
+        # Uniqueness check for code excluding this site if provided
+        if code:
+            cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s AND LOWER(code) = LOWER(%s) AND site_id != %s", (cust_id, code, site_id))
+            if cursor.fetchone():
+                return jsonify({"error": f"Another site with the code '{code}' already exists."}), 409
+
+        try:
+            lat_val = float(lat) if lat is not None and str(lat).strip() != "" else None
+        except (ValueError, TypeError):
+            lat_val = None
+
+        try:
+            lng_val = float(lng) if lng is not None and str(lng).strip() != "" else None
+        except (ValueError, TypeError):
+            lng_val = None
+
+        cursor.execute("""
+            UPDATE sites 
+            SET name = %s, 
+                code = COALESCE(NULLIF(%s, ''), code), 
+                address = %s, 
+                status = %s, 
+                lat = COALESCE(%s, lat), 
+                lng = COALESCE(%s, lng)
+            WHERE site_id = %s AND customer_id = %s
+        """, (name, code, address, status, lat_val, lng_val, site_id, cust_id))
+        conn.commit()
+
+        cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)",
+                       ("Super Admin", f"Updated site: {name}", address))
+        conn.commit()
+
+        return jsonify({"message": "Site updated successfully", "site_id": site_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@admin_bp.route("/admin/sites/<int:site_id>/status", methods=["PATCH"])
+@admin_bp.route("/admin/sites-list/<int:site_id>/status", methods=["PATCH"])
+def toggle_site_status(site_id):
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role not in ['superadmin', 'global_admin']:
+        return jsonify({"error": "Forbidden: Super Admin authorization required"}), 403
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        cust_id = c_row[0] if (c_row and c_row[0]) else 1
+
+        cursor.execute("SELECT status, name FROM sites WHERE site_id = %s AND customer_id = %s", (site_id, cust_id))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "Site not found"}), 404
+
+        current_status, site_name = row[0], row[1]
+        data = request.get_json(silent=True) or {}
+        new_status = data.get("status")
+        if not new_status:
+            new_status = "Inactive" if (current_status or "").lower() == "active" else "Active"
+
+        cursor.execute("UPDATE sites SET status = %s WHERE site_id = %s AND customer_id = %s", (new_status, site_id, cust_id))
+        conn.commit()
+
+        cursor.execute("INSERT INTO superadmin_audit_logs (username, action, target) VALUES (%s, %s, %s)",
+                       ("Super Admin", f"Changed site '{site_name}' status to {new_status}", site_name))
+        conn.commit()
+
+        return jsonify({"message": "Site status updated successfully", "site_id": site_id, "status": new_status}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -1057,10 +1659,33 @@ def save_settings(settings):
         return False
 
 
-def sync_db_sites():
+@admin_bp.route("/admin/companies-sites", methods=["GET", "POST"])
+def manage_companies_sites():
+    caller_id, caller_role = get_current_user_from_request(request)
+    cust_id = 1
+    company_name = "Sumeet Group"
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify([]), 500
+    cursor = conn.cursor()
+
     try:
-        # Get active company name from license key payload if available
-        company_name = "Sumeet Group"
+        if caller_id:
+            cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+            c_row = cursor.fetchone()
+            if c_row and c_row[0]:
+                cust_id = c_row[0]
+
+        cust_code = "HQ"
+        cursor.execute("SELECT customer_name, code FROM customers WHERE customer_id = %s", (cust_id,))
+        cust_row = cursor.fetchone()
+        if cust_row:
+            if cust_row[0]:
+                company_name = cust_row[0]
+            if len(cust_row) > 1 and cust_row[1]:
+                cust_code = cust_row[1]
+
         from utils.license_verifier import get_license_details
         lic_key, _, _, _ = get_license_details()
         if lic_key:
@@ -1072,99 +1697,101 @@ def sync_db_sites():
             except Exception:
                 pass
 
-        all_companies = load_companies_sites()
-        active_sites = []
-        for c in all_companies:
-            if c.get("id") == 1 or c.get("name") == company_name:
-                active_sites = c.get("sites", [])
-                break
+        if request.method == "GET":
+            cursor.execute("""
+                SELECT site_id, name, code, address, status, lat, lng 
+                FROM sites 
+                WHERE customer_id = %s 
+                ORDER BY site_id ASC
+            """, (cust_id,))
+            sites_rows = cursor.fetchall()
+            sites_list = []
+            for s in sites_rows:
+                sites_list.append({
+                    "id": s[0],
+                    "site_id": s[0],
+                    "name": s[1],
+                    "code": s[2] or "",
+                    "address": s[3] or "",
+                    "status": s[4] or "Active",
+                    "lat": float(s[5]) if s[5] is not None else 18.5204,
+                    "lng": float(s[6]) if s[6] is not None else 73.8567
+                })
 
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            
-            # Fetch existing database sites
-            cursor.execute("SELECT site_id, name, address, status FROM sites")
-            db_sites = {r[1]: {"site_id": r[0], "address": r[2], "status": r[3]} for r in cursor.fetchall()}
-            
-            active_site_names = set()
-            for s in active_sites:
-                name = s.get("name")
-                address = s.get("address", "")
-                status = s.get("status", "Active")
-                if not name:
-                    continue
-                active_site_names.add(name)
-                
-                if name in db_sites:
-                    db_site = db_sites[name]
-                    if db_site["address"] != address or db_site["status"] != status:
-                        cursor.execute("UPDATE sites SET address = %s, status = %s WHERE site_id = %s", (address, status, db_site["site_id"]))
-                else:
-                    cursor.execute("INSERT INTO sites (name, address, status) VALUES (%s, %s, %s)", (name, address, status))
-            
-            for name, db_site in db_sites.items():
-                if name not in active_site_names:
-                    try:
-                        cursor.execute("DELETE FROM sites WHERE site_id = %s", (db_site["site_id"],))
-                    except Exception:
-                        cursor.execute("UPDATE sites SET status = 'Inactive' WHERE site_id = %s", (db_site["site_id"],))
-                        
-            conn.commit()
-            cursor.close()
-            conn.close()
-    except Exception as e:
-        print("Failed to sync DB sites:", e)
+            return jsonify([{
+                "id": cust_id,
+                "name": company_name,
+                "code": cust_code,
+                "sites": sites_list
+            }]), 200
 
-
-@admin_bp.route("/admin/companies-sites", methods=["GET", "POST"])
-def manage_companies_sites():
-    # Get active company name from license key payload if available
-    company_name = "Sumeet Group"
-    from utils.license_verifier import get_license_details
-    lic_key, _, _, _ = get_license_details()
-    if lic_key:
-        try:
-            import jwt
-            payload = jwt.decode(lic_key, options={"verify_signature": False})
-            if payload and "client_name" in payload:
-                company_name = payload["client_name"]
-        except Exception:
-            pass
-
-    if request.method == "GET":
-        sync_db_sites()
-        all_companies = load_companies_sites()
-        # Force the active company name to match the license name
-        for c in all_companies:
-            if c["id"] == 1:
-                c["name"] = company_name
-                break
-        filtered = [c for c in all_companies if c["name"] == company_name]
-        if not filtered and all_companies:
-            filtered = [all_companies[0]]
-        return jsonify(filtered), 200
-    else:
-        data = request.get_json() or []
-        all_companies = load_companies_sites()
-        for updated_company in data:
-            for idx, c in enumerate(all_companies):
-                if c["id"] == updated_company["id"]:
-                    all_companies[idx] = updated_company
-                    break
-        # Force the active company name to match the license name before saving
-        for c in all_companies:
-            if c["id"] == 1:
-                c["name"] = company_name
-                break
-        if save_companies_sites(all_companies):
-            sync_db_sites()
-            filtered = [c for c in all_companies if c["name"] == company_name]
-            if not filtered and all_companies:
-                filtered = [all_companies[0]]
-            return jsonify(filtered), 200
         else:
-            return jsonify({"error": "Failed to save data"}), 500
+            if not caller_id or caller_role not in ['superadmin', 'global_admin']:
+                return jsonify({"error": "Unauthorized"}), 403
+
+            data = request.get_json() or []
+            # Sync posted sites with database
+            for company in data:
+                posted_sites = company.get("sites", [])
+                for s in posted_sites:
+                    s_id = s.get("id") or s.get("site_id")
+                    s_name = (s.get("name") or "").strip()
+                    s_address = (s.get("address") or "").strip()
+                    s_status = s.get("status", "Active")
+                    s_code = (s.get("code") or "").strip().upper()
+                    s_lat = s.get("lat")
+                    s_lng = s.get("lng")
+
+                    if not s_name:
+                        continue
+
+                    # If id matches an existing site in DB, update it
+                    cursor.execute("SELECT site_id FROM sites WHERE site_id = %s AND customer_id = %s", (s_id, cust_id))
+                    if cursor.fetchone():
+                        cursor.execute("""
+                            UPDATE sites 
+                            SET name = %s, address = %s, status = %s, code = COALESCE(NULLIF(%s, ''), code), lat = COALESCE(%s, lat), lng = COALESCE(%s, lng)
+                            WHERE site_id = %s AND customer_id = %s
+                        """, (s_name, s_address, s_status, s_code, s_lat, s_lng, s_id, cust_id))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO sites (name, code, address, status, customer_id, lat, lng)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (s_name, s_code or f"SITE-{int(time.time()) % 1000}", s_address, s_status, cust_id, s_lat or 18.5204, s_lng or 73.8567))
+            conn.commit()
+
+            cursor.execute("""
+                SELECT site_id, name, code, address, status, lat, lng 
+                FROM sites 
+                WHERE customer_id = %s 
+                ORDER BY site_id ASC
+            """, (cust_id,))
+            sites_rows = cursor.fetchall()
+            sites_list = []
+            for s in sites_rows:
+                sites_list.append({
+                    "id": s[0],
+                    "site_id": s[0],
+                    "name": s[1],
+                    "code": s[2] or "",
+                    "address": s[3] or "",
+                    "status": s[4] or "Active",
+                    "lat": float(s[5]) if s[5] is not None else 18.5204,
+                    "lng": float(s[6]) if s[6] is not None else 73.8567
+                })
+
+            return jsonify([{
+                "id": cust_id,
+                "name": company_name,
+                "code": cust_code,
+                "sites": sites_list
+            }]), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @admin_bp.route("/admin/roles-permissions", methods=["GET", "POST"])
@@ -1504,6 +2131,8 @@ def remote_login():
 def get_hosts():
     try:
         import pymysql.cursors
+        from utils.auth_utils import get_user_site_scope
+
         caller_id, caller_role = get_current_user_from_request(request)
         cust_id = 1
         if caller_id:
@@ -1518,35 +2147,80 @@ def get_hosts():
                 conn_u.close()
 
         search = request.args.get("search", "").strip()
+        req_site_id = request.headers.get("X-Site-ID") or request.args.get("site_id")
+
+        # Determine target site filter
+        target_site_ids = None  # None means all sites across customer
+
+        if caller_id and caller_role not in ['superadmin', 'global_admin']:
+            scope_type, allowed_site_ids = get_user_site_scope(caller_id, caller_role)
+            if req_site_id and req_site_id != "all":
+                try:
+                    sid = int(req_site_id)
+                    target_site_ids = [sid] if sid in allowed_site_ids else [-1]
+                except (ValueError, TypeError):
+                    target_site_ids = allowed_site_ids
+            else:
+                target_site_ids = allowed_site_ids
+        elif req_site_id and req_site_id != "all":
+            try:
+                target_site_ids = [int(req_site_id)]
+            except (ValueError, TypeError):
+                target_site_ids = None
+
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database connection failed"}), 500
             
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        
-        query = """
-            SELECT user_id, name, email, role, department, status, profile_photo
-            FROM users
-            WHERE customer_id = %s
-              AND LOWER(role) IN ('host', 'admin', 'superadmin')
-              AND (LOWER(status) = 'active' OR status IS NULL)
-        """
-        params = [cust_id]
+
+        if target_site_ids is not None:
+            if not target_site_ids or target_site_ids == [-1]:
+                cursor.close()
+                conn.close()
+                return jsonify([]), 200
+
+            format_strings = ','.join(['%s'] * len(target_site_ids))
+            query = f"""
+                SELECT 
+                    u.user_id, u.name, u.email, u.role, u.department, u.status, u.profile_photo,
+                    GROUP_CONCAT(DISTINCT us.site_id) AS site_ids
+                FROM users u
+                JOIN user_sites us ON u.user_id = us.user_id
+                WHERE u.customer_id = %s
+                  AND us.site_id IN ({format_strings})
+                  AND LOWER(u.role) IN ('host', 'admin', 'superadmin')
+                  AND (LOWER(u.status) = 'active' OR u.status IS NULL)
+            """
+            params = [cust_id, *target_site_ids]
+        else:
+            query = """
+                SELECT 
+                    u.user_id, u.name, u.email, u.role, u.department, u.status, u.profile_photo,
+                    GROUP_CONCAT(DISTINCT us.site_id) AS site_ids
+                FROM users u
+                LEFT JOIN user_sites us ON u.user_id = us.user_id
+                WHERE u.customer_id = %s
+                  AND LOWER(u.role) IN ('host', 'admin', 'superadmin')
+                  AND (LOWER(u.status) = 'active' OR u.status IS NULL)
+            """
+            params = [cust_id]
+
         if search:
-            query += " AND (LOWER(name) LIKE %s OR LOWER(department) LIKE %s OR LOWER(email) LIKE %s)"
+            query += " AND (LOWER(u.name) LIKE %s OR LOWER(u.department) LIKE %s OR LOWER(u.email) LIKE %s)"
             search_param = f"%{search.lower()}%"
             params.extend([search_param, search_param, search_param])
             
-        query += " ORDER BY name ASC"
+        query += " GROUP BY u.user_id, u.name, u.email, u.role, u.department, u.status, u.profile_photo ORDER BY u.name ASC"
         
         cursor.execute(query, tuple(params))
         hosts = cursor.fetchall()
         cursor.close()
         conn.close()
 
-        
         result = []
         for h in hosts:
+            s_ids = [int(x) for x in h["site_ids"].split(",")] if h.get("site_ids") else []
             result.append({
                 "id": h["user_id"],
                 "user_id": h["user_id"],
@@ -1556,7 +2230,8 @@ def get_hosts():
                 "role": h["role"],
                 "email": h["email"],
                 "status": h["status"] or "Active",
-                "profile_photo": h["profile_photo"] or ""
+                "profile_photo": h["profile_photo"] or "",
+                "site_ids": s_ids
             })
             
         return jsonify(result), 200

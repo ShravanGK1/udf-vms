@@ -239,6 +239,9 @@ def verify_and_migrate_columns():
     migrations = [
         # (table, column, ddl)
         ("sites", "customer_id", "ALTER TABLE sites ADD COLUMN customer_id INT DEFAULT 1"),
+        ("sites", "code", "ALTER TABLE sites ADD COLUMN code VARCHAR(50) DEFAULT NULL"),
+        ("sites", "lat", "ALTER TABLE sites ADD COLUMN lat DECIMAL(10, 6) DEFAULT NULL"),
+        ("sites", "lng", "ALTER TABLE sites ADD COLUMN lng DECIMAL(10, 6) DEFAULT NULL"),
         ("users", "customer_id", "ALTER TABLE users ADD COLUMN customer_id INT DEFAULT 1"),
         ("users", "remote_login_token", "ALTER TABLE users ADD COLUMN remote_login_token VARCHAR(512) DEFAULT NULL"),
         ("visitors", "vehicle_photo_front", "ALTER TABLE visitors ADD COLUMN vehicle_photo_front VARCHAR(255) DEFAULT NULL"),

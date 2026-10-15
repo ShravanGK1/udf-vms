@@ -149,8 +149,8 @@ export default function LicenseModal({ onClose }) {
             <div style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbfeea 100%)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "1rem", padding: "1.25rem", marginBottom: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#627d98", textTransform: "uppercase" }}>Primary Node Subscription</span>
-                  <h4 style={{ margin: "0.25rem 0", color: "#102a43", fontWeight: 800 }}>{licenseDetails.data?.client_name || "Sumeet Group (Current Server)"}</h4>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-foreground, #627d98)", textTransform: "uppercase" }}>Primary Node Subscription</span>
+                  <h4 style={{ margin: "0.25rem 0", color: "var(--foreground, #102a43)", fontWeight: 800 }}>{licenseDetails.data?.client_name || "Sumeet Group (Current Server)"}</h4>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   {licenseDetails.will_terminate && (
@@ -183,18 +183,18 @@ export default function LicenseModal({ onClose }) {
                 </div>
               )}
 
-              <div className="sa-grid-2" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginTop: "1rem", borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "0.75rem", gap: "1rem" }}>
+              <div className="sa-grid-2" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginTop: "1rem", borderTop: "1px solid var(--border-color, rgba(0,0,0,0.05))", paddingTop: "0.75rem", gap: "1rem" }}>
                 <div>
-                  <span style={{ fontSize: "0.7rem", color: "#627d98" }}>Start Date (Activation)</span>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#102a43" }}>{licenseDetails.start_date}</div>
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)" }}>Start Date (Activation)</span>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--foreground, #102a43)" }}>{licenseDetails.start_date}</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: "0.7rem", color: "#627d98" }}>End Date (Expiration)</span>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#102a43" }}>{licenseDetails.end_date}</div>
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)" }}>End Date (Expiration)</span>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--foreground, #102a43)" }}>{licenseDetails.end_date}</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: "0.7rem", color: "#627d98" }}>Buffer Grace Period</span>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#102a43" }}>
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)" }}>Buffer Grace Period</span>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--foreground, #102a43)" }}>
                     {licenseDetails.is_test_license
                       ? `${licenseDetails.buffer_minutes} Minutes`
                       : licenseDetails.is_one_day_license
@@ -204,7 +204,7 @@ export default function LicenseModal({ onClose }) {
                   </div>
                 </div>
                 <div>
-                  <span style={{ fontSize: "0.7rem", color: "#627d98" }}>
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)" }}>
                     {licenseDetails.is_test_license
                       ? "Standard Minutes Remaining"
                       : licenseDetails.is_one_day_license
@@ -212,7 +212,7 @@ export default function LicenseModal({ onClose }) {
                       : "Standard Days Remaining"
                     }
                   </span>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#102a43" }}>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--foreground, #102a43)" }}>
                     {licenseDetails.is_test_license
                       ? `${licenseDetails.minutes_remaining} Minutes`
                       : licenseDetails.is_one_day_license
@@ -222,7 +222,7 @@ export default function LicenseModal({ onClose }) {
                   </div>
                 </div>
                 <div>
-                  <span style={{ fontSize: "0.7rem", color: "#627d98" }}>
+                  <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)" }}>
                     {licenseDetails.is_test_license
                       ? "Buffer Minutes Remaining"
                       : licenseDetails.is_one_day_license
@@ -230,7 +230,7 @@ export default function LicenseModal({ onClose }) {
                       : "Buffer Days Remaining"
                     }
                   </span>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#102a43" }}>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--foreground, #102a43)" }}>
                     {licenseDetails.is_test_license
                       ? `${licenseDetails.is_in_buffer ? licenseDetails.minutes_remaining_in_buffer : licenseDetails.buffer_minutes} Minutes`
                       : licenseDetails.is_one_day_license
@@ -375,7 +375,7 @@ export default function LicenseModal({ onClose }) {
                 ) : (
                   licenses.map((lic, idx) => (
                     <tr key={idx}>
-                      <td style={{ fontWeight: 700, color: "#102a43" }}>{lic.company}</td>
+                      <td style={{ fontWeight: 700, color: "var(--foreground, #102a43)" }}>{lic.company}</td>
                       <td>{lic.sites}</td>
                       <td>{lic.users}</td>
                       <td>{lic.expiry}</td>

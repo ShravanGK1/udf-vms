@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ShieldAlert, Users, ShieldCheck, UserCheck } from "lucide-react";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import "./DashboardSelection.css";
 
 const dashboards = [
@@ -39,6 +40,7 @@ export default function DashboardSelection() {
 
     return (
         <div className="dashboard-selection-container">
+            <ThemeToggle floating />
             <div className="dashboard-selection-content">
                 <h1 className="ds-title">Select Dashboard</h1>
                 <p className="ds-subtitle">Choose the dashboard you want to access.</p>

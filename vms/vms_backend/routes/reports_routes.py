@@ -321,9 +321,11 @@ def get_reports():
                    v.has_material,
                    v.material_name,
                    v.material_quantity,
-                   v.material_serial_number
+                   v.material_serial_number,
+                   COALESCE(s.name, 'Default Site') AS site_name
             FROM visitor_requests vr
             LEFT JOIN visitors v ON vr.visitor_id = v.visitor_id
+            LEFT JOIN sites s ON vr.site_id = s.site_id
             LEFT JOIN users u_host ON vr.host_id = u_host.user_id
             LEFT JOIN users u_person ON LOWER(v.person_to_visit) = LOWER(u_person.name)
             LEFT JOIN users u_from ON vr.transfer_from_host_id = u_from.user_id
@@ -370,7 +372,9 @@ def get_reports():
                 "material_quantity": r[20] or "-",
                 "materialQuantity": r[20] or "-",
                 "material_serial_number": r[21] or "-",
-                "materialSerialNumber": r[21] or "-"
+                "materialSerialNumber": r[21] or "-",
+                "site_name": r[22] or "Default Site",
+                "site": r[22] or "Default Site"
             }
             # Convert any non-stringable objects to strings
             for key, value in row.items():
@@ -435,6 +439,7 @@ def export_excel():
                 u_from.name AS "TRANSFER FROM",
                 vr.status AS "STATUS",
                 v.department AS "DEPARTMENT",
+                COALESCE(s.name, 'Default Site') AS "SITE",
                 DATE(COALESCE(vr.check_in_time, vr.approved_at, vr.created_at)) AS "DATE",
                 vr.check_in_time AS "IN",
                 COALESCE(vr.manual_check_out_time, vr.check_out_time) AS "OUT",
@@ -446,6 +451,7 @@ def export_excel():
                 COALESCE(v.material_serial_number, '-') AS "CHALLAN / SERIAL NO"
             FROM visitor_requests vr
             JOIN visitors v ON vr.visitor_id = v.visitor_id
+            LEFT JOIN sites s ON vr.site_id = s.site_id
             LEFT JOIN users u_host ON vr.host_id = u_host.user_id
             LEFT JOIN users u_person ON LOWER(v.person_to_visit) = LOWER(u_person.name)
             LEFT JOIN users u_from ON vr.transfer_from_host_id = u_from.user_id

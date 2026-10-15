@@ -39,6 +39,9 @@ def login():
         if user["password"] != password:
             return jsonify({"message": "Invalid password"}), 401
 
+        if (user.get("status") or "").lower() != "active":
+            return jsonify({"message": "Account is deactivated. Please contact your administrator."}), 403
+
         token = generate_token(user)
 
         # Get authorized site IDs and full site objects for multi-site RBAC

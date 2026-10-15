@@ -266,3 +266,63 @@
   }
 }
 
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] .camera-modal-wrapper,
+.dark .camera-modal-wrapper {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .camera-modal-header,
+.dark .camera-modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .camera-modal-header h3,
+.dark .camera-modal-header h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .camera-modal-close:hover,
+.dark .camera-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ef4444;
+}
+
+[data-theme="dark"] .camera-modal-footer,
+.dark .camera-modal-footer {
+  background-color: #1e293b;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .btn-camera-switch,
+.dark .btn-camera-switch {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-camera-switch:hover,
+.dark .btn-camera-switch:hover {
+  background-color: #334155;
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .btn-camera-retake,
+.dark .btn-camera-retake {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-camera-retake:hover,
+.dark .btn-camera-retake:hover {
+  background-color: #334155;
+  color: #f8fafc;
+}
+
+

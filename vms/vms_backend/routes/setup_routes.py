@@ -164,8 +164,8 @@ def initialize_system():
             site_id = site_row["site_id"]
         else:
             cursor.execute(
-                "INSERT INTO sites (name, address, status, customer_id) VALUES (%s, 'Main Headquarters', 'Active', %s)",
-                (site_name, customer_id)
+                "INSERT INTO sites (name, code, address, status, customer_id) VALUES (%s, %s, 'Main Headquarters', 'Active', %s)",
+                (site_name, site_code, customer_id)
             )
             site_id = cursor.lastrowid
 

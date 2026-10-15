@@ -520,3 +520,89 @@
     opacity: 1;
   }
 }
+
+/* ========================================================
+   DARK THEME COMPATIBILITY FOR NAVBAR MODALS
+   ======================================================== */
+[data-theme="dark"] .vms-modal-container,
+.dark .vms-modal-container {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .vms-modal-header,
+.dark .vms-modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .vms-modal-title,
+.dark .vms-modal-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .vms-modal-close:hover,
+.dark .vms-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ef4444;
+}
+
+[data-theme="dark"] .vms-modal-section,
+.dark .vms-modal-section {
+  background-color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .vms-modal-section-title,
+.dark .vms-modal-section-title {
+  color: #94a3b8;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .vms-modal-label,
+.dark .vms-modal-label {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .vms-modal-value,
+.dark .vms-modal-value {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .vms-modal-form-group label,
+.dark .vms-modal-form-group label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .vms-modal-input,
+[data-theme="dark"] .vms-modal-select,
+.dark .vms-modal-input,
+.dark .vms-modal-select {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .vms-modal-checkbox-label,
+.dark .vms-modal-checkbox-label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .vms-modal-footer,
+.dark .vms-modal-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .vms-modal-btn-secondary,
+.dark .vms-modal-btn-secondary {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .vms-modal-btn-secondary:hover,
+.dark .vms-modal-btn-secondary:hover {
+  background: #334155;
+  color: #f8fafc;
+}

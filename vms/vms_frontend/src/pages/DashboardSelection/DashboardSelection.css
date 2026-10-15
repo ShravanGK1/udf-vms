@@ -88,3 +88,41 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* --- Dark Theme Support for Dashboard Selection --- */
+[data-theme="dark"] .dashboard-selection-container,
+.dark .dashboard-selection-container {
+    background: linear-gradient(135deg, #070d19 0%, #0c1a30 100%);
+}
+
+[data-theme="dark"] .ds-title,
+.dark .ds-title {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .ds-subtitle,
+.dark .ds-subtitle {
+    color: #94a3b8;
+}
+
+[data-theme="dark"] .ds-card,
+.dark .ds-card {
+    background-color: rgba(15, 32, 59, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .ds-icon-wrapper,
+.dark .ds-icon-wrapper {
+    background-color: rgba(30, 41, 59, 0.6);
+}
+
+[data-theme="dark"] .ds-card-title,
+.dark .ds-card-title {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .ds-card-desc,
+.dark .ds-card-desc {
+    color: #94a3b8;
+}

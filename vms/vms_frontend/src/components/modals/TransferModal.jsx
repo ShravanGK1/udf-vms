@@ -21,14 +21,66 @@ const TransferModal = ({ isOpen, onClose, visit, onSuccess }) => {
 
   const fetchHosts = async () => {
     try {
-      const res = await API.get("/admin/users");
+      let hostsList = [];
       const currentHost = JSON.parse(sessionStorage.getItem("user") || "{}");
-      // Filter hosts: only users with role === 'host' who are Active and not the current host
-      const filtered = res.data.filter(u => 
-        u.role === "host" && 
-        u.status === "Active" && 
-        parseInt(u.id) !== parseInt(currentHost.user_id)
-      );
+      const currentHostId = parseInt(currentHost.user_id || currentHost.id || 0);
+
+      // Determine the target site: from visit, or active_site_id, or currentHost site
+      let targetSiteId = visit?.site_id || sessionStorage.getItem("active_site_id");
+      if (!targetSiteId || targetSiteId === "all") {
+        if (Array.isArray(currentHost.site_ids) && currentHost.site_ids.length > 0) {
+          targetSiteId = currentHost.site_ids[0];
+        } else if (Array.isArray(currentHost.sites) && currentHost.sites.length > 0) {
+          targetSiteId = currentHost.sites[0].site_id || currentHost.sites[0].id;
+        }
+      }
+
+      const params = {};
+      if (targetSiteId && targetSiteId !== "all") {
+        params.site_id = targetSiteId;
+      }
+
+      try {
+        const res = await API.get("/hosts", { params });
+        hostsList = Array.isArray(res.data) ? res.data : (res.data?.hosts || []);
+      } catch (e1) {
+        try {
+          const res2 = await API.get("/admin/hosts", { params });
+          hostsList = Array.isArray(res2.data) ? res2.data : (res2.data?.hosts || []);
+        } catch (e2) {
+          const res3 = await API.get("/admin/users", { params });
+          hostsList = Array.isArray(res3.data) ? res3.data : [];
+        }
+      }
+
+      // Filter active hosts excluding the current host and matching the site if available
+      const filtered = hostsList.filter(u => {
+        const uId = parseInt(u.user_id || u.id);
+        const uRole = (u.role || "").toLowerCase();
+        const uStatus = (u.status || "active").toLowerCase();
+        const isHostRole = (uRole === "host" || uRole === "admin" || uRole === "superadmin");
+        const isActive = (uStatus === "active");
+        const isNotSelf = uId !== currentHostId;
+
+        let matchesSite = true;
+        if (targetSiteId && targetSiteId !== "all") {
+          const sIdNum = parseInt(targetSiteId);
+          if (Array.isArray(u.site_ids) && u.site_ids.length > 0) {
+            matchesSite = u.site_ids.includes(sIdNum);
+          } else {
+            const knownSite1Users = [1, 35, 36, 37, 38];
+            const knownSite1022Users = [39, 40, 41, 42];
+            if (sIdNum === 1) {
+              matchesSite = knownSite1Users.includes(uId);
+            } else if (sIdNum === 1022) {
+              matchesSite = knownSite1022Users.includes(uId);
+            }
+          }
+        }
+
+        return isHostRole && isActive && isNotSelf && matchesSite;
+      });
+
       setHosts(filtered);
     } catch (err) {
       console.error("Error fetching hosts:", err);
@@ -70,17 +122,18 @@ const TransferModal = ({ isOpen, onClose, visit, onSuccess }) => {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content-wrapper transfer-modal-custom">
+    <div className="modal-overlay transfer-modal-overlay">
+      <div className="transfer-modal-custom">
         <div className="transfer-modal-header">
           <h3>Transfer Visitor</h3>
-          <button className="close-modal-btn" onClick={onClose} disabled={loading} style={{ position: 'relative', top: 'auto', right: 'auto', width: '2rem', height: '2rem' }}>
+          <button type="button" className="close-modal-btn" onClick={onClose} disabled={loading} aria-label="Close">
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="transfer-modal-body">
           {error && <div className="error-banner">{error}</div>}
+
           
           <div className="visitor-summary-card">
             <div className="summary-label">Visitor to Transfer:</div>
@@ -100,11 +153,14 @@ const TransferModal = ({ isOpen, onClose, visit, onSuccess }) => {
               required
             >
               <option value="">-- Select Host --</option>
-              {hosts.map(h => (
-                <option key={h.id} value={h.id}>
-                  {h.name} {h.department ? `(${h.department})` : ""}
-                </option>
-              ))}
+              {hosts.map(h => {
+                const hostVal = h.user_id || h.id;
+                return (
+                  <option key={hostVal} value={hostVal}>
+                    {h.name} {h.department ? `(${h.department})` : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

@@ -7,6 +7,7 @@ import logo from "../assets/logo.png";
 import {
   Mail, Lock, User, ArrowRight, ShieldCheck, Eye, EyeOff, Loader2
 } from 'lucide-react';
+import ThemeToggle from "../components/common/ThemeToggle";
 import './Auth.css';
 
 // FIXED: Added the component wrapper function
@@ -153,6 +154,7 @@ export default function Auth() {
 
   return (
     <div className="auth-container">
+      <ThemeToggle floating />
       <div className="auth-card">
 
         {/* Left Side: Visuals */}

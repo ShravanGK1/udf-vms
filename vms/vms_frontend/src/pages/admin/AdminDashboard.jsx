@@ -6,17 +6,32 @@ import StatCard from "../../components/StatCard/StatCard";
 import VisitorPassForm from "../../components/forms/forms/VisitorPassForm";
 import CameraModal from "../../components/modals/CameraModal";
 import {
-  Users, UserCheck, Clock, AlertTriangle, Plus, Search, Building,
+  Users, UserCheck, UserX, Clock, AlertTriangle, Plus, Search, Building,
   ChevronRight, ChevronDown, BarChart3, MapPin, Download, Camera, X, Shield,
-  RefreshCw, Eye, Edit, Printer, Phone, Mail, Laptop, Car, FileText,
-  Briefcase, CheckCircle, ClipboardList, Trash2, Save, Check, Package
+  RefreshCw, Eye, EyeOff, Edit, Printer, Phone, Mail, Laptop, Car, FileText,
+  Briefcase, CheckCircle, ClipboardList, Trash2, Save, Check, Package, Key
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { useTheme } from "../../context/ThemeContext";
 import "../SecurtiyDashboard/SecurityDashboard.css";
 import "./AdminDashboard.css";
 
 
 const AdminDashboard = () => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const chartGridStroke = isDark ? "rgba(255, 255, 255, 0.1)" : "hsl(214, 32%, 91%)";
+  const chartTickFill = isDark ? "#94a3b8" : "hsl(215, 16%, 47%)";
+  const chartTooltipStyle = isDark ? {
+    backgroundColor: "#1e293b",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    color: "#f8fafc",
+    borderRadius: "0.5rem"
+  } : {
+    borderRadius: "0.5rem",
+    border: "1px solid hsl(214, 32%, 91%)"
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("users");
   const [visitorSubTab, setVisitorSubTab] = useState("live_visitors");
@@ -40,8 +55,66 @@ const AdminDashboard = () => {
     password: "",
     role: "host",
     department: "",
+    site_id: "",
     photo: null
   });
+  const [showUserPassword, setShowUserPassword] = useState(false);
+  const [userFormError, setUserFormError] = useState("");
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
+  const [siteLoadError, setSiteLoadError] = useState("");
+
+  // Employee Management Actions State
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editUserData, setEditUserData] = useState({
+    id: null,
+    name: "",
+    email: "",
+    role: "host",
+    department: "",
+    site_id: "",
+    status: "Active"
+  });
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editUserError, setEditUserError] = useState("");
+
+  const [showTransferSiteModal, setShowTransferSiteModal] = useState(false);
+  const [transferUserData, setTransferUserData] = useState({
+    id: null,
+    name: "",
+    email: "",
+    currentSiteName: "",
+    newSiteId: ""
+  });
+  const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
+  const [transferError, setTransferError] = useState("");
+
+  const [showStatusConfirmModal, setShowStatusConfirmModal] = useState(false);
+  const [statusConfirmData, setStatusConfirmData] = useState({
+    id: null,
+    name: "",
+    role: "",
+    currentStatus: "Active",
+    newStatus: "Inactive"
+  });
+  const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
+  const [statusError, setStatusError] = useState("");
+  const [actionSuccessToast, setActionSuccessToast] = useState("");
+
+  // Reset Password State
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState({
+    id: null,
+    name: "",
+    email: ""
+  });
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+
   const navigate = useNavigate();
 
   const [showMusterModal, setShowMusterModal] = useState(false);
@@ -751,11 +824,17 @@ const AdminDashboard = () => {
   };
 
   const fetchSites = async () => {
+    setIsLoadingSites(true);
+    setSiteLoadError("");
     try {
       const res = await API.get("/admin/sites");
-      setSites(res.data);
+      setSites(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch sites for admin:", err);
+      setSiteLoadError("Failed to load authorized sites.");
+      setSites([]);
+    } finally {
+      setIsLoadingSites(false);
     }
   };
 
@@ -805,12 +884,21 @@ const AdminDashboard = () => {
 
   const handleAddUser = async (e) => {
     e.preventDefault();
+    setUserFormError("");
+
+    if (!newUser.site_id) {
+      setUserFormError("Site assignment is required. Please select an authorized site.");
+      return;
+    }
+
+    setIsSubmittingUser(true);
     const formData = new FormData();
     formData.append("name", newUser.name);
     formData.append("email", newUser.email);
     formData.append("password", newUser.password);
     formData.append("role", newUser.role);
     formData.append("department", newUser.department);
+    formData.append("site_id", newUser.site_id);
     if (newUser.photo) {
       formData.append("photo", newUser.photo);
     }
@@ -821,12 +909,235 @@ const AdminDashboard = () => {
       });
       alert("✅ User Created Successfully");
       setShowAddUserModal(false);
-      setNewUser({ name: "", email: "", password: "", role: "host", department: "", photo: null });
+      setNewUser({ name: "", email: "", password: "", role: "host", department: "", site_id: "", photo: null });
+      setShowUserPassword(false);
       fetchUsers();
       fetchStats();
     } catch (err) {
       console.error(err);
-      alert("❌ Failed to create user");
+      const errMsg = err.response?.data?.error || "Failed to create user";
+      setUserFormError(errMsg);
+    } finally {
+      setIsSubmittingUser(false);
+    }
+  };
+
+  const handleOpenEditUser = (user) => {
+    let currentSiteId = "";
+    if (Array.isArray(user.sites) && user.sites.length > 0) {
+      currentSiteId = user.sites[0].site_id || user.sites[0].id || "";
+    } else if (Array.isArray(user.site_ids) && user.site_ids.length > 0) {
+      currentSiteId = user.site_ids[0];
+    } else if (user.site_ids && user.site_ids !== "ALL") {
+      currentSiteId = user.site_ids;
+    }
+
+    setEditUserData({
+      id: user.id,
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role || "host",
+      department: user.department || "",
+      site_id: currentSiteId,
+      status: user.status || "Active"
+    });
+    setEditUserError("");
+    if (sites.length === 0) fetchSites();
+    setShowEditUserModal(true);
+  };
+
+  const handleSaveEditUser = async (e) => {
+    e.preventDefault();
+    setEditUserError("");
+
+    if (!editUserData.name.trim()) {
+      setEditUserError("Full Name is required.");
+      return;
+    }
+    if (!editUserData.email.trim()) {
+      setEditUserError("Email address is required.");
+      return;
+    }
+    if (!editUserData.site_id) {
+      setEditUserError("Site assignment is required. Please select an authorized site.");
+      return;
+    }
+
+    setIsSubmittingEdit(true);
+    try {
+      await API.put(`/admin/users/${editUserData.id}`, {
+        name: editUserData.name.trim(),
+        email: editUserData.email.trim(),
+        role: editUserData.role,
+        department: editUserData.department,
+        status: editUserData.status,
+        site_id: editUserData.site_id
+      });
+      setShowEditUserModal(false);
+      setActionSuccessToast(`Employee "${editUserData.name}" updated successfully.`);
+      setTimeout(() => setActionSuccessToast(""), 4000);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating employee details:", err);
+      const errMsg = err.response?.data?.error || "Failed to update employee details.";
+      setEditUserError(errMsg);
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  const handleOpenTransferSite = (user) => {
+    let currentSiteName = "Unassigned";
+    let currentSiteId = "";
+    if (Array.isArray(user.sites) && user.sites.length > 0) {
+      currentSiteName = user.sites.map(s => s.name + (s.code ? ` (${s.code})` : "")).join(", ");
+      currentSiteId = user.sites[0].site_id || user.sites[0].id || "";
+    } else if (user.site_ids === "ALL") {
+      currentSiteName = "All Sites (Global)";
+    } else if (user.site_ids) {
+      currentSiteName = `Site #${user.site_ids}`;
+      currentSiteId = Array.isArray(user.site_ids) ? user.site_ids[0] : user.site_ids;
+    }
+
+    setTransferUserData({
+      id: user.id,
+      name: user.name || "Employee",
+      email: user.email || "",
+      currentSiteName,
+      newSiteId: currentSiteId
+    });
+    setTransferError("");
+    if (sites.length === 0) fetchSites();
+    setShowTransferSiteModal(true);
+  };
+
+  const handleSaveTransferSite = async (e) => {
+    e.preventDefault();
+    setTransferError("");
+
+    if (!transferUserData.newSiteId) {
+      setTransferError("Please select a target site for transfer.");
+      return;
+    }
+
+    setIsSubmittingTransfer(true);
+    try {
+      const res = await API.patch(`/admin/users/${transferUserData.id}/site`, {
+        site_id: transferUserData.newSiteId
+      });
+      setShowTransferSiteModal(false);
+      setActionSuccessToast(res.data?.message || `Site transfer completed for ${transferUserData.name}.`);
+      setTimeout(() => setActionSuccessToast(""), 4000);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error transferring employee site:", err);
+      const errMsg = err.response?.data?.error || "Failed to transfer employee site.";
+      setTransferError(errMsg);
+    } finally {
+      setIsSubmittingTransfer(false);
+    }
+  };
+
+  const handleOpenStatusConfirm = (user, targetStatus) => {
+    setStatusConfirmData({
+      id: user.id,
+      name: user.name || "Employee",
+      role: user.role || "Employee",
+      currentStatus: user.status || "Active",
+      newStatus: targetStatus
+    });
+    setStatusError("");
+    setShowStatusConfirmModal(true);
+  };
+
+  const handleConfirmStatusChange = async () => {
+    setStatusError("");
+    setIsSubmittingStatus(true);
+    try {
+      const res = await API.patch(`/admin/users/${statusConfirmData.id}/status`, {
+        status: statusConfirmData.newStatus
+      });
+      setShowStatusConfirmModal(false);
+      setActionSuccessToast(res.data?.message || `Employee status updated to ${statusConfirmData.newStatus}.`);
+      setTimeout(() => setActionSuccessToast(""), 4000);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating user status:", err);
+      const errMsg = err.response?.data?.error || "Failed to update employee status.";
+      setStatusError(errMsg);
+    } finally {
+      setIsSubmittingStatus(false);
+    }
+  };
+
+  const handleOpenResetPassword = (user) => {
+    setResetPasswordUser({
+      id: user.id || user.user_id,
+      name: user.name || "Employee",
+      email: user.email || ""
+    });
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setResetPasswordError("");
+    setShowResetPasswordModal(true);
+  };
+
+  const handleCloseResetPassword = () => {
+    setShowResetPasswordModal(false);
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setResetPasswordError("");
+    setIsSubmittingReset(false);
+  };
+
+  const handleSaveResetPassword = async (e) => {
+    e.preventDefault();
+    setResetPasswordError("");
+
+    if (!newPassword) {
+      setResetPasswordError("Please enter a new password.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setResetPasswordError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      setResetPasswordError("Password must contain at least one uppercase letter, one number, and one special character.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setResetPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmittingReset(true);
+    try {
+      const res = await API.post(`/admin/users/${resetPasswordUser.id}/reset-password`, {
+        password: newPassword,
+        confirm_password: confirmNewPassword
+      });
+      handleCloseResetPassword();
+      setActionSuccessToast(res.data?.message || `Password for ${resetPasswordUser.name} has been reset successfully.`);
+      setTimeout(() => setActionSuccessToast(""), 4000);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error resetting employee password:", err);
+      const errMsg = err.response?.data?.error || err.response?.data?.message || "Failed to reset password.";
+      setResetPasswordError(errMsg);
+    } finally {
+      setIsSubmittingReset(false);
     }
   };
 
@@ -913,7 +1224,7 @@ const AdminDashboard = () => {
               if (e.key === "Escape") { e.preventDefault(); handleCancelEdit(); }
             }}
             autoFocus
-            style={{ flex: 1, padding: "4px 8px", borderRadius: "6px", border: "1px solid #3b82f6", fontSize: "0.875rem", outline: "none" }}
+            style={{ flex: 1, padding: "4px 8px", borderRadius: "6px", border: "1px solid #3b82f6", background: "var(--input-bg, #ffffff)", color: "var(--input-text, #0f172a)", fontSize: "0.875rem", outline: "none" }}
           />
           <button
             onClick={() => handleSaveEdit(category, idx)}
@@ -934,8 +1245,8 @@ const AdminDashboard = () => {
     }
 
     return (
-      <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
-        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#334155" }}>{itemText}</span>
+      <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "var(--muted, #f8fafc)", borderRadius: "8px", border: "1px solid var(--border-color, #f1f5f9)" }}>
+        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground, #334155)" }}>{itemText}</span>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <button
             onClick={() => handleStartEdit(category, idx, itemText)}
@@ -1014,10 +1325,10 @@ const AdminDashboard = () => {
                 <div className="admin-chart-container">
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={visitData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 32%, 91%)" />
-                      <XAxis dataKey="day" tick={{ fontSize: 12, fill: "hsl(215, 16%, 47%)" }} />
-                      <YAxis tick={{ fontSize: 12, fill: "hsl(215, 16%, 47%)" }} allowDecimals={false} />
-                      <Tooltip contentStyle={{ borderRadius: "0.5rem", border: "1px solid hsl(214, 32%, 91%)" }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
+                      <XAxis dataKey="day" tick={{ fontSize: 12, fill: chartTickFill }} />
+                      <YAxis tick={{ fontSize: 12, fill: chartTickFill }} allowDecimals={false} />
+                      <Tooltip contentStyle={chartTooltipStyle} />
                       <Bar dataKey="visitors" fill="hsl(217, 91%, 60%)" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1037,8 +1348,8 @@ const AdminDashboard = () => {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: "0.8rem" }} />
-                      <Tooltip />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: "0.8rem", color: chartTickFill }} />
+                      <Tooltip contentStyle={chartTooltipStyle} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -1078,13 +1389,33 @@ const AdminDashboard = () => {
               {/* USER TAB CONTENT */}
               {activeTab === "users" && (
                 <div className="admin-table-container">
+                  {actionSuccessToast && (
+                    <div style={{
+                      background: '#ecfdf5',
+                      color: '#065f46',
+                      border: '1px solid #a7f3d0',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      marginBottom: '1rem',
+                      fontWeight: 500,
+                      fontSize: '0.875rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span>✅ {actionSuccessToast}</span>
+                      <button onClick={() => setActionSuccessToast("")} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#065f46', fontSize: '1rem', fontWeight: 700 }}>✕</button>
+                    </div>
+                  )}
                   <table className="admin-table">
                     <thead>
                       <tr>
                         <th>Name</th>
                         <th>Role</th>
                         <th>Department</th>
+                        <th>Assigned Site</th>
                         <th>Status</th>
+                        <th style={{ textAlign: 'center', width: '165px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1114,9 +1445,78 @@ const AdminDashboard = () => {
                           <td><span className="admin-role-tag">{user.role}</span></td>
                           <td>{user.department}</td>
                           <td>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', color: '#334e68', fontWeight: 500 }}>
+                              <MapPin size={14} style={{ color: '#2563eb', flexShrink: 0 }} />
+                              {Array.isArray(user.sites) && user.sites.length > 0
+                                ? user.sites.map(s => s.name).join(", ")
+                                : (user.site_ids === "ALL" ? "All Sites (Global)" : (user.site_ids ? `Site #${user.site_ids}` : "Unassigned"))}
+                            </span>
+                          </td>
+                          <td>
                             <span className={`admin-status-badge ${user.status.toLowerCase() === "active" ? "active" : "inactive"}`}>
                               <span className="admin-status-dot" /> {user.status}
                             </span>
+                          </td>
+                          <td>
+                            <div className="admin-action-btns" style={{ justifyContent: 'center' }}>
+                              <button
+                                type="button"
+                                className="admin-icon-btn edit"
+                                title="Edit Employee Details"
+                                aria-label="Edit Employee Details"
+                                onClick={() => handleOpenEditUser(user)}
+                              >
+                                <Edit size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-icon-btn transfer"
+                                title="Change Assigned Site"
+                                aria-label="Change Assigned Site"
+                                onClick={() => handleOpenTransferSite(user)}
+                              >
+                                <Building size={15} />
+                              </button>
+                              {(() => {
+                                const isCallerSuper = loggedInUser.role === 'superadmin' || loggedInUser.role === 'global_admin';
+                                const isTargetSuper = user.role === 'superadmin' || user.role === 'global_admin';
+                                const canReset = isCallerSuper || !isTargetSuper;
+                                return (
+                                  <button
+                                    type="button"
+                                    className="admin-icon-btn reset-pwd"
+                                    title={canReset ? "Reset Password" : "Site Admins cannot reset Super Admin passwords"}
+                                    aria-label="Reset Password"
+                                    disabled={!canReset}
+                                    style={!canReset ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
+                                    onClick={() => canReset && handleOpenResetPassword(user)}
+                                  >
+                                    <Key size={15} />
+                                  </button>
+                                );
+                              })()}
+                              {user.status?.toLowerCase() === "active" ? (
+                                <button
+                                  type="button"
+                                  className="admin-icon-btn deactivate"
+                                  title="Deactivate Employee"
+                                  aria-label="Deactivate Employee"
+                                  onClick={() => handleOpenStatusConfirm(user, "Inactive")}
+                                >
+                                  <AlertTriangle size={15} />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="admin-icon-btn activate"
+                                  title="Activate Employee"
+                                  aria-label="Activate Employee"
+                                  onClick={() => handleOpenStatusConfirm(user, "Active")}
+                                >
+                                  <CheckCircle size={15} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1525,12 +1925,12 @@ const AdminDashboard = () => {
                   {/* EXPIRED VISITS TAB CONTENT */}
                   {visitorSubTab === "expired_visits" && (
                     <div className="security-requests-list">
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '15px 2rem', gap: '10px', alignItems: 'center', background: 'rgba(255,255,255,0.4)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#627d98' }}>Filter Expired:</span>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '15px 2rem', gap: '10px', alignItems: 'center', background: 'var(--card-bg, rgba(255,255,255,0.4))', borderBottom: '1px solid var(--border-color, rgba(0,0,0,0.05))' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--muted-foreground, #627d98)' }}>Filter Expired:</span>
                         <select
                           value={expiredFilter}
                           onChange={(e) => setExpiredFilter(e.target.value)}
-                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', outline: 'none', backgroundColor: '#ffffff', color: '#102a43', fontWeight: 600, cursor: 'pointer' }}
+                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', fontSize: '13px', outline: 'none', backgroundColor: 'var(--input-bg, #ffffff)', color: 'var(--input-text, #102a43)', fontWeight: 600, cursor: 'pointer' }}
                         >
                           <option value="all">All Expired</option>
                           <option value="week">This Week (Last 7 Days)</option>
@@ -1587,27 +1987,27 @@ const AdminDashboard = () => {
                   {remoteError && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 15px', borderRadius: '6px', margin: '10px 15px', fontWeight: 500, fontSize: '0.85rem' }}>{remoteError}</div>}
 
                   {selectedUserForRemote ? (
-                    <div style={{ padding: '20px', background: 'rgba(37, 99, 235, 0.03)', borderRadius: '8px', margin: '15px', border: '1px solid rgba(37, 99, 235, 0.1)' }}>
-                      <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', fontWeight: 700 }}>Authorize Remote Re-login</h4>
-                      <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    <div style={{ padding: '20px', background: 'var(--muted, rgba(37, 99, 235, 0.03))', borderRadius: '8px', margin: '15px', border: '1px solid var(--border-color, rgba(37, 99, 235, 0.1))' }}>
+                      <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', fontWeight: 700, color: 'var(--foreground, #0f172a)' }}>Authorize Remote Re-login</h4>
+                      <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: 'var(--muted-foreground, #64748b)' }}>
                         Enter the password for <strong>{selectedUserForRemote.name}</strong> ({selectedUserForRemote.role}) to re-login their dashboard automatically.
                       </p>
                       <form onSubmit={handleRemoteLoginSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>User Password</label>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground, #475569)' }}>User Password</label>
                           <input
                             type="password"
                             required
                             placeholder="Enter password..."
                             value={remotePassword}
                             onChange={(e) => setRemotePassword(e.target.value)}
-                            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.85rem', width: '250px' }}
+                            style={{ padding: '8px 12px', border: '1px solid var(--input-border, #cbd5e1)', background: 'var(--input-bg, #ffffff)', color: 'var(--input-text, #0f172a)', borderRadius: '6px', fontSize: '0.85rem', width: '250px' }}
                           />
                         </div>
                         <button type="submit" disabled={authorizingRemote} style={{ padding: '8px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
                           {authorizingRemote ? 'Authorizing...' : 'Authorize Re-login'}
                         </button>
-                        <button type="button" onClick={() => setSelectedUserForRemote(null)} style={{ padding: '8px 16px', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+                        <button type="button" onClick={() => setSelectedUserForRemote(null)} style={{ padding: '8px 16px', background: 'var(--muted, #e2e8f0)', color: 'var(--foreground, #334155)', border: '1px solid var(--border-color, transparent)', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
                           Cancel
                         </button>
                       </form>
@@ -1678,8 +2078,8 @@ const AdminDashboard = () => {
                 <div style={{ padding: "1.5rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Form Dropdown Options Manager</h3>
-                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
+                      <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "var(--foreground, #0f172a)" }}>Form Dropdown Options Manager</h3>
+                      <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "var(--muted-foreground, #64748b)" }}>
                         Customize the values available in Reason of Visit and Unit/Site dropdowns across all visitor forms.
                       </p>
                     </div>
@@ -1697,7 +2097,7 @@ const AdminDashboard = () => {
                   </div>
 
                   {dropdownSuccessMsg && (
-                    <div style={{ padding: "12px 16px", borderRadius: "10px", background: "#dcfce7", color: "#15803d", fontWeight: 600, fontSize: "0.9rem", marginBottom: "1.5rem", border: "1px solid #bbf7d0" }}>
+                    <div style={{ padding: "12px 16px", borderRadius: "10px", background: "rgba(34, 197, 94, 0.15)", color: "#22c55e", fontWeight: 600, fontSize: "0.9rem", marginBottom: "1.5rem", border: "1px solid rgba(34, 197, 94, 0.3)" }}>
                       {dropdownSuccessMsg}
                     </div>
                   )}
@@ -1705,14 +2105,14 @@ const AdminDashboard = () => {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
                     
                     {/* CARD 1: REASON OF VISIT */}
-                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                    <div style={{ background: "var(--card-bg, #ffffff)", borderRadius: "14px", border: "1px solid var(--border-color, #e2e8f0)", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
-                        <div style={{ background: "#dbeafe", color: "#2563eb", padding: "8px", borderRadius: "8px" }}>
+                        <div style={{ background: "rgba(37, 99, 235, 0.15)", color: "#2563eb", padding: "8px", borderRadius: "8px" }}>
                           <ClipboardList size={20} />
                         </div>
                         <div>
-                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Reason of Visit Options</h4>
-                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageReasons.length} options defined</span>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--foreground, #0f172a)" }}>Reason of Visit Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #64748b)" }}>{manageReasons.length} options defined</span>
                         </div>
                       </div>
 
@@ -1724,7 +2124,7 @@ const AdminDashboard = () => {
                           value={newReasonInput}
                           onChange={(e) => setNewReasonInput(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddReason())}
-                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--input-border, #cbd5e1)", background: "var(--input-bg, #ffffff)", color: "var(--input-text, #0f172a)", fontSize: "0.875rem", outline: "none" }}
                         />
                         <button
                           onClick={handleAddReason}
@@ -1741,14 +2141,14 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* CARD 2: UNITS / SITES */}
-                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                    <div style={{ background: "var(--card-bg, #ffffff)", borderRadius: "14px", border: "1px solid var(--border-color, #e2e8f0)", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
-                        <div style={{ background: "#fef3c7", color: "#d97706", padding: "8px", borderRadius: "8px" }}>
+                        <div style={{ background: "rgba(217, 119, 6, 0.15)", color: "#d97706", padding: "8px", borderRadius: "8px" }}>
                           <Building size={20} />
                         </div>
                         <div>
-                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Unit / Location Options</h4>
-                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageUnits.length} units defined</span>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--foreground, #0f172a)" }}>Unit / Location Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #64748b)" }}>{manageUnits.length} units defined</span>
                         </div>
                       </div>
 
@@ -1760,7 +2160,7 @@ const AdminDashboard = () => {
                           value={newUnitInput}
                           onChange={(e) => setNewUnitInput(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddUnit())}
-                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--input-border, #cbd5e1)", background: "var(--input-bg, #ffffff)", color: "var(--input-text, #0f172a)", fontSize: "0.875rem", outline: "none" }}
                         />
                         <button
                           onClick={handleAddUnit}
@@ -1777,14 +2177,14 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* CARD 3: DEPARTMENT OPTIONS */}
-                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                    <div style={{ background: "var(--card-bg, #ffffff)", borderRadius: "14px", border: "1px solid var(--border-color, #e2e8f0)", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
-                        <div style={{ background: "#f3e8ff", color: "#7c3aed", padding: "8px", borderRadius: "8px" }}>
+                        <div style={{ background: "rgba(124, 58, 237, 0.15)", color: "#7c3aed", padding: "8px", borderRadius: "8px" }}>
                           <Briefcase size={20} />
                         </div>
                         <div>
-                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Department Options</h4>
-                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageDepartments.length} departments defined</span>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--foreground, #0f172a)" }}>Department Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #64748b)" }}>{manageDepartments.length} departments defined</span>
                         </div>
                       </div>
 
@@ -1796,7 +2196,7 @@ const AdminDashboard = () => {
                           value={newDeptInput}
                           onChange={(e) => setNewDeptInput(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddDept())}
-                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--input-border, #cbd5e1)", background: "var(--input-bg, #ffffff)", color: "var(--input-text, #0f172a)", fontSize: "0.875rem", outline: "none" }}
                         />
                         <button
                           onClick={handleAddDept}
@@ -1813,14 +2213,14 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* CARD 4: ACCESS LEVEL OPTIONS */}
-                    <div style={{ background: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                    <div style={{ background: "var(--card-bg, #ffffff)", borderRadius: "14px", border: "1px solid var(--border-color, #e2e8f0)", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem" }}>
-                        <div style={{ background: "#e0f2fe", color: "#0284c7", padding: "8px", borderRadius: "8px" }}>
+                        <div style={{ background: "rgba(2, 132, 199, 0.15)", color: "#0284c7", padding: "8px", borderRadius: "8px" }}>
                           <Shield size={20} />
                         </div>
                         <div>
-                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>Access Level Options</h4>
-                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{manageAccessLevels.length} levels defined</span>
+                          <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--foreground, #0f172a)" }}>Access Level Options</h4>
+                          <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground, #64748b)" }}>{manageAccessLevels.length} levels defined</span>
                         </div>
                       </div>
 
@@ -1832,7 +2232,7 @@ const AdminDashboard = () => {
                           value={newAccessInput}
                           onChange={(e) => setNewAccessInput(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddAccess())}
-                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none" }}
+                          style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--input-border, #cbd5e1)", background: "var(--input-bg, #ffffff)", color: "var(--input-text, #0f172a)", fontSize: "0.875rem", outline: "none" }}
                         />
                         <button
                           onClick={handleAddAccess}
@@ -1861,11 +2261,16 @@ const AdminDashboard = () => {
             <div className="admin-modal-content">
               <div className="admin-modal-header">
                 <h3><Plus size={20} /> Add New User</h3>
-                <button className="admin-close-modal" onClick={() => setShowAddUserModal(false)}>
+                <button className="admin-close-modal" onClick={() => { setShowAddUserModal(false); setUserFormError(""); }}>
                   <X size={20} />
                 </button>
               </div>
               <form onSubmit={handleAddUser} className="admin-modal-form">
+                {userFormError && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem', marginBottom: '1.25rem', border: '1px solid #fca5a5', fontWeight: 500 }}>
+                    ⚠️ {userFormError}
+                  </div>
+                )}
                 <div className="admin-form-grid">
                   <div className="admin-form-group">
                     <label>Full Name *</label>
@@ -1884,14 +2289,50 @@ const AdminDashboard = () => {
                   </div>
                   <div className="admin-form-group">
                     <label>Password *</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Enter The Password"
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      autoComplete="new-password"
-                    />
+                    <div className="admin-password-wrapper">
+                      <input
+                        type={showUserPassword ? "text" : "password"}
+                        required
+                        placeholder="Enter The Password"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="admin-password-toggle"
+                        onClick={() => setShowUserPassword(prev => !prev)}
+                        title={showUserPassword ? "Hide password" : "Show password"}
+                        aria-label={showUserPassword ? "Hide password" : "Show password"}
+                      >
+                        {showUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Assigned Site *</label>
+                    {isLoadingSites ? (
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', padding: '0.75rem' }}>Loading authorized sites...</div>
+                    ) : siteLoadError ? (
+                      <div style={{ fontSize: '0.85rem', color: '#ef4444', padding: '0.5rem 0' }}>{siteLoadError}</div>
+                    ) : sites.length === 0 ? (
+                      <div style={{ fontSize: '0.82rem', color: '#b45309', background: '#fef3c7', padding: '8px 12px', borderRadius: '6px' }}>
+                        No authorized sites available. A site must be created by Super Admin before users can be assigned.
+                      </div>
+                    ) : (
+                      <select
+                        value={newUser.site_id}
+                        onChange={(e) => { setNewUser({ ...newUser, site_id: e.target.value }); setUserFormError(""); }}
+                        required
+                      >
+                        <option value="">Select Assigned Site</option>
+                        {sites.map(s => (
+                          <option key={s.site_id || s.id} value={s.site_id || s.id}>
+                            📍 {s.name} {s.code ? `(${s.code})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="admin-form-group">
                     <label>Role *</label>
@@ -1915,7 +2356,7 @@ const AdminDashboard = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="admin-form-group">
+                  <div className="admin-form-group" style={{ gridColumn: 'span 2' }}>
                     <label>Profile Photo</label>
                     <div className="admin-photo-upload-box">
                       <input type="file" accept="image/*" onChange={(e) => setNewUser({ ...newUser, photo: e.target.files[0] })} />
@@ -1925,8 +2366,405 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <div className="admin-modal-footer">
-                  <button type="button" className="admin-btn-cancel" onClick={() => setShowAddUserModal(false)}>Cancel</button>
-                  <button type="submit" className="admin-btn-submit">Create User</button>
+                  <button type="button" className="admin-btn-cancel" onClick={() => { setShowAddUserModal(false); setUserFormError(""); }}>Cancel</button>
+                  <button type="submit" className="admin-btn-submit" disabled={isSubmittingUser || (sites.length === 0 && !isLoadingSites)}>
+                    {isSubmittingUser ? "Creating User..." : "Create User"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT EMPLOYEE MODAL */}
+        {showEditUserModal && (
+          <div className="admin-modal-overlay">
+            <div className="admin-modal-content">
+              <div className="admin-modal-header">
+                <h3><Edit size={20} /> Edit Employee Details</h3>
+                <button
+                  type="button"
+                  className="admin-close-modal"
+                  onClick={() => { setShowEditUserModal(false); setEditUserError(""); }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSaveEditUser} className="admin-modal-form">
+                {editUserError && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem', marginBottom: '1.25rem', border: '1px solid #fca5a5', fontWeight: 500 }}>
+                    ⚠️ {editUserError}
+                  </div>
+                )}
+                <div className="admin-form-grid">
+                  <div className="admin-form-group">
+                    <label>Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter name"
+                      value={editUserData.name}
+                      onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Email Address *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="Enter email"
+                      value={editUserData.email}
+                      onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Assigned Site *</label>
+                    {isLoadingSites ? (
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', padding: '0.75rem' }}>Loading authorized sites...</div>
+                    ) : sites.length === 0 ? (
+                      <div style={{ fontSize: '0.82rem', color: '#b45309', background: '#fef3c7', padding: '8px 12px', borderRadius: '6px' }}>
+                        No authorized sites available.
+                      </div>
+                    ) : (
+                      <select
+                        value={editUserData.site_id}
+                        onChange={(e) => { setEditUserData({ ...editUserData, site_id: e.target.value }); setEditUserError(""); }}
+                        required
+                      >
+                        <option value="">Select Assigned Site</option>
+                        {sites.map(s => (
+                          <option key={s.site_id || s.id} value={s.site_id || s.id}>
+                            📍 {s.name} {s.code ? `(${s.code})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Role *</label>
+                    <select
+                      value={editUserData.role}
+                      onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="host">Host</option>
+                      <option value="security">Security</option>
+                      <option value="superadmin">Super Admin</option>
+                    </select>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Department *</label>
+                    <select
+                      value={editUserData.department}
+                      onChange={(e) => setEditUserData({ ...editUserData, department: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {["IT", "HR", "Accounts", "Operations", "Sales & Marketing", "Legal", "Store"].map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-form-group">
+                    <label>Account Status *</label>
+                    <select
+                      value={editUserData.status}
+                      onChange={(e) => setEditUserData({ ...editUserData, status: e.target.value })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="admin-modal-footer">
+                  <button
+                    type="button"
+                    className="admin-btn-cancel"
+                    onClick={() => { setShowEditUserModal(false); setEditUserError(""); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="admin-btn-submit"
+                    disabled={isSubmittingEdit}
+                  >
+                    {isSubmittingEdit ? "Saving Changes..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* CHANGE SITE MODAL */}
+        {showTransferSiteModal && (
+          <div className="admin-modal-overlay">
+            <div className="admin-modal-content" style={{ maxWidth: '520px' }}>
+              <div className="admin-modal-header">
+                <h3><Building size={20} /> Change Assigned Site</h3>
+                <button
+                  type="button"
+                  className="admin-close-modal"
+                  onClick={() => { setShowTransferSiteModal(false); setTransferError(""); }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSaveTransferSite} className="admin-modal-form">
+                {transferError && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem', marginBottom: '1.25rem', border: '1px solid #fca5a5', fontWeight: 500 }}>
+                    ⚠️ {transferError}
+                  </div>
+                )}
+                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.06)', marginBottom: '1.25rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Employee</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: 'hsl(var(--foreground))' }}>{transferUserData.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '10px' }}>{transferUserData.email}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Current Assigned Site</div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#2563eb', fontWeight: 600 }}>
+                    <MapPin size={16} /> {transferUserData.currentSiteName}
+                  </div>
+                </div>
+
+                <div className="admin-form-group">
+                  <label>Select New Site *</label>
+                  {isLoadingSites ? (
+                    <div style={{ fontSize: '0.85rem', color: '#64748b', padding: '0.75rem' }}>Loading authorized sites...</div>
+                  ) : sites.length === 0 ? (
+                    <div style={{ fontSize: '0.82rem', color: '#b45309', background: '#fef3c7', padding: '8px 12px', borderRadius: '6px' }}>
+                      No authorized sites available for transfer.
+                    </div>
+                  ) : (
+                    <select
+                      value={transferUserData.newSiteId}
+                      onChange={(e) => { setTransferUserData({ ...transferUserData, newSiteId: e.target.value }); setTransferError(""); }}
+                      required
+                    >
+                      <option value="">Select Target Site</option>
+                      {sites.map(s => (
+                        <option key={s.site_id || s.id} value={s.site_id || s.id}>
+                          📍 {s.name} {s.code ? `(${s.code})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="admin-modal-footer">
+                  <button
+                    type="button"
+                    className="admin-btn-cancel"
+                    onClick={() => { setShowTransferSiteModal(false); setTransferError(""); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="admin-btn-submit"
+                    disabled={isSubmittingTransfer || !transferUserData.newSiteId}
+                  >
+                    {isSubmittingTransfer ? "Transferring Site..." : "Confirm Site Transfer"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* STATUS CONFIRMATION MODAL */}
+        {showStatusConfirmModal && (
+          <div className="admin-modal-overlay">
+            <div className="admin-modal-content" style={{ maxWidth: '480px' }}>
+              <div className="admin-modal-header">
+                <h3>
+                  {statusConfirmData.newStatus === "Inactive" ? (
+                    <><AlertTriangle size={20} color="#ea580c" /> Deactivate Employee</>
+                  ) : (
+                    <><CheckCircle size={20} color="#16a34a" /> Activate Employee</>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  className="admin-close-modal"
+                  onClick={() => { setShowStatusConfirmModal(false); setStatusError(""); }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div style={{ padding: '1.5rem' }}>
+                {statusError && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem', marginBottom: '1.25rem', border: '1px solid #fca5a5', fontWeight: 500 }}>
+                    ⚠️ {statusError}
+                  </div>
+                )}
+                {statusConfirmData.newStatus === "Inactive" ? (
+                  <p style={{ fontSize: '0.95rem', lineHeight: '1.5', color: 'hsl(var(--foreground))', margin: 0 }}>
+                    Are you sure you want to deactivate <strong>{statusConfirmData.name}</strong>?
+                    <br /><br />
+                    Their account access will be disabled immediately, preventing login and access to the system. All historical visitor records, passes, and attendance logs will remain preserved.
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '0.95rem', lineHeight: '1.5', color: 'hsl(var(--foreground))', margin: 0 }}>
+                    Are you sure you want to reactivate <strong>{statusConfirmData.name}</strong>?
+                    <br /><br />
+                    Their account access to the system and dashboard will be restored.
+                  </p>
+                )}
+              </div>
+              <div className="admin-modal-footer">
+                <button
+                  type="button"
+                  className="admin-btn-cancel"
+                  onClick={() => { setShowStatusConfirmModal(false); setStatusError(""); }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-submit"
+                  style={{
+                    background: statusConfirmData.newStatus === "Inactive" ? '#dc2626' : '#16a34a',
+                    borderColor: statusConfirmData.newStatus === "Inactive" ? '#dc2626' : '#16a34a'
+                  }}
+                  disabled={isSubmittingStatus}
+                  onClick={handleConfirmStatusChange}
+                >
+                  {isSubmittingStatus
+                    ? "Updating..."
+                    : (statusConfirmData.newStatus === "Inactive" ? "Deactivate Account" : "Activate Account")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RESET PASSWORD MODAL */}
+        {showResetPasswordModal && (
+          <div className="admin-modal-overlay">
+            <div className="admin-modal-content" style={{ maxWidth: '500px' }}>
+              <div className="admin-modal-header">
+                <h3><Key size={20} color="#7c3aed" /> Reset User Password</h3>
+                <button
+                  type="button"
+                  className="admin-close-modal"
+                  onClick={handleCloseResetPassword}
+                  aria-label="Close Reset Password Modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSaveResetPassword} className="admin-modal-form">
+                {resetPasswordError && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem', marginBottom: '1.25rem', border: '1px solid #fca5a5', fontWeight: 500 }}>
+                    ⚠️ {resetPasswordError}
+                  </div>
+                )}
+                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.06)', marginBottom: '1.25rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Selected Employee</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: 'hsl(var(--foreground))' }}>{resetPasswordUser.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{resetPasswordUser.email}</div>
+                </div>
+
+                <div className="admin-form-group">
+                  <label htmlFor="reset-new-password">New Password *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id="reset-new-password"
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => { setNewPassword(e.target.value); setResetPasswordError(""); }}
+                      placeholder="Enter new password (min. 8 characters)"
+                      required
+                      autoComplete="new-password"
+                      style={{ paddingRight: '2.5rem' }}
+                    />
+                    <button
+                      type="button"
+                      className="admin-password-toggle"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      aria-label={showNewPassword ? "Hide password" : "Show password"}
+                      tabIndex={-1}
+                    >
+                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="admin-form-group">
+                  <label htmlFor="reset-confirm-password">Confirm New Password *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id="reset-confirm-password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmNewPassword}
+                      onChange={(e) => { setConfirmNewPassword(e.target.value); setResetPasswordError(""); }}
+                      placeholder="Re-enter new password"
+                      required
+                      autoComplete="new-password"
+                      style={{ paddingRight: '2.5rem' }}
+                    />
+                    <button
+                      type="button"
+                      className="admin-password-toggle"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password policy hint & real-time validation indicator */}
+                <div style={{
+                  fontSize: '0.8rem',
+                  lineHeight: '1.4',
+                  color: '#64748b',
+                  background: 'rgba(99, 102, 241, 0.05)',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(99, 102, 241, 0.15)',
+                  marginBottom: '1.25rem'
+                }}>
+                  <div style={{ fontWeight: 600, color: '#4f46e5', marginBottom: '4px' }}>Password Policy Requirements:</div>
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                    <li style={{ color: newPassword.length >= 8 ? '#16a34a' : 'inherit' }}>
+                      At least 8 characters in length
+                    </li>
+                    <li style={{ color: /[A-Z]/.test(newPassword) ? '#16a34a' : 'inherit' }}>
+                      At least one uppercase letter (A-Z)
+                    </li>
+                    <li style={{ color: /[0-9]/.test(newPassword) ? '#16a34a' : 'inherit' }}>
+                      At least one number (0-9)
+                    </li>
+                    <li style={{ color: /[^A-Za-z0-9]/.test(newPassword) ? '#16a34a' : 'inherit' }}>
+                      At least one special character (!@#$%^&* etc.)
+                    </li>
+                  </ul>
+                  {confirmNewPassword && (
+                    <div style={{ marginTop: '6px', fontWeight: 500, color: newPassword === confirmNewPassword ? '#16a34a' : '#dc2626' }}>
+                      {newPassword === confirmNewPassword ? "✓ Passwords match" : "✕ Passwords do not match"}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-modal-footer">
+                  <button
+                    type="button"
+                    className="admin-btn-cancel"
+                    onClick={handleCloseResetPassword}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="admin-btn-submit"
+                    style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
+                    disabled={isSubmittingReset || !newPassword || !confirmNewPassword}
+                  >
+                    {isSubmittingReset ? "Resetting Password..." : "Reset Password"}
+                  </button>
                 </div>
               </form>
             </div>
@@ -2076,10 +2914,10 @@ const AdminDashboard = () => {
         {showIDCardModal && (
           <div className="modal-overlay">
             <div className="modal-content-wrapper" style={{ maxWidth: '450px', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #cbd5e1', paddingBottom: '12px', width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color, #cbd5e1)', paddingBottom: '12px', width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Printer size={20} color="#3b82f6" />
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#102a43' }}>Visitor ID Pass Preview</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--foreground, #102a43)' }}>Visitor ID Pass Preview</h3>
                 </div>
                 <button
                   onClick={() => setShowIDCardModal(false)}

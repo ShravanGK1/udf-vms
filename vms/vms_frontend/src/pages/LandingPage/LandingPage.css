@@ -184,3 +184,128 @@ h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
 @media (min-width: 1024px) {
   .features-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* --- Dark Theme Support for Landing Page --- */
+[data-theme="dark"] .vms-page,
+.dark .vms-page {
+  background-color: #070d19;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .vms-navbar,
+.dark .vms-navbar {
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .nav-logo,
+.dark .nav-logo {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .nav-links a,
+.dark .nav-links a {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .nav-links a:hover,
+.dark .nav-links a:hover {
+  color: #38bdf8;
+}
+
+[data-theme="dark"] .mobile-nav,
+.dark .mobile-nav {
+  background: #0f172a;
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .mobile-nav a,
+.dark .mobile-nav a {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .mobile-menu-btn,
+.dark .mobile-menu-btn {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .bg-white,
+.dark .bg-white {
+  background-color: #0c1a30;
+}
+
+[data-theme="dark"] .bg-light,
+.dark .bg-light {
+  background-color: #070d19;
+}
+
+[data-theme="dark"] .btn-outline,
+.dark .btn-outline {
+  background-color: rgba(30, 41, 59, 0.6);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .btn-outline:hover,
+.dark .btn-outline:hover {
+  background-color: rgba(30, 41, 59, 0.9);
+  border-color: #3b82f6;
+}
+
+[data-theme="dark"] .feature-card,
+.dark .feature-card {
+  background: rgba(15, 32, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .feature-card h3,
+.dark .feature-card h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .feature-card p,
+.dark .feature-card p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .step-card,
+.dark .step-card {
+  background: rgba(15, 32, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .step-card h3,
+.dark .step-card h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .step-card p,
+.dark .step-card p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .faq-item,
+.dark .faq-item {
+  background: rgba(15, 32, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .faq-question,
+.dark .faq-question {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .faq-answer,
+.dark .faq-answer {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .hero-content h1,
+.dark .hero-content h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .hero-content p,
+.dark .hero-content p {
+  color: #94a3b8;
+}

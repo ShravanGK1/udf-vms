@@ -110,10 +110,10 @@ export default function AppRoutes() {
 
   if (setupStatus.loading || (licenseStatus.loading && !setupStatus.setupRequired)) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", justifyContent: "center", alignItems: "center", color: "#f1f5f9", fontFamily: "sans-serif" }}>
+      <div style={{ minHeight: "100vh", background: "var(--background)", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--foreground)", fontFamily: "sans-serif" }}>
         <div style={{ textAlign: "center" }}>
           <h2>Loading VMS System...</h2>
-          <p style={{ color: "#64748b" }}>Verifying system setup and security bounds</p>
+          <p style={{ color: "var(--muted-foreground)" }}>Verifying system setup and security bounds</p>
         </div>
       </div>
     );

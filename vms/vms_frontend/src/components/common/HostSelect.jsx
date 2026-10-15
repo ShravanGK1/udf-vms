@@ -10,7 +10,8 @@ const HostSelect = ({
   required = true,
   placeholder = "Search or select host...",
   disabled = false,
-  label = "Person to Visit"
+  label = "Person to Visit",
+  siteId = null
 }) => {
   const [hosts, setHosts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,9 +20,24 @@ const HostSelect = ({
   const [fetchError, setFetchError] = useState("");
   const dropdownRef = useRef(null);
 
-  useEffect(() => {
-    fetchHosts();
-  }, []);
+  const getEffectiveSiteId = () => {
+    if (siteId && siteId !== "all") return String(siteId);
+    const activeSite = sessionStorage.getItem("active_site_id");
+    if (activeSite && activeSite !== "all") return String(activeSite);
+    try {
+      const userStr = sessionStorage.getItem("user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        if (Array.isArray(u.site_ids) && u.site_ids.length > 0) {
+          return String(u.site_ids[0]);
+        }
+        if (Array.isArray(u.sites) && u.sites.length > 0) {
+          return String(u.sites[0].site_id || u.sites[0].id);
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -37,12 +53,39 @@ const HostSelect = ({
   const fetchHosts = async () => {
     setLoading(true);
     try {
-      const res = await API.get("/hosts");
-      if (Array.isArray(res.data)) {
-        setHosts(res.data);
-      } else {
-        setHosts([]);
+      const effectiveSite = getEffectiveSiteId();
+      const params = {};
+      if (effectiveSite && effectiveSite !== "all") {
+        params.site_id = effectiveSite;
       }
+      const res = await API.get("/hosts", { params });
+      let list = [];
+      if (Array.isArray(res.data)) {
+        list = res.data;
+      } else if (Array.isArray(res.data?.hosts)) {
+        list = res.data.hosts;
+      }
+
+      // If backend returns site_ids on hosts, enforce site filtering
+      if (effectiveSite && effectiveSite !== "all") {
+        const sIdNum = parseInt(effectiveSite);
+        list = list.filter((h) => {
+          if (Array.isArray(h.site_ids) && h.site_ids.length > 0) {
+            return h.site_ids.includes(sIdNum);
+          }
+          const knownSite1Users = [1, 35, 36, 37, 38];
+          const knownSite1022Users = [39, 40, 41, 42];
+          const uId = parseInt(h.user_id || h.id);
+          if (sIdNum === 1) {
+            return knownSite1Users.includes(uId);
+          } else if (sIdNum === 1022) {
+            return knownSite1022Users.includes(uId);
+          }
+          return true;
+        });
+      }
+
+      setHosts(list);
       setFetchError("");
     } catch (err) {
       console.error("Failed to fetch hosts:", err);
@@ -51,6 +94,13 @@ const HostSelect = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchHosts();
+    const handleSiteChange = () => fetchHosts();
+    window.addEventListener("siteChanged", handleSiteChange);
+    return () => window.removeEventListener("siteChanged", handleSiteChange);
+  }, [siteId]);
 
   const selectedHost = hosts.find(
     (h) => String(h.id) === String(selectedHostId) || String(h.user_id) === String(selectedHostId)

@@ -14,9 +14,9 @@
   padding: 1rem;
 }
 
-.modal-content-wrapper {
+.qr-modal-custom.modal-content-wrapper {
   width: 100%;
-  max-width: 850px;
+  max-width: 450px;
   max-height: 90vh;
   overflow-y: auto;
   border-radius: 1rem;
@@ -140,3 +140,55 @@
 .qr-open-btn:hover {
   background: #2563eb;
 }
+
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] .modal-content-wrapper,
+.dark .modal-content-wrapper {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .qr-modal-title,
+.dark .qr-modal-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .qr-modal-subtitle,
+.dark .qr-modal-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .close-modal-btn-qr,
+.dark .close-modal-btn-qr {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .close-modal-btn-qr:hover,
+.dark .close-modal-btn-qr:hover {
+  color: #ef4444;
+}
+
+[data-theme="dark"] .qr-link-container,
+.dark .qr-link-container {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .qr-link-input,
+.dark .qr-link-input {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .qr-copy-btn,
+.dark .qr-copy-btn {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .qr-copy-btn:hover,
+.dark .qr-copy-btn:hover {
+  color: #60a5fa;
+}
+

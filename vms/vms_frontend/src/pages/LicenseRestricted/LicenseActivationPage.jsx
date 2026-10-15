@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Key, ShieldAlert, Check, RefreshCw } from "lucide-react";
 import apiClient from "../../app/apiClient";
 import companyLogo from "../../assets/logo.png";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import "./LicenseActivationPage.css";
 
 export default function LicenseActivationPage({ errorType, errorMessage, onActivated }) {
@@ -57,6 +58,7 @@ export default function LicenseActivationPage({ errorType, errorMessage, onActiv
 
   return (
     <div className="lap-container">
+      <ThemeToggle floating />
       <div className="lap-card">
         <div className="lap-logo" style={{ background: "transparent", border: "none" }}>
           <img src={companyLogo} alt="UDF Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />

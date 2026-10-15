@@ -46,6 +46,13 @@
   padding: 8px;
 }
 
+[data-theme="dark"] .site-select-dropdown option,
+.dark .site-select-dropdown option {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+
 .site-chevron {
   position: absolute;
   right: 8px;

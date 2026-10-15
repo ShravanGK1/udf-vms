@@ -293,4 +293,94 @@
 
 .btn-open-camera:hover svg {
   color: var(--primary);
-}
+}
+
+/* --- Dark Theme Support for Visitor Registration --- */
+[data-theme="dark"] .registration-wrapper,
+.dark .registration-wrapper {
+  background: linear-gradient(135deg, #070d19 0%, #0c1a30 100%);
+}
+
+[data-theme="dark"] .reg-form-container,
+.dark .reg-form-container {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .form-group label,
+.dark .form-group label {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+.dark .form-group input,
+.dark .form-group select {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-group input::placeholder,
+.dark .form-group input::placeholder {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+.dark .form-group input:focus,
+.dark .form-group select:focus {
+  background: #1e293b;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .success-container,
+.dark .success-container {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .success-container h2,
+.dark .success-container h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .success-container p,
+.dark .success-container p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .vehicle-photo-preview-container,
+.dark .vehicle-photo-preview-container {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .btn-open-camera,
+.dark .btn-open-camera {
+  background-color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-open-camera:hover,
+.dark .btn-open-camera:hover {
+  background-color: #334155;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .btn-open-camera svg,
+.dark .btn-open-camera svg {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-open-camera:hover svg,
+.dark .btn-open-camera:hover svg {
+  color: #38bdf8;
+}
+

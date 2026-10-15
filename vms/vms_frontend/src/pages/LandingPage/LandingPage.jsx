@@ -4,7 +4,8 @@ import {
   UserCheck, Activity, FileCheck, ChevronDown, 
   ChevronUp, Menu, X, ArrowRight, CheckCircle2, Building 
 } from 'lucide-react';
-import './LandingPage.css'; // <-- Importing the new standard CSS file!
+import ThemeToggle from "../../components/common/ThemeToggle";
+import './LandingPage.css';
 
 // --- Data ---
 const features = [
@@ -53,12 +54,18 @@ export default function VisitorManagementLanding() {
             <a href="#how-it-works">How It Works</a>
             <a href="#benefits">Benefits</a>
             <a href="#faq">FAQ</a>
+            <ThemeToggle size={18} />
             <button className="btn btn-primary shadow">Request Demo</button>
           </div>
 
-          <button className="mobile-menu-btn mobile-only" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            {isMobileMenuOpen ? <X /> : <Menu />}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="mobile-only">
+              <ThemeToggle size={18} />
+            </div>
+            <button className="mobile-menu-btn mobile-only" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              {isMobileMenuOpen ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
 
         {isMobileMenuOpen && (

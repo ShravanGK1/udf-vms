@@ -525,6 +525,72 @@
   border-color: #feb2b2;
 }
 
+.admin-icon-btn.edit:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.admin-icon-btn.transfer:hover {
+  background: #ecfeff;
+  color: #0891b2;
+  border-color: #a5f3fc;
+}
+
+.admin-icon-btn.deactivate:hover {
+  background: #fff7ed;
+  color: #ea580c;
+  border-color: #fed7aa;
+}
+
+.admin-icon-btn.reset-pwd:hover {
+  background: #faf5ff;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
+
+.admin-icon-btn.activate:hover {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.dark .admin-icon-btn {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.dark .admin-icon-btn.edit:hover {
+  background: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.dark .admin-icon-btn.transfer:hover {
+  background: rgba(8, 145, 178, 0.15);
+  color: #22d3ee;
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.dark .admin-icon-btn.reset-pwd:hover {
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+.dark .admin-icon-btn.deactivate:hover {
+  background: rgba(234, 88, 12, 0.15);
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+.dark .admin-icon-btn.activate:hover {
+  background: rgba(22, 163, 74, 0.15);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
 /* Sites */
 .admin-sites-list {
   padding: 0;
@@ -822,7 +888,223 @@
   transition: all 0.2s;
 }
 
-.admin-btn-submit:hover {
+.admin-btn-submit:hover:not(:disabled) {
   background: #1d4ed8;
   transform: translateY(-1px);
 }
+
+.admin-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.admin-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.admin-password-wrapper input {
+  width: 100%;
+  padding-right: 2.75rem;
+}
+
+.admin-password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+  z-index: 2;
+}
+
+.admin-password-toggle:hover {
+  color: #1e293b;
+}
+
+/* Ensure focus visibility inside admin forms */
+.admin-form-group input,
+.admin-form-group select {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] .admin-dashboard,
+.dark .admin-dashboard {
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .admin-title,
+.dark .admin-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-subtitle,
+.dark .admin-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .admin-btn-secondary,
+.dark .admin-btn-secondary {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .admin-btn-secondary:hover,
+.dark .admin-btn-secondary:hover {
+  background: rgba(30, 41, 59, 0.95);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-card,
+.dark .admin-card {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .admin-card-header,
+.dark .admin-card-header {
+  background: rgba(30, 41, 59, 0.4);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .admin-card-title,
+.dark .admin-card-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-tabs,
+.dark .admin-tabs {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .admin-tab,
+.dark .admin-tab {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .admin-tab.active,
+.dark .admin-tab.active {
+  background: #1e293b;
+  color: #60a5fa;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .visitor-block-card,
+.dark .visitor-block-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .visitor-block-card.active,
+.dark .visitor-block-card.active {
+  background: #1e293b;
+  border-color: #3b82f6;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .visitor-block-card.active .visitor-block-label,
+.dark .visitor-block-card.active .visitor-block-label {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .visitor-block-count,
+.dark .visitor-block-count {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-search-box,
+.dark .admin-search-box {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .admin-search-box input,
+.dark .admin-search-box input {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-table th,
+.dark .admin-table th {
+  background: rgba(30, 41, 59, 0.6);
+  color: #94a3b8;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .admin-table td,
+.dark .admin-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .admin-table tr:hover td,
+.dark .admin-table tr:hover td {
+  background: rgba(30, 41, 59, 0.4);
+}
+
+[data-theme="dark"] .admin-user-cell-name,
+.dark .admin-user-cell-name {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-modal-content,
+.dark .admin-modal-content {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-modal-header,
+.dark .admin-modal-header {
+  background: #1e293b;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .admin-modal-header h3,
+.dark .admin-modal-header h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-form-group label,
+.dark .admin-form-group label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .admin-form-group input,
+[data-theme="dark"] .admin-form-group select,
+.dark .admin-form-group input,
+.dark .admin-form-group select {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .admin-password-toggle,
+.dark .admin-password-toggle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .admin-password-toggle:hover,
+.dark .admin-password-toggle:hover {
+  color: #f8fafc;
+}
+

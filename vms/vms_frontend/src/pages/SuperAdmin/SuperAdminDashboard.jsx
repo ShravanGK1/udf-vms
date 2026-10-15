@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/Navbar";
 import StatCard from "../../components/StatCard/StatCard";
 import apiClient from "../../app/apiClient";
-import { Building, Users, Shield, Settings, Server, Globe, Key, Activity, ChevronRight, Search, Eye, Edit, ToggleLeft, BarChart3, FileText, AlertTriangle, X } from "lucide-react";
+import { Building, Users, Shield, Settings, Server, Globe, Key, Activity, ChevronRight, Search, Eye, Edit, ToggleLeft, BarChart3, FileText, AlertTriangle, X, MapPin, Plus, CheckCircle, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { useTheme } from "../../context/ThemeContext";
 import "./SuperAdminDashboard.css";
 import CompanySiteModal from "./modals/CompanySiteModal";
 import RolesPermissionsModal from "./modals/RolesPermissionsModal";
@@ -40,6 +41,20 @@ const auditLogs = [
 ];
 
 const SuperAdminDashboard = () => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const chartGridStroke = isDark ? "rgba(255, 255, 255, 0.1)" : "hsl(214, 32%, 91%)";
+  const chartTickFill = isDark ? "#94a3b8" : "hsl(215, 16%, 47%)";
+  const chartTooltipStyle = isDark ? {
+    backgroundColor: "#1e293b",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    color: "#f8fafc",
+    borderRadius: "0.5rem"
+  } : {
+    borderRadius: "0.5rem",
+    border: "1px solid hsl(214, 32%, 91%)"
+  };
+
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("licenses");
@@ -51,6 +66,24 @@ const SuperAdminDashboard = () => {
   });
   const [visitorStatusFilter, setVisitorStatusFilter] = useState("all");
   const [selectedVisitorDetail, setSelectedVisitorDetail] = useState(null);
+
+  const [siteStatusFilter, setSiteStatusFilter] = useState("all");
+  const [showCreateSiteModal, setShowCreateSiteModal] = useState(false);
+  const [showEditSiteModal, setShowEditSiteModal] = useState(false);
+  const [showViewSiteModal, setShowViewSiteModal] = useState(false);
+  const [selectedSiteForEdit, setSelectedSiteForEdit] = useState(null);
+  const [selectedSiteForView, setSelectedSiteForView] = useState(null);
+  const [siteFormData, setSiteFormData] = useState({
+    name: "",
+    code: "",
+    address: "",
+    lat: "18.5204",
+    lng: "73.8567",
+    status: "Active"
+  });
+  const [siteFormError, setSiteFormError] = useState("");
+  const [siteFormSubmitting, setSiteFormSubmitting] = useState(false);
+  const [siteActionFeedback, setSiteActionFeedback] = useState("");
 
   const handleCardClick = (title) => {
     if (title === "Company & Site Master") {
@@ -78,30 +111,122 @@ const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [sites, setSites] = useState([]);
 
+  const fetchStats = async () => {
+    try {
+      const res = await apiClient.get("/admin/superadmin-stats");
+      setDashboardData(res.data);
+    } catch (err) {
+      console.error("Error fetching superadmin stats:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSitesList = async () => {
+    try {
+      const res = await apiClient.get("/admin/sites-list");
+      setSites(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error fetching sites list:", err);
+      setSites([]);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await apiClient.get("/admin/superadmin-stats");
-        setDashboardData(res.data);
-      } catch (err) {
-        console.error("Error fetching superadmin stats:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchSitesList = async () => {
-      try {
-        const res = await apiClient.get("/admin/sites-list");
-        setSites(res.data);
-      } catch (err) {
-        console.error("Error fetching sites list:", err);
-      }
-    };
-
     fetchStats();
     fetchSitesList();
   }, []);
+
+  const handleOpenCreateSite = () => {
+    setSiteFormData({
+      name: "",
+      code: "",
+      address: "",
+      lat: "18.5204",
+      lng: "73.8567",
+      status: "Active"
+    });
+    setSiteFormError("");
+    setShowCreateSiteModal(true);
+  };
+
+  const handleOpenEditSite = (site) => {
+    setSelectedSiteForEdit(site);
+    setSiteFormData({
+      name: site.name || "",
+      code: site.code || "",
+      address: site.address || "",
+      lat: site.lat !== undefined ? String(site.lat) : "18.5204",
+      lng: site.lng !== undefined ? String(site.lng) : "73.8567",
+      status: site.status || "Active"
+    });
+    setSiteFormError("");
+    setShowEditSiteModal(true);
+  };
+
+  const handleOpenViewSite = (site) => {
+    setSelectedSiteForView(site);
+    setShowViewSiteModal(true);
+  };
+
+  const handleCreateSite = async (e) => {
+    e.preventDefault();
+    if (!siteFormData.name.trim() || !siteFormData.address.trim()) {
+      setSiteFormError("Site Name and Location/Address are required.");
+      return;
+    }
+    setSiteFormSubmitting(true);
+    setSiteFormError("");
+    try {
+      await apiClient.post("/admin/sites-list", siteFormData);
+      setShowCreateSiteModal(false);
+      setSiteActionFeedback("✅ Site created successfully!");
+      setTimeout(() => setSiteActionFeedback(""), 4000);
+      fetchSitesList();
+      fetchStats();
+    } catch (err) {
+      setSiteFormError(err.response?.data?.error || "Failed to create site.");
+    } finally {
+      setSiteFormSubmitting(false);
+    }
+  };
+
+  const handleUpdateSite = async (e) => {
+    e.preventDefault();
+    if (!selectedSiteForEdit) return;
+    if (!siteFormData.name.trim() || !siteFormData.address.trim()) {
+      setSiteFormError("Site Name and Location/Address are required.");
+      return;
+    }
+    setSiteFormSubmitting(true);
+    setSiteFormError("");
+    try {
+      await apiClient.put(`/admin/sites-list/${selectedSiteForEdit.site_id || selectedSiteForEdit.id}`, siteFormData);
+      setShowEditSiteModal(false);
+      setSiteActionFeedback("✅ Site details updated successfully!");
+      setTimeout(() => setSiteActionFeedback(""), 4000);
+      fetchSitesList();
+      fetchStats();
+    } catch (err) {
+      setSiteFormError(err.response?.data?.error || "Failed to update site.");
+    } finally {
+      setSiteFormSubmitting(false);
+    }
+  };
+
+  const handleToggleSiteStatus = async (site) => {
+    try {
+      const siteId = site.site_id || site.id;
+      const res = await apiClient.patch(`/admin/sites-list/${siteId}/status`);
+      const newStatus = res.data.status;
+      setSiteActionFeedback(`Site status updated to ${newStatus}`);
+      setTimeout(() => setSiteActionFeedback(""), 3000);
+      fetchSitesList();
+      fetchStats();
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to update site status");
+    }
+  };
 
   const fetchVisitorRequests = async () => {
     setLoadingVisitors(true);
@@ -197,11 +322,19 @@ const SuperAdminDashboard = () => {
 
   const currentLicenses = dashboardData.licenses && dashboardData.licenses.length > 0 ? dashboardData.licenses : licenses;
   const currentTrafficData = dashboardData.trafficData && dashboardData.trafficData.length > 0 ? dashboardData.trafficData : trafficData;
-  const totalCompanies = dashboardData.totalCompanies !== undefined && dashboardData.totalCompanies !== 0 ? dashboardData.totalCompanies : licenses.length;
-  const totalSites = dashboardData.totalSites !== undefined && dashboardData.totalSites !== 0 ? dashboardData.totalSites : 43;
-  const totalUsers = dashboardData.totalUsers !== undefined && dashboardData.totalUsers !== 0 ? dashboardData.totalUsers : "1,280";
+  const totalCompanies = dashboardData.totalCompanies !== undefined ? dashboardData.totalCompanies : licenses.length;
+  const totalSites = dashboardData.totalSites !== undefined ? dashboardData.totalSites : (sites ? sites.length : 0);
+  const totalUsers = dashboardData.totalUsers !== undefined ? dashboardData.totalUsers : 0;
   const systemHealth = dashboardData.systemHealth || "99.9%";
   const activeCompanyName = currentLicenses && currentLicenses.length > 0 ? currentLicenses[0].company.split(" (")[0] : "Sumeet Group";
+
+  const filteredSites = sites.filter(s => {
+    const matchesSearch = (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (s.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (s.address || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = siteStatusFilter === "all" || (s.status || "Active").toLowerCase() === siteStatusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="superadmin-dashboard">
@@ -234,7 +367,6 @@ const SuperAdminDashboard = () => {
           {[
             { icon: <Building size={20} />, title: "Company & Site Master", desc: "Manage hierarchy, geo-coordinates" },
             { icon: <Shield size={20} />, title: "Roles & Permissions", desc: "Configure access control matrix" },
-            { icon: <Users size={20} />, title: "Visitor Data Master", desc: "View & monitor visitor data according to site" },
             { icon: <Key size={20} />, title: "License Manager", desc: "Set validity, toggle features" },
             { icon: <Server size={20} />, title: "System Settings", desc: "Docker instances, data purging" },
             { icon: <Key size={20} />, title: "Password Manager", desc: "Manage role-based dashboard passwords" }
@@ -257,6 +389,9 @@ const SuperAdminDashboard = () => {
                 <div className="superadmin-tabs">
                   <button className={`superadmin-tab ${activeTab === "licenses" ? "active" : ""}`} onClick={() => setActiveTab("licenses")}>
                     <Key size={16} /> License Manager
+                  </button>
+                  <button className={`superadmin-tab ${activeTab === "sites" ? "active" : ""}`} onClick={() => setActiveTab("sites")}>
+                    <MapPin size={16} /> Site Management
                   </button>
                   <button className={`superadmin-tab ${activeTab === "visitors" ? "active" : ""}`} onClick={() => setActiveTab("visitors")}>
                     <Users size={16} /> Visitor Data
@@ -312,6 +447,123 @@ const SuperAdminDashboard = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* SITE MANAGEMENT TAB CONTENT */}
+              {activeTab === "sites" && (
+                <div className="superadmin-sites-section" style={{ padding: "1.25rem 1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {["all", "Active", "Inactive"].map(st => (
+                        <button
+                          key={st}
+                          className={`superadmin-status-filter-btn ${siteStatusFilter === st ? "active" : ""}`}
+                          onClick={() => setSiteStatusFilter(st)}
+                        >
+                          {st === "all" ? "All Sites" : st === "Active" ? "🟢 Active" : "⚪ Inactive"}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      className="superadmin-btn-primary"
+                      onClick={handleOpenCreateSite}
+                      style={{ display: "flex", alignItems: "center", gap: "6px", padding: "0.6rem 1.2rem", fontSize: "0.85rem" }}
+                    >
+                      <Plus size={16} /> Add New Site
+                    </button>
+                  </div>
+
+                  {siteActionFeedback && (
+                    <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#dcfce7", color: "#15803d", fontWeight: 600, fontSize: "0.875rem", marginBottom: "1.25rem", border: "1px solid #bbf7d0" }}>
+                      {siteActionFeedback}
+                    </div>
+                  )}
+
+                  {filteredSites.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "3.5rem 2rem", background: "var(--card-bg, rgba(255, 255, 255, 0.7))", borderRadius: "1rem", border: "1px dashed var(--border-color, #cbd5e1)" }}>
+                      <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: "rgba(37, 99, 235, 0.15)", color: "#2563eb", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                        <MapPin size={26} />
+                      </div>
+                      <h3 style={{ margin: "0 0 0.5rem", color: "var(--foreground, #0f172a)", fontSize: "1.1rem", fontWeight: 700 }}>
+                        {searchQuery || siteStatusFilter !== "all" ? "No Matching Sites Found" : "No Sites Configured Yet"}
+                      </h3>
+                      <p style={{ margin: "0 0 1.25rem", color: "var(--muted-foreground, #64748b)", fontSize: "0.875rem", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
+                        {searchQuery || siteStatusFilter !== "all"
+                          ? "Try adjusting your search query or filter options."
+                          : "No dynamic sites exist. Create your primary or branch site below to enable visitor flows."}
+                      </p>
+                      <button className="superadmin-btn-primary" style={{ margin: "0 auto" }} onClick={handleOpenCreateSite}>
+                        <Plus size={16} /> Create Your First Site
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="superadmin-table-container">
+                      <table className="superadmin-table">
+                        <thead>
+                          <tr>
+                            <th>Site Name</th>
+                            <th>Site Code</th>
+                            <th>Location / Address</th>
+                            <th>Coordinates</th>
+                            <th>Live Visitors</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredSites.map(s => (
+                            <tr key={s.site_id || s.id}>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <div style={{ padding: "6px 8px", background: "rgba(37, 99, 235, 0.15)", color: "#2563eb", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <MapPin size={16} />
+                                  </div>
+                                  <span style={{ fontWeight: 700, color: "var(--foreground, #0f172a)" }}>{s.name}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <span style={{ padding: "3px 8px", background: "var(--muted, #f1f5f9)", borderRadius: "6px", fontFamily: "monospace", fontWeight: 700, fontSize: "0.8rem", color: "var(--muted-foreground, #334e68)", border: "1px solid var(--border-color, #e2e8f0)" }}>
+                                  {s.code || "—"}
+                                </span>
+                              </td>
+                              <td style={{ maxWidth: "240px", color: "var(--foreground, #475569)" }}>{s.address || "—"}</td>
+                              <td style={{ fontSize: "0.8rem", color: "var(--muted-foreground, #64748b)" }}>
+                                {s.lat && s.lng ? `${Number(s.lat).toFixed(4)}, ${Number(s.lng).toFixed(4)}` : "18.5204, 73.8567"}
+                              </td>
+                              <td>
+                                <span style={{ fontWeight: 600, color: s.visitors > 0 ? "#2563eb" : "#64748b" }}>
+                                  {s.visitors || 0} active
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`superadmin-status ${s.status?.toLowerCase() === "active" ? "active" : "inactive"}`}>
+                                  <span className="superadmin-status-dot" /> {s.status || "Active"}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="superadmin-action-btns">
+                                  <button className="superadmin-icon-btn" title="View Site Details" onClick={() => handleOpenViewSite(s)}>
+                                    <Eye size={15} />
+                                  </button>
+                                  <button className="superadmin-icon-btn" title="Edit Site" onClick={() => handleOpenEditSite(s)}>
+                                    <Edit size={15} />
+                                  </button>
+                                  <button
+                                    className="superadmin-icon-btn"
+                                    title={s.status?.toLowerCase() === "active" ? "Deactivate Site" : "Activate Site"}
+                                    onClick={() => handleToggleSiteStatus(s)}
+                                  >
+                                    <ToggleLeft size={15} style={{ color: s.status?.toLowerCase() === "active" ? "#10b981" : "#94a3b8" }} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -400,12 +652,12 @@ const SuperAdminDashboard = () => {
                                   </span>
                                 </td>
                                 <td>
-                                  <div style={{ fontWeight: 600, color: "#102a43" }}>{v.purpose || v.reason_of_visit || "General Visit"}</div>
-                                  <div style={{ fontSize: "0.78rem", color: "#627d98" }}>{v.company_name || "Self / N/A"}</div>
+                                  <div style={{ fontWeight: 600, color: "var(--foreground, #102a43)" }}>{v.purpose || v.reason_of_visit || "General Visit"}</div>
+                                  <div style={{ fontSize: "0.78rem", color: "var(--muted-foreground, #627d98)" }}>{v.company_name || "Self / N/A"}</div>
                                 </td>
                                 <td>
-                                  <div style={{ fontWeight: 600, color: "#102a43" }}>{v.person_to_visit || v.host_name || "N/A"}</div>
-                                  <div style={{ fontSize: "0.78rem", color: "#627d98" }}>{v.host_department || v.department || ""}</div>
+                                  <div style={{ fontWeight: 600, color: "var(--foreground, #102a43)" }}>{v.person_to_visit || v.host_name || "N/A"}</div>
+                                  <div style={{ fontSize: "0.78rem", color: "var(--muted-foreground, #627d98)" }}>{v.host_department || v.department || ""}</div>
                                 </td>
                                 <td>
                                   <span className={`superadmin-visitor-status-pill ${getVisitorStatusClass(v.status, v.check_in_time, v.check_out_time)}`}>
@@ -413,10 +665,10 @@ const SuperAdminDashboard = () => {
                                   </span>
                                 </td>
                                 <td>
-                                  <div style={{ fontSize: "0.82rem", color: "#102a43" }}>
+                                  <div style={{ fontSize: "0.82rem", color: "var(--foreground, #102a43)" }}>
                                     In: {v.check_in_time ? new Date(v.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Not Checked In"}
                                   </div>
-                                  <div style={{ fontSize: "0.78rem", color: "#627d98" }}>
+                                  <div style={{ fontSize: "0.78rem", color: "var(--muted-foreground, #627d98)" }}>
                                     Out: {v.check_out_time ? new Date(v.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (v.check_in_time ? "Active On Site" : "-")}
                                   </div>
                                 </td>
@@ -472,10 +724,10 @@ const SuperAdminDashboard = () => {
               <div className="superadmin-chart-container">
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={currentTrafficData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 32%, 91%)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(215, 16%, 47%)" }} />
-                    <YAxis tick={{ fontSize: 12, fill: "hsl(215, 16%, 47%)" }} />
-                    <Tooltip contentStyle={{ borderRadius: "0.5rem", border: "1px solid hsl(214, 32%, 91%)" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
+                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: chartTickFill }} />
+                    <YAxis tick={{ fontSize: 12, fill: chartTickFill }} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                     <Line type="monotone" dataKey="visitors" stroke="hsl(217, 91%, 60%)" strokeWidth={2.5} dot={{ fill: "hsl(217, 91%, 60%)", r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -490,10 +742,10 @@ const SuperAdminDashboard = () => {
               <div className="superadmin-chart-container">
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={sitePerformance} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 32%, 91%)" />
-                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: "hsl(215, 16%, 47%)" }} />
-                    <YAxis type="category" dataKey="site" tick={{ fontSize: 12, fill: "hsl(215, 16%, 47%)" }} width={70} />
-                    <Tooltip contentStyle={{ borderRadius: "0.5rem" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: chartTickFill }} />
+                    <YAxis type="category" dataKey="site" tick={{ fontSize: 12, fill: chartTickFill }} width={70} />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                     <Bar dataKey="score" fill="hsl(217, 91%, 60%)" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -504,7 +756,15 @@ const SuperAdminDashboard = () => {
         </div>
       </div>
 
-      {activeModal === "company_site" && <CompanySiteModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "company_site" && (
+        <CompanySiteModal
+          onClose={() => {
+            setActiveModal(null);
+            fetchSitesList();
+            fetchStats();
+          }}
+        />
+      )}
       {activeModal === "roles_permissions" && <RolesPermissionsModal onClose={() => setActiveModal(null)} />}
       {activeModal === "license_manager" && <LicenseModal onClose={() => setActiveModal(null)} />}
       {activeModal === "system_settings" && <SystemSettingsModal onClose={() => setActiveModal(null)} />}
@@ -590,6 +850,248 @@ const SuperAdminDashboard = () => {
             </div>
             <div className="superadmin-visitor-modal-footer">
               <button className="superadmin-btn-secondary" onClick={() => setSelectedVisitorDetail(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CREATE SITE MODAL */}
+      {showCreateSiteModal && (
+        <div className="superadmin-modal-overlay" onClick={() => setShowCreateSiteModal(false)}>
+          <div className="superadmin-site-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="superadmin-visitor-modal-header">
+              <h3><MapPin size={20} /> Create New Site</h3>
+              <button className="superadmin-close-btn" onClick={() => setShowCreateSiteModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateSite} className="superadmin-modal-form">
+              {siteFormError && (
+                <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#fee2e2", color: "#b91c1c", fontSize: "0.875rem", marginBottom: "1rem", border: "1px solid #fca5a5" }}>
+                  ⚠️ {siteFormError}
+                </div>
+              )}
+              <div className="superadmin-form-grid">
+                <div className="superadmin-form-group full-width">
+                  <label>Site Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Pune Central Office, Mumbai Campus"
+                    value={siteFormData.name}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, name: e.target.value })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Site Code (Unique)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. PUNE-01 (Auto-generated if empty)"
+                    value={siteFormData.code}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, code: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Status</label>
+                  <select
+                    value={siteFormData.status}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="superadmin-form-group full-width">
+                  <label>Location / Address *</label>
+                  <textarea
+                    required
+                    placeholder="Physical street address or premises description"
+                    value={siteFormData.address}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, address: e.target.value })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Latitude</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 18.5204"
+                    value={siteFormData.lat}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, lat: e.target.value })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Longitude</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 73.8567"
+                    value={siteFormData.lng}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, lng: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="superadmin-modal-footer-btns">
+                <button type="button" className="superadmin-btn-secondary" onClick={() => setShowCreateSiteModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="superadmin-btn-primary" disabled={siteFormSubmitting}>
+                  {siteFormSubmitting ? "Creating Site..." : "Create Site"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SITE MODAL */}
+      {showEditSiteModal && selectedSiteForEdit && (
+        <div className="superadmin-modal-overlay" onClick={() => setShowEditSiteModal(false)}>
+          <div className="superadmin-site-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="superadmin-visitor-modal-header">
+              <h3><Edit size={20} /> Edit Site: {selectedSiteForEdit.name}</h3>
+              <button className="superadmin-close-btn" onClick={() => setShowEditSiteModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateSite} className="superadmin-modal-form">
+              {siteFormError && (
+                <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#fee2e2", color: "#b91c1c", fontSize: "0.875rem", marginBottom: "1rem", border: "1px solid #fca5a5" }}>
+                  ⚠️ {siteFormError}
+                </div>
+              )}
+              <div className="superadmin-form-grid">
+                <div className="superadmin-form-group full-width">
+                  <label>Site Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={siteFormData.name}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, name: e.target.value })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Site Code (Unique)</label>
+                  <input
+                    type="text"
+                    value={siteFormData.code}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, code: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Status</label>
+                  <select
+                    value={siteFormData.status}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="superadmin-form-group full-width">
+                  <label>Location / Address *</label>
+                  <textarea
+                    required
+                    value={siteFormData.address}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, address: e.target.value })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Latitude</label>
+                  <input
+                    type="text"
+                    value={siteFormData.lat}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, lat: e.target.value })}
+                  />
+                </div>
+                <div className="superadmin-form-group">
+                  <label>Longitude</label>
+                  <input
+                    type="text"
+                    value={siteFormData.lng}
+                    onChange={(e) => setSiteFormData({ ...siteFormData, lng: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="superadmin-modal-footer-btns">
+                <button type="button" className="superadmin-btn-secondary" onClick={() => setShowEditSiteModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="superadmin-btn-primary" disabled={siteFormSubmitting}>
+                  {siteFormSubmitting ? "Saving Changes..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW SITE DETAILS MODAL */}
+      {showViewSiteModal && selectedSiteForView && (
+        <div className="superadmin-modal-overlay" onClick={() => setShowViewSiteModal(false)}>
+          <div className="superadmin-site-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="superadmin-visitor-modal-header">
+              <h3><MapPin size={20} /> Site Details</h3>
+              <button className="superadmin-close-btn" onClick={() => setShowViewSiteModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="superadmin-modal-form">
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid var(--border-color, #f1f5f9)" }}>
+                <div style={{ padding: "10px", background: "rgba(37, 99, 235, 0.15)", color: "#2563eb", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Building size={24} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--foreground, #0f172a)" }}>{selectedSiteForView.name}</h3>
+                  <span style={{ fontSize: "0.85rem", color: "var(--muted-foreground, #64748b)" }}>Code: {selectedSiteForView.code || "N/A"}</span>
+                </div>
+              </div>
+              <div className="superadmin-modal-info-grid">
+                <div className="superadmin-info-item">
+                  <span className="superadmin-info-label">Site ID</span>
+                  <span className="superadmin-info-val">#{selectedSiteForView.site_id || selectedSiteForView.id}</span>
+                </div>
+                <div className="superadmin-info-item">
+                  <span className="superadmin-info-label">Operational Status</span>
+                  <span className="superadmin-info-val">
+                    <span className={`superadmin-status ${selectedSiteForView.status?.toLowerCase() === "active" ? "active" : "inactive"}`} style={{ display: "inline-flex" }}>
+                      <span className="superadmin-status-dot" /> {selectedSiteForView.status || "Active"}
+                    </span>
+                  </span>
+                </div>
+                <div className="superadmin-info-item" style={{ gridColumn: "1 / -1" }}>
+                  <span className="superadmin-info-label">Location / Address</span>
+                  <span className="superadmin-info-val">📍 {selectedSiteForView.address || "N/A"}</span>
+                </div>
+                <div className="superadmin-info-item">
+                  <span className="superadmin-info-label">Coordinates</span>
+                  <span className="superadmin-info-val">
+                    {selectedSiteForView.lat && selectedSiteForView.lng 
+                      ? `${selectedSiteForView.lat}, ${selectedSiteForView.lng}` 
+                      : "18.5204, 73.8567"}
+                  </span>
+                </div>
+                <div className="superadmin-info-item">
+                  <span className="superadmin-info-label">Current Live Visitors</span>
+                  <span className="superadmin-info-val">{selectedSiteForView.visitors || 0} active</span>
+                </div>
+              </div>
+              <div className="superadmin-modal-footer-btns">
+                <button
+                  type="button"
+                  className="superadmin-btn-secondary"
+                  onClick={() => setShowViewSiteModal(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="superadmin-btn-primary"
+                  onClick={() => {
+                    setShowViewSiteModal(false);
+                    handleOpenEditSite(selectedSiteForView);
+                  }}
+                >
+                  <Edit size={15} /> Edit Site
+                </button>
+              </div>
             </div>
           </div>
         </div>

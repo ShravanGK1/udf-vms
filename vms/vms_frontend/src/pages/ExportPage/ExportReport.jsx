@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import axios from "axios";
 import apiClient from "../../app/apiClient";
+import { useTheme } from "../../context/ThemeContext";
 import "./ExportReport.css";
 
 const PERIOD_OPTIONS = [
@@ -60,6 +61,20 @@ const DEMO_DATA = {
   }
 };
 const ExportReport = () => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const chartGridStroke = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0,0,0,0.06)";
+  const chartTickFill = isDark ? "#94a3b8" : "#627d98";
+  const chartTooltipStyle = isDark ? {
+    borderRadius: "0.75rem",
+    background: "#1e293b",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    color: "#f8fafc"
+  } : {
+    borderRadius: "0.75rem",
+    background: "rgba(255,255,255,0.95)"
+  };
+
   const [period, setPeriod] = useState("daily");
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -80,33 +95,53 @@ const ExportReport = () => {
       setLoading(false);
     }
   };
+
+  const resolveVisitorSite = (v) => {
+    if (v.site_name && v.site_name !== "-" && v.site_name !== "Default Site") return v.site_name;
+    if (v.site && v.site !== "-" && v.site !== "Default Site") return v.site;
+    const host = (v.person_visited || v.host_name || "").toLowerCase();
+    if (host.includes("godase") || host.includes("aashish") || host.includes("sumit") || host.includes("pratik")) {
+      return "Vishal Complex";
+    }
+    if (host.includes("anil") || host.includes("bhosale") || host.includes("kunal") || host.includes("shashikant") || host.includes("manish")) {
+      return "Kasarwadi";
+    }
+    if (v.site_id === 1 || String(v.site_id) === "1") return "Kasarwadi";
+    if (v.site_id === 1022 || String(v.site_id) === "1022") return "Vishal Complex";
+    return v.site_name || v.site || "-";
+  };
+
   const handleDownloadPDF = () => {
     const visitors = reportData?.visitors || [];
 
     let tableRows = visitors.map((v, i) => `
-      <td>${i + 1}</td>
-      <td>${v.name || "-"}</td>
-      <td>${v.phone || "-"}</td>
-      <td>${v.company || "-"}</td>
-      <td>${v.person_visited || "-"}</td>
-      <td>${v.checked_in_by || "-"}</td>
-      <td>${v.department || "-"}</td>
-      <td>${v.date || "-"}</td>
-      <td>${v.check_in || "-"}</td>
-      <td>${v.check_out || "-"}</td>
-      <td>${v.time_available || "-"}</td>
-    </tr>
-  `).join("");
+      <tr>
+        <td>${i + 1}</td>
+        <td>${v.name || "-"}</td>
+        <td>${v.phone || "-"}</td>
+        <td>${v.company || "-"}</td>
+        <td>${v.person_visited || "-"}</td>
+        <td>${v.checked_in_by || "-"}</td>
+        <td>${v.department || "-"}</td>
+        <td>${resolveVisitorSite(v)}</td>
+        <td>${v.date || "-"}</td>
+        <td>${v.check_in || "-"}</td>
+        <td>${v.check_out || "-"}</td>
+        <td>${v.time_available || "-"}</td>
+      </tr>
+    `).join("");
 
     const html = `
     <html>
       <head>
         <title>Visitor Report</title>
         <style>
-          body { font-family: Arial; padding: 20px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #1e293b; }
+          h2 { margin-bottom: 16px; font-size: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+          th { background-color: #f1f5f9; font-weight: 700; color: #0f172a; }
+          tr:nth-child(even) { background-color: #f8fafc; }
         </style>
       </head>
       <body>
@@ -121,6 +156,7 @@ const ExportReport = () => {
               <th>PERSON VISITED</th>
               <th>CHECKED IN BY</th>
               <th>DEPARTMENT</th>
+              <th>SITE</th>
               <th>DATE</th>
               <th>IN</th>
               <th>OUT</th>
@@ -315,10 +351,10 @@ const ExportReport = () => {
                               <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#627d98" }} />
-                          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#627d98" }} />
-                          <Tooltip contentStyle={{ borderRadius: "0.75rem", background: "rgba(255,255,255,0.95)" }} />
+                          <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
+                          <XAxis dataKey="label" tick={{ fontSize: 11, fill: chartTickFill }} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: chartTickFill }} />
+                          <Tooltip contentStyle={chartTooltipStyle} />
                           <Area type="monotone" dataKey="visitors" stroke="#2563eb" strokeWidth={2.5} fill="url(#reportGradient)" dot={{ r: 4, fill: "#2563eb" }} />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -339,8 +375,8 @@ const ExportReport = () => {
                           >
                             {categorySplit.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                           </Pie>
-                          <Legend iconType="circle" wrapperStyle={{ fontSize: "0.75rem" }} />
-                          <Tooltip />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: "0.75rem", color: chartTickFill }} />
+                          <Tooltip contentStyle={chartTooltipStyle} />
                         </PieChart>
                       </ResponsiveContainer>
                       <p className="chart-insight-caption">Business activity pattern breakdown by visitor type.</p>
@@ -406,6 +442,7 @@ const ExportReport = () => {
                             <th>PERSON VISITED</th>
                             <th>CHECKED IN BY</th>
                             <th>DEPARTMENT</th>
+                            <th>SITE</th>
                             <th>DATE</th>
                             <th>IN/OUT</th>
                             <th>TIME AVAILABLE</th>
@@ -433,6 +470,11 @@ const ExportReport = () => {
                               </td>
                               <td>
                                 <div className="dept">{v.department || "General"}</div>
+                              </td>
+                              <td>
+                                <div className="site" style={{ fontSize: "13px", fontWeight: "600", color: "#0284c7" }}>
+                                  {resolveVisitorSite(v)}
+                                </div>
                               </td>
                               <td style={{ fontWeight: "500", whiteSpace: "nowrap" }}>
                                 {v.date || "—"}

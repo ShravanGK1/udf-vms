@@ -1,8 +1,30 @@
+/* VMS Transfer Modal Styling - Premium Dual Theme */
+
+.transfer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  padding: 1.5rem;
+}
+
 .transfer-modal-custom {
-  max-width: 500px !important;
+  width: 100%;
+  max-width: 520px !important;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid #e2e8f0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: transferSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 .transfer-modal-header {
@@ -12,6 +34,8 @@
   justify-content: space-between;
   align-items: center;
   background: #f8fafc;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .transfer-modal-header h3 {
@@ -19,6 +43,28 @@
   font-size: 1.25rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+.transfer-modal-header .close-modal-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.transfer-modal-header .close-modal-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #ef4444;
 }
 
 .transfer-modal-body {
@@ -32,29 +78,32 @@
 .visitor-summary-card {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.summary-label {
-  font-size: 0.75rem;
-  font-weight: 600;
+.visitor-summary-card .summary-label {
+  font-size: 0.72rem;
+  font-weight: 700;
   color: #1e40af;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.07em;
 }
 
-.summary-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #1e3a8a;
+.visitor-summary-card .summary-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a !important;
+  line-height: 1.2;
 }
 
-.summary-subtext {
+.visitor-summary-card .summary-subtext {
   font-size: 0.85rem;
-  color: #3b82f6;
-  font-weight: 500;
+  color: #2563eb;
+  font-weight: 600;
 }
 
 .form-group-transfer {
@@ -72,15 +121,17 @@
 
 .form-group-transfer select,
 .form-group-transfer textarea {
-  padding: 0.625rem 0.75rem;
+  padding: 0.65rem 0.85rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 0.5rem;
   font-size: 0.9rem;
   outline: none;
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-color: #ffffff;
   color: #0f172a;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .form-group-transfer select:focus,
@@ -94,9 +145,9 @@
   border: 1px solid #fecaca;
   color: #b91c1c;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
+  border-radius: 0.5rem;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   text-align: left;
 }
 
@@ -114,11 +165,11 @@
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #475569;
-  border-radius: 6px;
+  border-radius: 0.5rem;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .btn-cancel:hover {
@@ -130,7 +181,7 @@
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 0.5rem;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
@@ -138,6 +189,7 @@
   align-items: center;
   gap: 0.5rem;
   transition: transform 0.2s, opacity 0.2s;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
 }
 
 .btn-submit-transfer:hover {
@@ -147,4 +199,118 @@
 .btn-submit-transfer:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+@keyframes transferSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] .transfer-modal-custom,
+.dark .transfer-modal-custom {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .transfer-modal-header,
+.dark .transfer-modal-header {
+  background: #1e293b;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .transfer-modal-header h3,
+.dark .transfer-modal-header h3 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .transfer-modal-header .close-modal-btn,
+.dark .transfer-modal-header .close-modal-btn {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .transfer-modal-header .close-modal-btn:hover,
+.dark .transfer-modal-header .close-modal-btn:hover {
+  background: #334155;
+  color: #ef4444;
+}
+
+[data-theme="dark"] .visitor-summary-card,
+.dark .visitor-summary-card {
+  background: rgba(30, 58, 138, 0.25);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+[data-theme="dark"] .visitor-summary-card .summary-label,
+.dark .visitor-summary-card .summary-label {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .visitor-summary-card .summary-value,
+.dark .visitor-summary-card .summary-value {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .visitor-summary-card .summary-subtext,
+.dark .visitor-summary-card .summary-subtext {
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .form-group-transfer label,
+.dark .form-group-transfer label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .form-group-transfer select,
+[data-theme="dark"] .form-group-transfer textarea,
+.dark .form-group-transfer select,
+.dark .form-group-transfer textarea {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-group-transfer select:focus,
+[data-theme="dark"] .form-group-transfer textarea:focus,
+.dark .form-group-transfer select:focus,
+.dark .form-group-transfer textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="dark"] .error-banner,
+.dark .error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .transfer-modal-footer,
+.dark .transfer-modal-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .btn-cancel,
+.dark .btn-cancel {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-cancel:hover,
+.dark .btn-cancel:hover {
+  background: #334155;
+  color: #f8fafc;
 }

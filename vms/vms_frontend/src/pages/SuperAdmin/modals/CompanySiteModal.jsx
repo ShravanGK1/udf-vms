@@ -259,26 +259,26 @@ export default function CompanySiteModal({ onClose }) {
 
               {/* Right Column: Site Details & Map coordinates */}
               <div>
-                <h4 style={{ margin: "0 0 1rem 0", fontWeight: 700, fontSize: "0.95rem" }}>Geographical Mapping</h4>
+                <h4 style={{ margin: "0 0 1rem 0", fontWeight: 700, fontSize: "0.95rem", color: "var(--foreground, #102a43)" }}>Geographical Mapping</h4>
                 {selectedSite ? (
-                  <div style={{ background: "#ffffff", border: "1px solid rgba(0,0,0,0.05)", borderRadius: "1rem", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  <div style={{ background: "var(--card-bg, #ffffff)", border: "1px solid var(--border-color, rgba(0,0,0,0.05))", borderRadius: "1rem", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                     <div>
-                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#627d98", textTransform: "uppercase" }}>Selected Site</span>
-                      <h3 style={{ margin: "0.25rem 0 0", color: "#102a43", fontWeight: 700, fontSize: "1.1rem" }}>{selectedSite.name}</h3>
-                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#334e68", display: "flex", alignItems: "flex-start", gap: "0.25rem" }}>
+                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-foreground, #627d98)", textTransform: "uppercase" }}>Selected Site</span>
+                      <h3 style={{ margin: "0.25rem 0 0", color: "var(--foreground, #102a43)", fontWeight: 700, fontSize: "1.1rem" }}>{selectedSite.name}</h3>
+                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "var(--foreground, #334e68)", display: "flex", alignItems: "flex-start", gap: "0.25rem" }}>
                         <MapPin size={16} style={{ flexShrink: 0, color: "#2563eb", marginTop: "0.1rem" }} />
                         {selectedSite.address}
                       </p>
                     </div>
 
-                    <div className="sa-grid-2" style={{ background: "rgba(0,0,0,0.02)", padding: "0.75rem", borderRadius: "0.75rem" }}>
+                    <div className="sa-grid-2" style={{ background: "var(--muted, rgba(0,0,0,0.02))", padding: "0.75rem", borderRadius: "0.75rem" }}>
                       <div>
-                        <span style={{ fontSize: "0.7rem", color: "#627d98", fontWeight: 700 }}>Latitude</span>
-                        <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{selectedSite.lat.toFixed(5)}</div>
+                        <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)", fontWeight: 700 }}>Latitude</span>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--foreground, #102a43)" }}>{selectedSite.lat.toFixed(5)}</div>
                       </div>
                       <div>
-                        <span style={{ fontSize: "0.7rem", color: "#627d98", fontWeight: 700 }}>Longitude</span>
-                        <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{selectedSite.lng.toFixed(5)}</div>
+                        <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground, #627d98)", fontWeight: 700 }}>Longitude</span>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--foreground, #102a43)" }}>{selectedSite.lng.toFixed(5)}</div>
                       </div>
                     </div>
 

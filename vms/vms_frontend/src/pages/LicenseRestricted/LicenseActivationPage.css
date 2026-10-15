@@ -188,3 +188,44 @@
     transform: scale(1);
   }
 }
+
+/* Light Theme Support for License Activation */
+[data-theme="light"] .lap-container,
+.light .lap-container {
+  background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+}
+
+[data-theme="light"] .lap-card,
+.light .lap-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+
+[data-theme="light"] .lap-title,
+.light .lap-title {
+  background: linear-gradient(135deg, #0f172a 0%, #334e68 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="light"] .lap-label,
+.light .lap-label {
+  color: #64748b;
+}
+
+[data-theme="light"] .lap-textarea,
+.light .lap-textarea {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+[data-theme="light"] .lap-textarea:focus,
+.light .lap-textarea:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+

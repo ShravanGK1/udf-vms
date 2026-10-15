@@ -302,11 +302,11 @@ const VisitorSignaturePad = ({
     <div className={`visitor-signature-container ${className}`} style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, color: 'var(--foreground, #0f172a)' }}>
             <Edit3 size={16} className="text-blue-600" style={{ color: '#2563eb' }} />
-            Visitor Signature <span style={{ color: '#ef4444' }}>*</span>
+            {label || 'Visitor Signature'} <span style={{ color: '#ef4444' }}>*</span>
           </label>
-          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--muted-foreground, #64748b)' }}>
             Please sign inside the box below using your digital stylus pen.
           </p>
         </div>
@@ -318,9 +318,9 @@ const VisitorSignaturePad = ({
             textTransform: 'uppercase',
             padding: '3px 8px',
             borderRadius: '12px',
-            background: activePointerType === 'pen' ? '#dbeafe' : '#f1f5f9',
-            color: activePointerType === 'pen' ? '#1d4ed8' : '#475569',
-            border: '1px solid #cbd5e1'
+            background: activePointerType === 'pen' ? 'rgba(37, 99, 235, 0.15)' : 'var(--muted, #f1f5f9)',
+            color: activePointerType === 'pen' ? '#3b82f6' : 'var(--muted-foreground, #475569)',
+            border: '1px solid var(--border, #cbd5e1)'
           }}>
             Input: {activePointerType === 'pen' ? '🖊️ Stylus Pen' : activePointerType === 'touch' ? '👆 Touch' : '🖱️ Pointer'}
           </span>
@@ -376,7 +376,7 @@ const VisitorSignaturePad = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
         <div style={{ fontSize: '12px' }}>
           {isEmpty ? (
-            <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--muted-foreground, #64748b)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <AlertCircle size={13} style={{ color: '#f59e0b' }} />{' '}
               {requiredText || (mode === 'checkout' ? 'Signature required to confirm permanent checkout.' : 'Signature required before check-in.')}
             </span>
@@ -397,9 +397,9 @@ const VisitorSignaturePad = ({
             gap: '5px',
             padding: '5px 12px',
             borderRadius: '6px',
-            border: '1px solid #cbd5e1',
-            background: isEmpty ? '#f8fafc' : '#ffffff',
-            color: isEmpty ? '#94a3b8' : '#475569',
+            border: '1px solid var(--border, #cbd5e1)',
+            background: isEmpty ? 'var(--muted, #f8fafc)' : 'var(--card, #ffffff)',
+            color: isEmpty ? 'var(--muted-foreground, #94a3b8)' : 'var(--foreground, #475569)',
             fontSize: '12px',
             fontWeight: 600,
             cursor: isEmpty || disabled ? 'not-allowed' : 'pointer',

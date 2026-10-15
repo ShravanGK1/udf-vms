@@ -25,7 +25,8 @@
   border: 1px solid #e2e8f0;
 }
 
-[data-theme="dark"] .um-modal-container {
+[data-theme="dark"] .um-modal-container,
+.dark .um-modal-container {
   background: #0f172a;
   border-color: #1e293b;
   color: #f1f5f9;
@@ -39,7 +40,8 @@
   align-items: center;
 }
 
-[data-theme="dark"] .um-modal-header {
+[data-theme="dark"] .um-modal-header,
+.dark .um-modal-header {
   border-bottom-color: #1e293b;
 }
 
@@ -74,7 +76,8 @@
   color: #0f172a;
 }
 
-[data-theme="dark"] .um-close-btn:hover {
+[data-theme="dark"] .um-close-btn:hover,
+.dark .um-close-btn:hover {
   background: #1e293b;
   color: white;
 }
@@ -95,7 +98,8 @@
   gap: 0.5rem;
 }
 
-[data-theme="dark"] .um-sidebar {
+[data-theme="dark"] .um-sidebar,
+.dark .um-sidebar {
   background: #0b0f19;
   border-right-color: #1e293b;
 }
@@ -116,7 +120,8 @@
   transition: all 0.25s;
 }
 
-[data-theme="dark"] .um-sidebar-item {
+[data-theme="dark"] .um-sidebar-item,
+.dark .um-sidebar-item {
   color: #94a3b8;
 }
 
@@ -125,7 +130,8 @@
   color: #0f172a;
 }
 
-[data-theme="dark"] .um-sidebar-item:hover {
+[data-theme="dark"] .um-sidebar-item:hover,
+.dark .um-sidebar-item:hover {
   background: #1e293b;
   color: white;
 }
@@ -154,7 +160,8 @@
   color: #0f172a;
 }
 
-[data-theme="dark"] .um-section h2 {
+[data-theme="dark"] .um-section h2,
+.dark .um-section h2 {
   color: white;
 }
 
@@ -165,7 +172,8 @@
   line-height: 1.6;
 }
 
-[data-theme="dark"] .um-section p {
+[data-theme="dark"] .um-section p,
+.dark .um-section p {
   color: #94a3b8;
 }
 
@@ -180,7 +188,8 @@
   border-radius: 0.75rem;
 }
 
-[data-theme="dark"] .um-screenshot-container {
+[data-theme="dark"] .um-screenshot-container,
+.dark .um-screenshot-container {
   background: #0b0f19;
   border-color: #1e293b;
 }
@@ -215,7 +224,9 @@
 }
 
 [data-theme="dark"] .um-section ul,
-[data-theme="dark"] .um-section ol {
+[data-theme="dark"] .um-section ol,
+.dark .um-section ul,
+.dark .um-section ol {
   color: #94a3b8;
 }
 
@@ -232,10 +243,12 @@
   background: #f8fafc;
 }
 
-[data-theme="dark"] .um-modal-footer {
+[data-theme="dark"] .um-modal-footer,
+.dark .um-modal-footer {
   border-top-color: #1e293b;
   background: #0b0f19;
 }
+
 
 .um-info-badge {
   display: flex;

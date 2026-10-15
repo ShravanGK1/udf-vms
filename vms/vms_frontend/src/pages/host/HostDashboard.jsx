@@ -52,8 +52,8 @@ const trafficDataSets = {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div style={{ backgroundColor: '#fff', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        <p style={{ fontWeight: 'bold', margin: '0 0 5px' }}>{label}</p>
+      <div style={{ backgroundColor: 'var(--card-bg, #fff)', color: 'var(--foreground, #0f172a)', padding: '10px', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+        <p style={{ fontWeight: 'bold', margin: '0 0 5px', color: 'var(--foreground, #0f172a)' }}>{label}</p>
         <p style={{ color: '#2563eb', margin: 0 }}>Visitors: {payload[0].value}</p>
       </div>
     );
@@ -85,16 +85,29 @@ export default function HostDashboard() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedTransferVisit, setSelectedTransferVisit] = useState(null);
 
-  // Hover card preview state
+  // Visitor details preview card state (shown on click)
   const [hoveredVisitor, setHoveredVisitor] = useState(null);
   const [hoverCardPos, setHoverCardPos] = useState({ top: 0, left: 0 });
-  const hoverTimeoutRef = useRef(null);
+  const cardRef = useRef(null);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [showVisitorForm, setShowVisitorForm] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(true);
 
-  const handleMouseEnterVisitor = (v, event) => {
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+  const handleVisitorClick = (v, event) => {
+    // If clicking an interactive button or action inside the element, don't trigger the card
+    if (event.target.closest('button')) {
+      return;
+    }
+
+    const currentId = hoveredVisitor ? (hoveredVisitor.request_id || hoveredVisitor.id) : null;
+    const clickedId = v ? (v.request_id || v.id) : null;
+
+    // Toggle off if clicking the currently open visitor
+    if (currentId && currentId === clickedId) {
+      setHoveredVisitor(null);
+      return;
+    }
+
     const rect = event.currentTarget.getBoundingClientRect();
     const cardWidth = 380;
     const cardHeight = 360;
@@ -114,21 +127,35 @@ export default function HostDashboard() {
     setHoveredVisitor(v);
   };
 
-  const handleMouseLeaveVisitor = () => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredVisitor(null);
-    }, 150);
-  };
+  useEffect(() => {
+    if (!hoveredVisitor) return;
 
-  const handleCardMouseEnter = () => {
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-  };
+    const handleClickOutside = (e) => {
+      if (
+        cardRef.current &&
+        !cardRef.current.contains(e.target) &&
+        !e.target.closest('.request-item') &&
+        !e.target.closest('.security-activity-item') &&
+        !e.target.closest('.visits-table tr')
+      ) {
+        setHoveredVisitor(null);
+      }
+    };
 
-  const handleCardMouseLeave = () => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredVisitor(null);
-    }, 150);
-  };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setHoveredVisitor(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hoveredVisitor]);
 
   const handleOpenTransferModal = (visit) => {
     setSelectedTransferVisit(visit);
@@ -381,8 +408,7 @@ export default function HostDashboard() {
                           cursor: 'pointer',
                           ...(req.status === "PENDING_TRANSFER" ? { borderLeft: '4px solid #3b82f6', backgroundColor: '#f0f7ff' } : {})
                         }}
-                        onMouseEnter={(e) => handleMouseEnterVisitor(req, e)}
-                        onMouseLeave={handleMouseLeaveVisitor}
+                        onClick={(e) => handleVisitorClick(req, e)}
                       >
                         <div className="visitor-info">
                           <div className="visitor-avatar">
@@ -447,9 +473,9 @@ export default function HostDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground, #64748b)' }}>
                   <CheckCircle size={48} style={{ margin: '0 auto 1rem', color: '#10b981', opacity: 0.7 }} />
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#0f172a' }}>No Pending Approvals</h3>
+                  <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--foreground, #0f172a)' }}>No Pending Approvals</h3>
                   <p className="subtitle" style={{ margin: 0 }}>All visitor requests have been processed.</p>
                 </div>
               )}
@@ -485,8 +511,7 @@ export default function HostDashboard() {
                         <tr 
                           key={visit.request_id}
                           style={{ cursor: 'pointer' }}
-                          onMouseEnter={(e) => handleMouseEnterVisitor(visit, e)}
-                          onMouseLeave={handleMouseLeaveVisitor}
+                          onClick={(e) => handleVisitorClick(visit, e)}
                         >
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -548,8 +573,8 @@ export default function HostDashboard() {
             <div className="right-column">
               {/* Upcoming Visits Feed */}
               <div className="card">
-                <div className="card-header" style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title" style={{ color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="card-header" style={{ backgroundColor: 'var(--muted, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 className="card-title" style={{ color: 'var(--foreground, #334155)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Calendar size={18} /> Upcoming Visits
                   </h3>
                   <button className="text-link" onClick={() => setShowAllUpcoming(!showAllUpcoming)}>
@@ -594,11 +619,10 @@ export default function HostDashboard() {
                           <div 
                             key={visit.request_id} 
                             className="security-activity-item" 
-                            style={{ padding: '0.85rem 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                            onMouseEnter={(e) => handleMouseEnterVisitor(visit, e)}
-                            onMouseLeave={handleMouseLeaveVisitor}
+                            style={{ padding: '0.85rem 0', borderBottom: '1px solid var(--border-color, #f1f5f9)', cursor: 'pointer', width: '100%', display: 'flex' }}
+                            onClick={(e) => handleVisitorClick(visit, e)}
                           >
-                            <div className="security-activity-content" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <div className="security-activity-content" style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', width: '100%', flex: 1 }}>
                               <div className="visitor-avatar" style={{ width: '36px', height: '36px', fontSize: '0.8rem', flexShrink: 0 }}>
                                 {visit.photo ? (
                                   <img 
@@ -611,10 +635,10 @@ export default function HostDashboard() {
                                   (visit.visitor_name || visit.name || "U").charAt(0)
                                 )}
                               </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{ fontWeight: '600', color: '#1e293b' }}>{visit.visitor_name}</span>
-                                  <span className={`status-badge ${getVisitorStatusClass(visit)}`} style={{ fontSize: '0.7rem' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', width: '100%' }}>
+                                  <span style={{ fontWeight: '600', color: 'var(--foreground, #1e293b)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{visit.visitor_name}</span>
+                                  <span className={`status-badge ${getVisitorStatusClass(visit)}`} style={{ fontSize: '0.7rem', flexShrink: 0, marginLeft: 'auto' }}>
                                     <span className="dot"></span> {getVisitorStatus(visit)}
                                   </span>
                                 </div>
@@ -694,18 +718,47 @@ export default function HostDashboard() {
           />
         )}
 
-        {/* Visitor Hover Preview Card */}
+        {/* Visitor Details Preview Card (On Click) */}
         {hoveredVisitor && (
           <div
+            ref={cardRef}
             className="visitor-hover-card"
             style={{
               top: `${hoverCardPos.top}px`,
-              left: `${hoverCardPos.left}px`
+              left: `${hoverCardPos.left}px`,
+              position: 'absolute',
+              zIndex: 9999
             }}
-            onMouseEnter={handleCardMouseEnter}
-            onMouseLeave={handleCardMouseLeave}
           >
-            <div className="vh-header">
+            <button
+              type="button"
+              className="vh-close-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setHoveredVisitor(null);
+              }}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#94a3b8',
+                padding: '4px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10
+              }}
+              aria-label="Close"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="vh-header" style={{ paddingRight: '28px' }}>
               <div className="vh-avatar">
                 {hoveredVisitor.photo ? (
                   <img

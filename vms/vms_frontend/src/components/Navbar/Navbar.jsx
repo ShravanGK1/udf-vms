@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { logout } from "../../auth/authSlice";
 import { Shield, User, Settings, LogOut, ChevronDown, Bell, CalendarClock, X, Sun, Moon, BookOpen, ShieldAlert, RefreshCw, Building } from "lucide-react";
 import apiClient from "../../app/apiClient";
+import { useTheme } from "../../context/ThemeContext";
 import SiteSelector from "../common/SiteSelector";
 import "./Navbar.css";
 
@@ -21,18 +22,7 @@ const Navbar = ({ role, userName }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("vms-theme") || "white";
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("vms-theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === "white" ? "dark" : "white");
-  };
+  const { theme, isDark, toggleTheme } = useTheme();
 
   // Profile & Settings Modals visibility
   const [profileOpen, setProfileOpen] = useState(false);
@@ -182,9 +172,11 @@ const Navbar = ({ role, userName }) => {
           <button
             className="vms-theme-toggle-btn"
             onClick={toggleTheme}
-            title={theme === "white" ? "Switch to Dark Theme" : "Switch to Light Theme"}
+            type="button"
+            title={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
+            aria-label={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
           >
-            {theme === "white" ? <Moon size={20} /> : <Sun size={20} />}
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
           <div className="vms-user-profile-wrapper" ref={dropdownRef}>
@@ -272,7 +264,7 @@ const Navbar = ({ role, userName }) => {
             <div className="vms-modal-body">
               <div className="vms-modal-avatar-section">
                 <div className="vms-modal-avatar">{initials}</div>
-                <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.25rem', color: '#0f172a' }}>{userName}</h3>
+                <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.25rem', color: 'var(--foreground, #0f172a)' }}>{userName}</h3>
                 <span className="vms-role-badge">{roleLabels[role] || "User"}</span>
               </div>
 
@@ -406,7 +398,7 @@ const Navbar = ({ role, userName }) => {
                   <h4 className="vms-modal-section-title">Host Invitation & Notification Rules</h4>
 
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '0.25rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted-foreground, #64748b)', display: 'block', marginBottom: '0.25rem' }}>
                       Notify me on visitor arrival via:
                     </label>
                     <label className="vms-modal-checkbox-row">

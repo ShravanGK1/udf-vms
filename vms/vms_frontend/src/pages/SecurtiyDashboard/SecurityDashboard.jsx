@@ -1897,44 +1897,45 @@ const SecurityDashboard = () => {
           overflowY: 'auto'
         }}>
           <div className="security-modal" style={{
-            background: '#ffffff', borderRadius: '16px', maxWidth: '520px', width: '100%',
+            background: 'var(--card-bg, #ffffff)', borderRadius: '16px', maxWidth: '520px', width: '100%',
             maxHeight: '90vh', overflowY: 'auto',
-            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: '1px solid var(--border-color, #e2e8f0)',
+            color: 'var(--foreground, #0f172a)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ background: '#dbeafe', color: '#2563eb', padding: '8px', borderRadius: '10px' }}>
+                <div style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#3b82f6', padding: '8px', borderRadius: '10px' }}>
                   <Tag size={22} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Visitor Check-In</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Allot physical RFID or card badge for entry</p>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--foreground, #0f172a)' }}>Visitor Check-In</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted-foreground, #64748b)' }}>Allot physical RFID or card badge for entry</p>
                 </div>
               </div>
-              <button onClick={() => setCheckinModalReq(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button onClick={() => setCheckinModalReq(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground, #64748b)' }}>
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', marginBottom: '18px', border: '1px solid #f1f5f9' }}>
+            <div style={{ background: 'var(--muted, #f8fafc)', padding: '14px', borderRadius: '12px', marginBottom: '18px', border: '1px solid var(--border-color, #f1f5f9)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Visitor Name:</span>
-                <strong style={{ fontSize: '14px', color: '#0f172a' }}>{checkinModalReq.name}</strong>
+                <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>Visitor Name:</span>
+                <strong style={{ fontSize: '14px', color: 'var(--foreground, #0f172a)' }}>{checkinModalReq.name}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Host / Person to Visit:</span>
-                <span style={{ fontSize: '13px', color: '#334155' }}>{checkinModalReq.host || checkinModalReq.person_to_visit || "N/A"}</span>
+                <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>Host / Person to Visit:</span>
+                <span style={{ fontSize: '13px', color: 'var(--foreground, #334155)' }}>{checkinModalReq.host || checkinModalReq.person_to_visit || "N/A"}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>System Pass ID:</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb', background: '#dbeafe', padding: '2px 8px', borderRadius: '999px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>System Pass ID:</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb', background: 'rgba(37, 99, 235, 0.15)', padding: '2px 8px', borderRadius: '999px' }}>
                   V-{checkinModalReq.request_id || checkinModalReq.id}
                 </span>
               </div>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--foreground, #334155)', marginBottom: '6px' }}>
                 Physical Badge / RFID Tag Number (Optional)
               </label>
               <input
@@ -1944,7 +1945,8 @@ const SecurityDashboard = () => {
                 value={checkinBadgeInput}
                 onChange={(e) => setCheckinBadgeInput(e.target.value)}
                 style={{
-                  width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1',
+                  width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--input-border, #cbd5e1)',
+                  background: 'var(--input-bg, #ffffff)', color: 'var(--input-text, #0f172a)',
                   fontSize: '14px', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box'
                 }}
               />
@@ -1962,9 +1964,9 @@ const SecurityDashboard = () => {
 
             {checkinSignatureError && (
               <div style={{
-                background: '#fef2f2',
-                border: '1px solid #fca5a5',
-                color: '#b91c1c',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
                 padding: '10px 14px',
                 borderRadius: '8px',
                 fontSize: '13px',
@@ -1986,7 +1988,7 @@ const SecurityDashboard = () => {
                   setCheckinSignature(null);
                   setCheckinSignatureError("");
                 }}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)', color: 'var(--muted-foreground, #475569)', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
               >
                 Cancel
               </button>
@@ -1997,7 +1999,7 @@ const SecurityDashboard = () => {
                   padding: '8px 18px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: checkinSignature ? '#2563eb' : '#94a3b8',
+                  background: checkinSignature ? '#2563eb' : 'var(--muted-foreground, #94a3b8)',
                   color: '#ffffff',
                   cursor: checkinSignature ? 'pointer' : 'not-allowed',
                   fontWeight: 600,
@@ -2022,19 +2024,20 @@ const SecurityDashboard = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
         }}>
           <div className="security-modal" style={{
-            background: '#ffffff', borderRadius: '16px', maxWidth: '480px', width: '100%',
-            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+            background: 'var(--card-bg, #ffffff)', borderRadius: '16px', maxWidth: '480px', width: '100%',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: '1px solid var(--border-color, #e2e8f0)',
+            color: 'var(--foreground, #0f172a)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ background: '#fee2e2', color: '#dc2626', padding: '8px', borderRadius: '10px' }}>
+                <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '8px', borderRadius: '10px' }}>
                   <LogOut size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: 'var(--foreground, #0f172a)' }}>
                     Permanent Checkout
                   </h3>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--muted-foreground, #64748b)' }}>
                     Handwritten stylus signature required
                   </span>
                 </div>
@@ -2045,31 +2048,31 @@ const SecurityDashboard = () => {
                   setCheckoutSignature(null);
                   setCheckoutSignatureError("");
                 }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground, #64748b)' }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', marginBottom: '18px', border: '1px solid #f1f5f9' }}>
+            <div style={{ background: 'var(--muted, #f8fafc)', padding: '14px', borderRadius: '12px', marginBottom: '18px', border: '1px solid var(--border-color, #f1f5f9)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Visitor Name:</span>
-                <strong style={{ fontSize: '14px', color: '#0f172a' }}>{checkoutModalReq.name}</strong>
+                <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>Visitor Name:</span>
+                <strong style={{ fontSize: '14px', color: 'var(--foreground, #0f172a)' }}>{checkoutModalReq.name}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Host (Person Visited):</span>
-                <span style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>{checkoutModalReq.host || checkoutModalReq.person_to_visit || checkoutModalReq.personToVisit || "N/A"}</span>
+                <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>Host (Person Visited):</span>
+                <span style={{ fontSize: '13px', color: 'var(--foreground, #334155)', fontWeight: 600 }}>{checkoutModalReq.host || checkoutModalReq.person_to_visit || checkoutModalReq.personToVisit || "N/A"}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>System Pass ID:</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '2px 8px', borderRadius: '999px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>System Pass ID:</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '2px 8px', borderRadius: '999px' }}>
                   V-{checkoutModalReq.request_id || checkoutModalReq.id}
                 </span>
               </div>
               {checkoutModalReq.checkIn && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#64748b' }}>Check-In Time:</span>
-                  <span style={{ fontSize: '13px', color: '#334155' }}>{checkoutModalReq.checkIn}</span>
+                  <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #64748b)' }}>Check-In Time:</span>
+                  <span style={{ fontSize: '13px', color: 'var(--foreground, #334155)' }}>{checkoutModalReq.checkIn}</span>
                 </div>
               )}
             </div>
@@ -2087,9 +2090,9 @@ const SecurityDashboard = () => {
 
             {checkoutSignatureError && (
               <div style={{
-                background: '#fef2f2',
-                border: '1px solid #fca5a5',
-                color: '#b91c1c',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
                 padding: '10px 14px',
                 borderRadius: '8px',
                 fontSize: '13px',
@@ -2111,7 +2114,7 @@ const SecurityDashboard = () => {
                   setCheckoutSignature(null);
                   setCheckoutSignatureError("");
                 }}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)', color: 'var(--muted-foreground, #475569)', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
               >
                 Cancel
               </button>
@@ -2122,7 +2125,7 @@ const SecurityDashboard = () => {
                   padding: '8px 18px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: checkoutSignature ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : '#94a3b8',
+                  background: checkoutSignature ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'var(--muted-foreground, #94a3b8)',
                   color: '#ffffff',
                   cursor: checkoutSignature ? 'pointer' : 'not-allowed',
                   fontWeight: 600,
@@ -2147,26 +2150,27 @@ const SecurityDashboard = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem'
         }}>
           <div className="security-modal" style={{
-            background: '#ffffff', borderRadius: '16px', maxWidth: '440px', width: '100%',
-            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+            background: 'var(--card-bg, #ffffff)', borderRadius: '16px', maxWidth: '440px', width: '100%',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)', border: '1px solid var(--border-color, #e2e8f0)',
+            color: 'var(--foreground, #0f172a)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ background: '#fef3c7', color: '#d97706', padding: '8px', borderRadius: '10px' }}>
+                <div style={{ background: 'rgba(217, 119, 6, 0.15)', color: '#d97706', padding: '8px', borderRadius: '10px' }}>
                   <Tag size={22} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Reassign Physical Badge</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Update badge for live visitor {reassignModalReq.name}</p>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--foreground, #0f172a)' }}>Reassign Physical Badge</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted-foreground, #64748b)' }}>Update badge for live visitor {reassignModalReq.name}</p>
                 </div>
               </div>
-              <button onClick={() => setReassignModalReq(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button onClick={() => setReassignModalReq(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground, #64748b)' }}>
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--foreground, #334155)', marginBottom: '6px' }}>
                 New Physical Badge / RFID Tag Number
               </label>
               <input
@@ -2181,7 +2185,8 @@ const SecurityDashboard = () => {
                   }
                 }}
                 style={{
-                  width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1',
+                  width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid var(--input-border, #cbd5e1)',
+                  background: 'var(--input-bg, #ffffff)', color: 'var(--input-text, #0f172a)',
                   fontSize: '14px', outline: 'none', boxSizing: 'border-box'
                 }}
               />
@@ -2190,7 +2195,7 @@ const SecurityDashboard = () => {
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setReassignModalReq(null)}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)', color: 'var(--muted-foreground, #475569)', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
               >
                 Cancel
               </button>

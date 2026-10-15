@@ -243,3 +243,59 @@
   text-align: center;
   line-height: 1.4;
 }
+
+/* Dark Theme Support for Auth */
+[data-theme="dark"] .auth-card,
+.dark .auth-card {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .auth-form-side,
+.dark .auth-form-side {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-header h2,
+.dark .form-header h2 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .auth-input,
+.dark .auth-input {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  caret-color: #60a5fa;
+}
+
+[data-theme="dark"] .auth-input:focus,
+.dark .auth-input:focus {
+  background: #1e293b;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .auth-input::placeholder,
+.dark .auth-input::placeholder {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .input-icon,
+.dark .input-icon {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .toggle-text,
+.dark .toggle-text {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .toggle-link,
+.dark .toggle-link {
+  color: #60a5fa;
+}
+

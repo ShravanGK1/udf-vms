@@ -807,6 +807,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
           <div className="form-group">
             <HostSelect
               selectedHostId={formData.host_id}
+              siteId={formData.site_id || formData.siteId || sessionStorage.getItem("active_site_id")}
               onChange={(host) => {
                 setFormData((prev) => ({
                   ...prev,
@@ -980,12 +981,12 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "0 8px 0 12px",
-                  background: "#f8fafc",
-                  border: "1px solid #cbd5e1",
+                  background: "var(--input-bg, #f8fafc)",
+                  border: "1px solid var(--input-border, #cbd5e1)",
                   borderRadius: "8px",
                   fontSize: "0.95rem",
                   fontWeight: "600",
-                  color: "#334155"
+                  color: "var(--input-text, #334155)"
                 }}>
                   <span>{parsePhoneNumber(formData.phone).countryCode || "Other"}</span>
                   <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>▼</span>
@@ -1385,8 +1386,8 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                 <div
                   key={idx}
                   style={{
-                    background: "#f8fafc",
-                    border: "1px solid #cbd5e1",
+                    background: "var(--muted, #f8fafc)",
+                    border: "1px solid var(--border-color, #cbd5e1)",
                     borderRadius: "10px",
                     padding: "16px",
                     marginBottom: "12px",
@@ -1394,7 +1395,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--foreground, #475569)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       Device #{idx + 1}
                     </span>
                     {!readOnly && devices.length > 1 && (
@@ -1504,7 +1505,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
           {formData.hasMaterial === "Yes" && (
             <div className="form-group full-width" style={{ marginTop: "10px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                <label style={{ fontSize: "14px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--foreground, #1e293b)", margin: 0 }}>
                   Material / Goods / Equipment Details ({materials.length}) <span>*</span>
                 </label>
                 {!readOnly && (
@@ -1512,9 +1513,9 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                     type="button"
                     onClick={addMaterialRow}
                     style={{
-                      background: "#f0fdf4",
+                      background: "rgba(34, 197, 94, 0.15)",
                       color: "#16a34a",
-                      border: "1px solid #bbf7d0",
+                      border: "1px solid rgba(34, 197, 94, 0.3)",
                       borderRadius: "6px",
                       padding: "6px 14px",
                       fontSize: "12px",
@@ -1534,8 +1535,8 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                 <div
                   key={idx}
                   style={{
-                    background: "#f8fafc",
-                    border: "1px solid #cbd5e1",
+                    background: "var(--muted, #f8fafc)",
+                    border: "1px solid var(--border-color, #cbd5e1)",
                     borderRadius: "10px",
                     padding: "16px",
                     marginBottom: "12px",
@@ -1543,7 +1544,7 @@ export default function VisitorPassForm({ onClose, requestId, readOnly: initialR
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--foreground, #475569)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       Material #{idx + 1}
                     </span>
                     {!readOnly && materials.length > 1 && (

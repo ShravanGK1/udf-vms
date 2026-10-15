@@ -615,4 +615,103 @@ body {
 .btn-transfer:hover {
   transform: translateY(-1px);
   background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-}
+}
+
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] body,
+.dark body {
+  background-color: #0b0f19;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .dashboard-container,
+.dark .dashboard-container {
+  background-color: #0b0f19;
+}
+
+[data-theme="dark"] .card,
+.dark .card {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .card-header,
+.dark .card-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .card-title,
+.dark .card-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .header-title h1,
+.dark .header-title h1 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .request-item,
+.dark .request-item {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .request-item:hover,
+.dark .request-item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .visitor-avatar,
+.dark .visitor-avatar {
+  background-color: #1e293b;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .visitor-details h4,
+.dark .visitor-details h4 {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .tag,
+.dark .tag {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .visits-table th,
+.dark .visits-table th {
+  background-color: #1e293b;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .visits-table td,
+.dark .visits-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .visits-table tr:hover td,
+.dark .visits-table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .pie-chart-total .total-number,
+.dark .pie-chart-total .total-number {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .close-modal-btn,
+.dark .close-modal-btn {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .close-modal-btn:hover,
+.dark .close-modal-btn:hover {
+  background-color: #334155;
+  color: #ef4444 !important;
+}
+

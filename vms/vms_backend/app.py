@@ -85,7 +85,10 @@ def global_request_filter():
         
         if not user:
             return jsonify({"message": "User not found, session invalid."}), 401
-            
+
+        if (user.get("status") or "").lower() != "active":
+            return jsonify({"message": "Account is deactivated. Please contact your administrator.", "code": "account_deactivated"}), 403
+
         # Check if password in database has changed since token was generated
         if user["password"] != token_password:
             return jsonify({"message": "Password changed. Please log in again.", "code": "session_invalidated"}), 401

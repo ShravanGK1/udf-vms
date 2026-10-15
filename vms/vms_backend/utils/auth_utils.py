@@ -21,8 +21,6 @@ def get_user_site_scope(user_id, role):
             cursor.execute("SELECT site_id FROM sites WHERE customer_id = %s", (cust_id,))
             rows = cursor.fetchall()
             site_ids = [r[0] for r in rows]
-            if not site_ids:
-                site_ids = [1]
             cursor.close()
             conn.close()
             return 'CUSTOMER_ALL', site_ids
@@ -33,12 +31,10 @@ def get_user_site_scope(user_id, role):
         conn.close()
 
         site_ids = [r[0] for r in rows]
-        if not site_ids:
-            site_ids = [1]
         return 'SCOPED', site_ids
     except Exception as e:
         print("[ERROR] get_user_site_scope:", e)
-        return 'SCOPED', [1]
+        return 'SCOPED', []
 
 
 def get_user_authorized_sites(user_id, role):
@@ -57,10 +53,14 @@ def get_user_authorized_sites(user_id, role):
             cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (user_id,))
             u_row = cursor.fetchone()
             cust_id = u_row['customer_id'] if (u_row and u_row.get('customer_id')) else 1
-            cursor.execute("SELECT site_id, name, address, status, customer_id FROM sites WHERE customer_id = %s ORDER BY site_id ASC", (cust_id,))
+            cursor.execute("SELECT site_id, name, address, status, customer_id, code, lat, lng FROM sites WHERE customer_id = %s ORDER BY site_id ASC", (cust_id,))
         else:
+            if not site_ids:
+                cursor.close()
+                conn.close()
+                return []
             format_strings = ','.join(['%s'] * len(site_ids))
-            cursor.execute(f"SELECT site_id, name, address, status, customer_id FROM sites WHERE site_id IN ({format_strings}) ORDER BY site_id ASC", tuple(site_ids))
+            cursor.execute(f"SELECT site_id, name, address, status, customer_id, code, lat, lng FROM sites WHERE site_id IN ({format_strings}) ORDER BY site_id ASC", tuple(site_ids))
 
         sites = cursor.fetchall()
         cursor.close()
@@ -87,6 +87,18 @@ def is_site_authorized(user_id, role, target_site_id):
         return False
 
 
+def generate_token(user_id, role, expires_in=86400):
+    import jwt
+    import time
+    from config import SECRET_KEY
+    payload = {
+        "user_id": user_id,
+        "role": str(role).lower(),
+        "exp": int(time.time()) + expires_in
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+
 def get_current_user_from_request(req):
     """
     Extracts (user_id, role) from JWT Bearer token in Authorization header or token query parameter.
@@ -99,15 +111,17 @@ def get_current_user_from_request(req):
     if not auth_header and req.args.get("token"):
         auth_header = f"Bearer {req.args.get('token')}"
 
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ")[1]
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            user_id = payload.get("user_id")
-            role = str(payload.get("role", "")).lower()
-            return user_id, role
-        except Exception as e:
-            pass
+    if auth_header:
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+                user_id = payload.get("user_id")
+                role = str(payload.get("role", "")).lower()
+                return user_id, role
+            except Exception:
+                return None, None
+        return None, None
 
     try:
         if current_app and current_app.config.get("TESTING"):

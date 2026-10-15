@@ -8,30 +8,56 @@
 }
 
 @layer base {
-  :root {
+  :root,
+  [data-theme="light"],
+  .light {
+    color-scheme: light;
 
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --border: 214.3 31.8% 91.4%;
-    /* VMS Blue Theme */
-    --primary-blue: 217 91% 60%;
-    --primary-hover: 224 76% 48%;
-    --bg-slate: 210 40% 98%;
-    --text-dark: 222 47% 11%;
-    --text-gray: 215 16% 47%;
-    --border-color: 214 32% 91%;
-
-    /* Status Colors */
-    --status-emerald-bg: 152 81% 90%;
-    --status-emerald-text: 164 86% 20%;
-    --status-amber-bg: 48 96% 89%;
-    --status-amber-text: 26 90% 31%;
-    --status-red-bg: 0 93% 94%;
-    --status-red-text: 0 72% 51%;
-
-    /* Shadcn mapping */
+    /* Base Colors */
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+
+    /* VMS Blue Theme */
+    --primary-blue: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg-slate: #f8fafc;
+    --text-dark: #0f172a;
+    --text-gray: #64748b;
+    --border-color: #e2e8f0;
+
+    /* Form & Input Tokens */
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;
+    --input-text: #0f172a;
+    --input-placeholder: #94a3b8;
+    --input-focus-border: #3b82f6;
+    --input-focus-ring: rgba(59, 130, 246, 0.2);
+
+    /* Surface & Container Tokens */
+    --card-bg: #ffffff;
+    --card-border: rgba(0, 0, 0, 0.08);
+    --modal-bg: #ffffff;
+    --modal-header-bg: #f8fafc;
+    --dropdown-bg: #ffffff;
+    --dropdown-hover: #f1f5f9;
+
+    /* Table Tokens */
+    --table-header-bg: rgba(240, 244, 248, 0.8);
+    --table-header-text: #627d98;
+    --table-row-text: #334e68;
+    --table-row-hover: rgba(241, 245, 249, 0.8);
+    --table-border: #e2e8f0;
+
+    /* Status Colors */
+    --status-emerald-bg: #d1fae5;
+    --status-emerald-text: #065f46;
+    --status-amber-bg: #fef3c7;
+    --status-amber-text: #92400e;
+    --status-red-bg: #fee2e2;
+    --status-red-text: #b91c1c;
+
+    /* Shadcn mapping */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
@@ -46,7 +72,6 @@
     --accent-foreground: 222 47% 11%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 217 91% 60%;
     --radius: 0.75rem;
@@ -100,7 +125,10 @@
 }
 
 /* --- PREMIUM NAVY DARK THEME OVERRIDES --- */
-[data-theme="dark"] {
+[data-theme="dark"],
+.dark {
+  color-scheme: dark;
+
   --background: 222 47% 11%;
   --foreground: 210 40% 98%;
   --card: 222.2 47% 11%;
@@ -110,8 +138,35 @@
   --muted-foreground: 215 20.2% 65.1%;
   --accent: 217.2 32.6% 17.5%;
   --accent-foreground: 210 40% 98%;
-  --primary-blue: 217 91% 60%;
+  --primary-blue: #3b82f6;
+  --primary-hover: #2563eb;
   --border-color: 217.2 32.6% 17.5%;
+  --bg-slate: #0b1324;
+  --text-dark: #f8fafc;
+  --text-gray: #94a3b8;
+
+  /* Form & Input Tokens */
+  --input-bg: #1e293b;
+  --input-border: rgba(255, 255, 255, 0.15);
+  --input-text: #f8fafc;
+  --input-placeholder: #94a3b8;
+  --input-focus-border: #3b82f6;
+  --input-focus-ring: rgba(59, 130, 246, 0.3);
+
+  /* Surface & Container Tokens */
+  --card-bg: rgba(15, 32, 59, 0.75);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --modal-bg: #0f172a;
+  --modal-header-bg: #090f1d;
+  --dropdown-bg: #091526;
+  --dropdown-hover: rgba(255, 255, 255, 0.06);
+
+  /* Table Tokens */
+  --table-header-bg: rgba(10, 22, 41, 0.6);
+  --table-header-text: #94a3b8;
+  --table-row-text: #e2e8f0;
+  --table-row-hover: rgba(30, 41, 59, 0.4);
+  --table-border: rgba(255, 255, 255, 0.05);
 
   /* Dashboard background & typography */
   .security-dashboard,
@@ -309,6 +364,26 @@
     background-color: #1e293b !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
     color: #f8fafc !important;
+    caret-color: #60a5fa !important;
+    -webkit-text-fill-color: #f8fafc !important;
+  }
+
+  .vms-modal-input:focus,
+  .vms-modal-select:focus,
+  .admin-form-group input:focus,
+  .admin-form-group select:focus {
+    background-color: #1e293b !important;
+    border-color: #3b82f6 !important;
+    color: #f8fafc !important;
+    caret-color: #60a5fa !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  }
+
+  .admin-form-group input::placeholder,
+  .vms-modal-input::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
   }
 
   /* Buttons */
@@ -566,6 +641,121 @@
   .security-request-item.expired:hover {
     background: rgba(239, 68, 68, 0.15) !important;
   }
+
+  /* Admin Visitor Block Cards in Dark Theme */
+  .visitor-block-card {
+    background: rgba(15, 32, 59, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .visitor-block-card:hover {
+    background: rgba(22, 46, 82, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+  }
+  .visitor-block-card.active {
+    background: rgba(30, 58, 98, 0.9) !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25) !important;
+  }
+  .visitor-block-card .visitor-block-count {
+    color: #f8fafc !important;
+  }
+  .visitor-block-card .visitor-block-label {
+    color: #94a3b8 !important;
+  }
+  .visitor-block-card.active .visitor-block-label {
+    color: #38bdf8 !important;
+  }
+
+  /* Admin & Security Icon Buttons in Dark Theme */
+  .security-icon-btn,
+  .admin-icon-btn {
+    background-color: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #cbd5e1 !important;
+  }
+  .security-icon-btn:hover,
+  .admin-icon-btn:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+  }
+
+  /* Security Visitor History Card in Dark Theme */
+  .vh-card,
+  .visitor-history-card {
+    background: rgba(15, 32, 59, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .vh-name {
+    color: #f8fafc !important;
+  }
+  .vh-value {
+    color: #e2e8f0 !important;
+  }
+  .vh-item.full-width {
+    background: rgba(10, 22, 41, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+  }
+  .vh-access-tag {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .vh-action-view {
+    background: #1e293b !important;
+    color: #cbd5e1 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  .vh-action-view:hover {
+    background: #334155 !important;
+    color: #ffffff !important;
+  }
+  .vh-divider {
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+}
+
+/* --- Global Form & Autofill Theme Harmonization --- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #2563eb !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover,
+[data-theme="dark"] input:-webkit-autofill:focus,
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+[data-theme="dark"] textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #60a5fa !important;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+[data-theme="dark"] select option,
+.dark select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.9) brightness(1.2);
+  cursor: pointer;
 }
 
 /* --- StatCard Permanent Colors & Shading (Global for Light & Dark modes) --- */

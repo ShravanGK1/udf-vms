@@ -12,11 +12,6 @@
   --input-border: #cbd5e1;
 }
 
-body {
-  background-color: var(--bg-slate);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
 .form-container {
   max-width: 750px;
   margin: 0 auto;
@@ -124,18 +119,18 @@ body {
   grid-column: 1 / -1;
 }
 
-label {
+.form-container label {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-dark);
 }
 
-label span {
+.form-container label span {
   color: var(--danger);
 }
 
-input,
-select {
+.form-container input,
+.form-container select {
   padding: 0.7rem 0.75rem;
   padding-left: 2.5rem;
   border: 1px solid var(--input-border);
@@ -149,25 +144,25 @@ select {
   box-sizing: border-box;
 }
 
-input::placeholder {
+.form-container input::placeholder {
   color: #94a3b8;
   font-weight: 400;
 }
 
-input:focus,
-select:focus {
+.form-container input:focus,
+.form-container select:focus {
   outline: none;
   background-color: #ffffff;
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
-.invalid-input {
+.form-container .invalid-input {
   border-color: var(--danger) !important;
   background-color: #fffafb;
 }
 
-.error-text {
+.form-container .error-text {
   color: var(--danger);
   font-size: 0.75rem;
   margin-top: -0.25rem;
@@ -344,4 +339,98 @@ select:focus {
 .form-actions-footer .btn-submit {
   flex: 1;
   margin-top: 0;
-}
+}
+
+/* ========================================================
+   DARK THEME COMPATIBILITY
+   ======================================================== */
+[data-theme="dark"] .form-container,
+.dark .form-container {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  --border: rgba(255, 255, 255, 0.1);
+  --text-dark: #f8fafc;
+  --text-gray: #94a3b8;
+  --input-bg: #1e293b;
+  --input-text: #f1f5f9;
+  --input-border: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .form-close-btn,
+.dark .form-close-btn {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .form-close-btn:hover,
+.dark .form-close-btn:hover {
+  background: #334155;
+  color: #ef4444;
+}
+
+[data-theme="dark"] .close-modal-btn,
+.dark .close-modal-btn {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .close-modal-btn:hover,
+.dark .close-modal-btn:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .form-container input:focus,
+[data-theme="dark"] .form-container select:focus,
+.dark .form-container input:focus,
+.dark .form-container select:focus {
+  background-color: #0f172a;
+  border-color: var(--primary);
+}
+
+[data-theme="dark"] .vehicle-photo-preview-container,
+.dark .vehicle-photo-preview-container {
+  background-color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .no-image-placeholder,
+.dark .no-image-placeholder {
+  background-color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .btn-open-camera,
+.dark .btn-open-camera {
+  background-color: #1e293b;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-open-camera:hover,
+.dark .btn-open-camera:hover {
+  background-color: #334155;
+  color: #60a5fa;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .btn-open-camera svg,
+.dark .btn-open-camera svg {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .btn-print,
+.dark .btn-print {
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+
+[data-theme="dark"] .btn-print:hover,
+.dark .btn-print:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: #60a5fa;
+}
+

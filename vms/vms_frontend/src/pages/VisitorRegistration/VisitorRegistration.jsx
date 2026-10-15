@@ -4,6 +4,7 @@ import { User, Mail, Phone, MapPin, Building, Briefcase, Hash, Save, ClipboardLi
 import "./VisitorRegistration.css";
 import CameraModal from "../../components/modals/CameraModal";
 import HostSelect from "../../components/common/HostSelect";
+import ThemeToggle from "../../components/common/ThemeToggle";
 
 
 const translations = {
@@ -703,6 +704,7 @@ export default function VisitorRegistration() {
   if (submitted) {
     return (
       <div className="registration-wrapper">
+        <ThemeToggle floating />
         <div className="success-container">
           <CheckCircle size={64} className="success-icon" />
           <h2>{t.success}</h2>
@@ -714,6 +716,7 @@ export default function VisitorRegistration() {
 
   return (
     <div className="registration-wrapper">
+      <ThemeToggle floating />
       <div className="reg-form-container">
         <div className="reg-form-header">
           <div className="reg-header-top">
@@ -747,6 +750,7 @@ export default function VisitorRegistration() {
             <div className="form-group">
               <HostSelect
                 selectedHostId={formData.host_id}
+                siteId={formData.site_id || formData.siteId || sessionStorage.getItem("active_site_id")}
                 onChange={(host) => {
                   setFormData((prev) => ({
                     ...prev,
@@ -764,7 +768,7 @@ export default function VisitorRegistration() {
 
             {/* Multi-day Visit Toggle Checkbox */}
             <div className="form-group full-width" style={{ marginTop: "4px", marginBottom: "8px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600, color: "#1e293b", fontSize: "13px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600, color: "var(--foreground, #1e293b)", fontSize: "13px" }}>
                 <input
                   type="checkbox"
                   name="isMultiDay"
@@ -900,12 +904,12 @@ export default function VisitorRegistration() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "0 8px 0 12px",
-                    background: "#f8fafc",
-                    border: "1px solid #cbd5e1",
+                    background: "var(--input-bg, #f8fafc)",
+                    border: "1px solid var(--input-border, #cbd5e1)",
                     borderRadius: "8px",
                     fontSize: "0.95rem",
                     fontWeight: "600",
-                    color: "#334155"
+                    color: "var(--input-text, #334155)"
                   }}>
                     <span>{parsePhoneNumber(formData.phone).countryCode || "Other"}</span>
                     <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>▼</span>
@@ -1179,16 +1183,16 @@ export default function VisitorRegistration() {
             {formData.hasDevice === "Yes" && (
               <div className="form-group full-width" style={{ marginTop: "10px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                  <label style={{ fontSize: "14px", fontWeight: 700, color: "#1e293b", margin: 0 }}>
+                  <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--foreground, #1e293b)", margin: 0 }}>
                     Accompanying Devices ({devices.length}) <span>*</span>
                   </label>
                   <button
                     type="button"
                     onClick={addDeviceRow}
                     style={{
-                      background: "#eff6ff",
+                      background: "rgba(37, 99, 235, 0.15)",
                       color: "#2563eb",
-                      border: "1px solid #bfdbfe",
+                      border: "1px solid rgba(37, 99, 235, 0.3)",
                       borderRadius: "6px",
                       padding: "6px 14px",
                       fontSize: "12px",
@@ -1207,8 +1211,8 @@ export default function VisitorRegistration() {
                   <div
                     key={idx}
                     style={{
-                      background: "#f8fafc",
-                      border: "1px solid #cbd5e1",
+                      background: "var(--muted, #f8fafc)",
+                      border: "1px solid var(--border-color, #cbd5e1)",
                       borderRadius: "10px",
                       padding: "16px",
                       marginBottom: "12px",
@@ -1216,7 +1220,7 @@ export default function VisitorRegistration() {
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--foreground, #475569)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         Device #{idx + 1}
                       </span>
                       {devices.length > 1 && (

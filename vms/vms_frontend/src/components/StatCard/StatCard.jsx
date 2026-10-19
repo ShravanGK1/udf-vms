@@ -32,14 +32,6 @@ const StatCard = ({
         <div className="vms-stat-info">
           <p className="vms-stat-label">{displayLabel}</p>
           <p className="vms-stat-value">{value}</p>
-          {trend && (
-            <span className={`vms-stat-trend ${trend.positive ? "positive" : "negative"}`}>
-              {trend.positive ? "↑" : "↓"} {trend.value}
-            </span>
-          )}
-          {subText && !trend && (
-            <p className="vms-stat-subtext">{subText}</p>
-          )}
         </div>
         <div className="vms-stat-icon-box" style={{ background: finalIconBg, color: finalIconColor }}>
           {renderIcon()}

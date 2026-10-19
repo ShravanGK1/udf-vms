@@ -113,85 +113,172 @@ const ExportReport = () => {
 
   const handleDownloadPDF = () => {
     const visitors = reportData?.visitors || [];
+    const meta = reportData?.metadata || {};
+    const sum = reportData?.summary || {};
 
-    let tableRows = visitors.map((v, i) => `
+    let tableRows = visitors.length > 0 ? visitors.map((v, i) => `
       <tr>
-        <td>${i + 1}</td>
-        <td>${v.name || "-"}</td>
-        <td>${v.phone || "-"}</td>
+        <td style="text-align: center;">${v.sr_no || i + 1}</td>
+        <td><strong>${v.name || "-"}</strong></td>
+        <td style="text-align: center;">${v.phone || "-"}</td>
         <td>${v.company || "-"}</td>
         <td>${v.person_visited || "-"}</td>
         <td>${v.checked_in_by || "-"}</td>
         <td>${v.department || "-"}</td>
         <td>${resolveVisitorSite(v)}</td>
-        <td>${v.date || "-"}</td>
-        <td>${v.check_in || "-"}</td>
-        <td>${v.check_out || "-"}</td>
-        <td>${v.time_available || "-"}</td>
+        <td style="text-align: center;">${v.date || "-"}</td>
+        <td style="text-align: center;">${v.check_in || "-"}</td>
+        <td style="text-align: center;">${v.check_out || "-"}</td>
+        <td style="text-align: center;">${v.time_available || "-"}</td>
+        <td style="text-align: center;"><span class="badge ${String(v.status).toLowerCase()}">${v.status || "-"}</span></td>
+        <td>${v.purpose || "-"}</td>
+        <td style="text-align: center;">${v.has_material || "No"}</td>
       </tr>
-    `).join("");
+    `).join("") : `
+      <tr>
+        <td colspan="15" style="text-align: center; padding: 24px; color: #64748b; font-style: italic;">
+          No visitor activity records found for the selected period and site scope.
+        </td>
+      </tr>
+    `;
 
     const html = `
     <html>
       <head>
-        <title>Visitor Report</title>
+        <title>Visitor Management System — Strategic Activity Report</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #1e293b; }
-          h2 { margin-bottom: 16px; font-size: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
-          th { background-color: #f1f5f9; font-weight: 700; color: #0f172a; }
+          @page { size: landscape; margin: 12mm; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; color: #0f172a; background: #fff; }
+          .header-box { border-bottom: 2px solid #1e3a8a; padding-bottom: 12px; margin-bottom: 16px; }
+          .company-name { font-size: 20px; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+          .report-heading { font-size: 15px; font-weight: 700; color: #334155; margin: 4px 0 10px 0; }
+          .meta-grid { display: flex; flex-wrap: wrap; gap: 15px; font-size: 11px; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0; }
+          .meta-item { display: flex; gap: 6px; }
+          .meta-label { font-weight: 700; color: #64748b; }
+          .meta-value { font-weight: 600; color: #0f172a; }
+
+          .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 15px 0 18px 0; }
+          .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; text-align: center; }
+          .kpi-title { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 3px; }
+          .kpi-num { font-size: 16px; font-weight: 800; color: #1e3a8a; }
+
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10.5px; }
+          th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: middle; }
+          th { background-color: #1e3a8a; font-weight: 700; color: #ffffff; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
           tr:nth-child(even) { background-color: #f8fafc; }
+          .badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+          .badge.approved, .badge.checked_in { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+          .badge.rejected, .badge.denied { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+          .badge.pending { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+          .footer-note { margin-top: 15px; font-size: 9px; color: #94a3b8; text-align: right; }
         </style>
       </head>
       <body>
-        <h2>Visitor Report</h2>
+        <div class="header-box">
+          <h1 class="company-name">${meta.company_name || "Unique Delta Force Security Pvt. Ltd."}</h1>
+          <div class="report-heading">VISITOR MANAGEMENT SYSTEM — STRATEGIC ACTIVITY REPORT</div>
+          <div class="meta-grid">
+            <div class="meta-item"><span class="meta-label">Generated On:</span><span class="meta-value">${meta.generated_at || new Date().toLocaleString()}</span></div>
+            <div class="meta-item"><span class="meta-label">Filter Period:</span><span class="meta-value">${meta.period_label || period.toUpperCase()}</span></div>
+            <div class="meta-item"><span class="meta-label">Site Scope:</span><span class="meta-value">${meta.site_scope_label || "All Authorized Sites"}</span></div>
+            <div class="meta-item"><span class="meta-label">Total Records:</span><span class="meta-value">${visitors.length} Records</span></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-title">Period Visitors</div><div class="kpi-num">${sum.periodCount ?? visitors.length}</div></div>
+          <div class="kpi-card"><div class="kpi-title">Today's Visits</div><div class="kpi-num">${sum.todayCount ?? 0}</div></div>
+          <div class="kpi-card"><div class="kpi-title">Month-To-Date</div><div class="kpi-num">${sum.mtdCount ?? 0}</div></div>
+          <div class="kpi-card"><div class="kpi-title">Year-To-Date</div><div class="kpi-num">${sum.ytdCount ?? 0}</div></div>
+          <div class="kpi-card"><div class="kpi-title">Peak Check-In</div><div class="kpi-num" style="font-size: 13px;">${sum.peakHour || "N/A"}</div></div>
+          <div class="kpi-card"><div class="kpi-title">Avg Duration</div><div class="kpi-num">${sum.avgDuration || 0}m</div></div>
+        </div>
+
         <table>
           <thead>
             <tr>
-              <th>SR. NO</th>
+              <th style="width: 35px; text-align: center;">SR. NO</th>
               <th>VISITORS NAME</th>
-              <th>CONTACT NUMBER</th>
+              <th style="text-align: center;">CONTACT NUMBER</th>
               <th>COMPANY NAME</th>
               <th>PERSON VISITED</th>
               <th>CHECKED IN BY</th>
               <th>DEPARTMENT</th>
               <th>SITE</th>
-              <th>DATE</th>
-              <th>IN</th>
-              <th>OUT</th>
-              <th>TIME AVAILABLE</th>
+              <th style="text-align: center;">DATE</th>
+              <th style="text-align: center;">IN</th>
+              <th style="text-align: center;">OUT</th>
+              <th style="text-align: center;">TIME AVAILABLE</th>
+              <th style="text-align: center;">STATUS</th>
+              <th>PURPOSE</th>
+              <th style="text-align: center;">MATERIAL</th>
             </tr>
           </thead>
           <tbody>
             ${tableRows}
           </tbody>
         </table>
+
+        <div class="footer-note">
+          Security-Governed Audit Report | VMS Multi-Tenant Enterprise Platform | Generated: ${new Date().toISOString()}
+        </div>
       </body>
     </html>
-  `;
+    `;
 
-    const newWindow = window.open("", "_blank");
-    newWindow.document.write(html);
-    newWindow.document.close();
-    newWindow.print();
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    } else {
+      alert("Please allow popups to export the PDF report.");
+    }
   };
 
-
   const handleExportExcel = async () => {
-    const response = await apiClient.get(`/reports/export-excel?period=${period}`, {
-      responseType: "blob",
-    });
+    try {
+      const activeSiteId = sessionStorage.getItem("active_site_id");
+      let url = `/reports/export-excel?period=${period}`;
+      if (activeSiteId && activeSiteId !== "all") {
+        url += `&site_id=${activeSiteId}`;
+      }
 
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+      const response = await apiClient.get(url, {
+        responseType: "blob",
+      });
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "Visitor_Report.xlsx");
+      // Guard: if backend returned an error JSON as blob
+      if (response.data && response.data.type === "application/json") {
+        const text = await response.data.text();
+        const errObj = JSON.parse(text);
+        alert(`❌ Export failed: ${errObj.error || "Server rejected report generation"}`);
+        return;
+      }
 
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      link.setAttribute("download", `Visitor_Report_${period}_${dateStr}.xlsx`);
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Failed to export Excel report:", err);
+      const errMsg = err.response?.data?.error || err.message || "Failed to download Excel report";
+      alert(`❌ Export to Excel failed: ${errMsg}`);
+    }
   };
 
   const formatDateTime = (dateStr) => {

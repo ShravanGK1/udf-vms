@@ -854,7 +854,7 @@ def transfer_user_site(user_id):
         found_sites = {r[0]: {"name": r[1], "status": r[2]} for r in cursor.fetchall()}
         for s_id in target_site_ids:
             if s_id not in found_sites:
-                return jsonify({"error": f"Site #{s_id} does not exist in your organization."}), 400
+                return jsonify({"error": f"Unauthorized: Site #{s_id} does not belong to your organization."}), 403
             if found_sites[s_id]["status"].lower() != "active":
                 return jsonify({"error": f"Site '{found_sites[s_id]['name']}' is inactive and cannot be assigned."}), 400
 
@@ -1067,15 +1067,39 @@ def get_superadmin_stats():
         cursor.execute("SELECT COUNT(*) FROM sites WHERE customer_id = %s", (cust_id,))
         db_sites_count = cursor.fetchone()[0]
 
-        # 3. Get monthly traffic trends from visitor_requests
-        cursor.execute("""
-            SELECT DATE_FORMAT(scheduled_date, '%b') as month, COUNT(*) 
-            FROM visitor_requests 
-            WHERE scheduled_date IS NOT NULL
-            GROUP BY month 
-            ORDER BY MIN(scheduled_date)
-        """)
-        rows = cursor.fetchall()
+        # 3. Get monthly traffic trends from visitor_requests (real DB records, rolling 6 months)
+        from datetime import datetime
+        now = datetime.now()
+        rolling_months = []
+        for i in range(5, -1, -1):
+            m_idx = now.month - i
+            y = now.year
+            while m_idx <= 0:
+                m_idx += 12
+                y -= 1
+            dt = datetime(y, m_idx, 1)
+            rolling_months.append((y, m_idx, dt.strftime("%b"), dt.strftime("%b %Y")))
+
+        req_site_id = request.args.get("site_id") or request.headers.get("X-Site-ID")
+        site_filter_sql = ""
+        query_params = [cust_id]
+        if req_site_id and req_site_id != "all":
+            try:
+                sid = int(req_site_id)
+                site_filter_sql = " AND vr.site_id = %s"
+                query_params.append(sid)
+            except (ValueError, TypeError):
+                pass
+
+        cursor.execute(f"""
+            SELECT DATE_FORMAT(COALESCE(vr.scheduled_date, vr.created_at), '%%Y-%%m') as ym, COUNT(*) 
+            FROM visitor_requests vr
+            WHERE (vr.site_id IN (SELECT site_id FROM sites WHERE customer_id = %s) OR vr.site_id IS NULL)
+              {site_filter_sql}
+              AND COALESCE(vr.scheduled_date, vr.created_at) >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            GROUP BY ym
+        """, tuple(query_params))
+        monthly_counts = {r[0]: r[1] for r in cursor.fetchall()}
 
         # 4. Get real customer name from DB
         company_name = "Enterprise"
@@ -1103,6 +1127,9 @@ def get_superadmin_stats():
         elif license_info.get("status") == "EXPIRED":
             license_status = "Expired"
             expiry_date = license_info.get("error", "Expired")
+        elif license_info.get("status") == "TERMINATED":
+            license_status = "Inactive"
+            expiry_date = "Terminated"
 
         # Dynamic license entry for this customer
         dynamic_licenses = [
@@ -1118,18 +1145,14 @@ def get_superadmin_stats():
         total_users_sum = db_users_count
         total_sites_sum = db_sites_count
 
-        # Build monthly traffic data (fall back to mock if no DB traffic records)
-        month_map = {"Jan": 0, "Feb": 0, "Mar": 0, "Apr": 0, "May": 0, "Jun": 0, "Jul": 0, "Aug": 0, "Sep": 0, "Oct": 0, "Nov": 0, "Dec": 0}
-        for r in rows:
-            if r[0] in month_map:
-                month_map[r[0]] = r[1]
-
+        # Build genuine rolling 6-month traffic data without fake demonstration fallbacks
         traffic_data = []
-        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-        for m in months:
+        for y, m_idx, label_short, label_full in rolling_months:
+            key = f"{y:04d}-{m_idx:02d}"
             traffic_data.append({
-                "month": m,
-                "visitors": month_map[m] if month_map[m] > 0 else (1200 + months.index(m) * 150)
+                "month": label_short,
+                "full_month": label_full,
+                "visitors": int(monthly_counts.get(key, 0))
             })
 
         return jsonify({
@@ -1138,7 +1161,6 @@ def get_superadmin_stats():
             "totalCompanies": len(dynamic_licenses),
             "totalSites": total_sites_sum,
             "totalUsers": total_users_sum,
-            "systemHealth": "99.9%",
             "trafficData": traffic_data,
             "licenseDetails": license_info
         }), 200
@@ -2063,16 +2085,85 @@ def change_role_passwords():
 
 
 
+@admin_bp.route("/admin/toggle-license", methods=["POST"])
+def toggle_license():
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id or caller_role != "superadmin":
+        return jsonify({"error": "Unauthorized"}), 403
+    from utils.license_verifier import toggle_license_status
+    ok, result = toggle_license_status()
+    if not ok:
+        return jsonify({"error": result}), 400
+    return jsonify({"message": f"License status toggled to {result}", "status": result}), 200
+
+
 @admin_bp.route("/admin/users-list", methods=["GET"])
 def get_users_list():
     try:
         import pymysql.cursors
+        from utils.auth_utils import get_user_site_scope
+
+        caller_id, caller_role = get_current_user_from_request(request)
+        if not caller_id:
+            return jsonify({"error": "Authentication required"}), 401
+
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database connection failed"}), 500
-            
+
         cursor = conn.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT user_id, email, role, name, department, status FROM users WHERE role IN ('host', 'security')")
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        cust_id = c_row["customer_id"] if (c_row and c_row.get("customer_id")) else 1
+
+        scope_type, allowed_site_ids = get_user_site_scope(caller_id, caller_role)
+
+        search = request.args.get("search", "").strip()
+        search_filter = ""
+        params = [cust_id]
+
+        if search:
+            search_filter = " AND (u.name LIKE %s OR u.email LIKE %s OR u.department LIKE %s)"
+            term = f"%{search}%"
+            params.extend([term, term, term])
+
+        if caller_role in ['superadmin', 'global_admin']:
+            query = f"""
+                SELECT DISTINCT u.user_id, u.email, u.role, u.name, u.department, u.status,
+                       GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as site_names,
+                       GROUP_CONCAT(DISTINCT s.site_id SEPARATOR ', ') as site_ids
+                FROM users u
+                LEFT JOIN user_sites us ON u.user_id = us.user_id
+                LEFT JOIN sites s ON us.site_id = s.site_id
+                WHERE u.customer_id = %s AND u.role IN ('host', 'security')
+                {search_filter}
+                GROUP BY u.user_id, u.email, u.role, u.name, u.department, u.status
+                ORDER BY u.name ASC
+            """
+            cursor.execute(query, tuple(params))
+        else:
+            if not allowed_site_ids:
+                cursor.close()
+                conn.close()
+                return jsonify([]), 200
+
+            placeholders = ','.join(['%s'] * len(allowed_site_ids))
+            params.extend(allowed_site_ids)
+            query = f"""
+                SELECT DISTINCT u.user_id, u.email, u.role, u.name, u.department, u.status,
+                       GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as site_names,
+                       GROUP_CONCAT(DISTINCT s.site_id SEPARATOR ', ') as site_ids
+                FROM users u
+                INNER JOIN user_sites us ON u.user_id = us.user_id
+                INNER JOIN sites s ON us.site_id = s.site_id
+                WHERE u.customer_id = %s AND u.role IN ('host', 'security')
+                  AND us.site_id IN ({placeholders})
+                {search_filter}
+                GROUP BY u.user_id, u.email, u.role, u.name, u.department, u.status
+                ORDER BY u.name ASC
+            """
+            cursor.execute(query, tuple(params))
+
         users = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -2085,42 +2176,76 @@ def get_users_list():
 def remote_login():
     try:
         import pymysql.cursors
+        from utils.auth_utils import get_user_site_scope
+
+        caller_id, caller_role = get_current_user_from_request(request)
+        if not caller_id or caller_role not in ['superadmin', 'admin', 'global_admin']:
+            return jsonify({"error": "Unauthorized"}), 403
+
         data = request.get_json() or {}
         user_id = data.get("user_id")
         password = data.get("password")
-        
+
         if not user_id or not password:
             return jsonify({"error": "User ID and password are required."}), 400
-            
+
         conn = get_db_connection()
         if not conn:
             return jsonify({"error": "Database connection failed"}), 500
-            
+
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT customer_id FROM users WHERE user_id = %s", (caller_id,))
+        c_row = cursor.fetchone()
+        cust_id = c_row["customer_id"] if (c_row and c_row.get("customer_id")) else 1
+
         cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
         user = cursor.fetchone()
-        
+
         if not user:
             cursor.close()
             conn.close()
             return jsonify({"error": "User not found."}), 404
-            
+
+        if user.get("customer_id") != cust_id:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Access denied: User belongs to another organization."}), 403
+
+        # Non-superadmin cannot auto-login to superadmin accounts
+        if caller_role not in ['superadmin', 'global_admin']:
+            if user.get("role") in ['superadmin', 'global_admin']:
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "Access denied: Admins cannot initiate remote login for Super Admins."}), 403
+
+            # Admin can only access users belonging to the site(s) assigned to that Admin
+            scope_type, allowed_site_ids = get_user_site_scope(caller_id, caller_role)
+            cursor.execute("SELECT site_id FROM user_sites WHERE user_id = %s", (user_id,))
+            target_site_rows = cursor.fetchall()
+            target_site_ids = [r["site_id"] for r in target_site_rows]
+
+            overlap = set(target_site_ids).intersection(set(allowed_site_ids))
+            if not overlap:
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "Access denied: Target user is not assigned to your authorized site(s)."}), 403
+
         if user["password"] != password:
             cursor.close()
             conn.close()
             return jsonify({"error": "Invalid password. Cannot authorize remote login."}), 401
-            
+
         # Generate token
         from utils.token_utils import generate_token
         token = generate_token(user)
-        
+
         # Save token to remote_login_token column
         cursor.execute("UPDATE users SET remote_login_token = %s WHERE user_id = %s", (token, user_id))
         conn.commit()
-        
+
         cursor.close()
         conn.close()
-        
+
         return jsonify({"message": f"Remote login authorized for {user['name']}.", "token": token}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -32,6 +32,7 @@ class TestHostSelectionWorkflow(unittest.TestCase):
             self.host_id = self.cursor.lastrowid
         else:
             self.host_id = row[0]
+            self.cursor.execute("UPDATE users SET status = 'Active', role = 'host' WHERE user_id = %s", (self.host_id,))
 
         # Security Operator: Aashish Paigude (role: 'security')
         self.cursor.execute("SELECT user_id FROM users WHERE email = 'aashishpaigude_sec@test.com'")
@@ -43,6 +44,8 @@ class TestHostSelectionWorkflow(unittest.TestCase):
             """)
             self.security_id = self.cursor.lastrowid
         else:
+            self.security_id = row[0]
+            self.cursor.execute("UPDATE users SET status = 'Active', role = 'security' WHERE user_id = %s", (self.security_id,))
             self.security_id = row[0]
 
         self.conn.commit()

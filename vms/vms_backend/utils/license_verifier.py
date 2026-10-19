@@ -599,3 +599,29 @@ def _verify_system_license_impl(temp_key=None):
         return {"status": "EXPIRED", "error": "Subscription signature has expired."}
     except jwt.InvalidTokenError:
         return {"status": "INVALID", "error": "Invalid signature. License key tampered with."}
+
+
+def toggle_license_status():
+    """Toggles license active/inactive state via terminated_early flag."""
+    ensure_license_table()
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return False, "Database connection failed"
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, terminated_early FROM system_license ORDER BY id DESC LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            conn.close()
+            return False, "No license record found"
+        lic_id, term_early = row[0], bool(row[1])
+        new_val = not term_early
+        cursor.execute("UPDATE system_license SET terminated_early = %s WHERE id = %s", (new_val, lic_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        clear_license_cache()
+        return True, "Inactive" if new_val else "Active"
+    except Exception as e:
+        return False, str(e)

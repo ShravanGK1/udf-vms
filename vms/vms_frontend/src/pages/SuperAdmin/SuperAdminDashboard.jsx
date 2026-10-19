@@ -12,32 +12,17 @@ import RolesPermissionsModal from "./modals/RolesPermissionsModal";
 import LicenseModal from "./modals/LicenseModal";
 import SystemSettingsModal from "./modals/SystemSettingsModal";
 import RolePasswordsModal from "./modals/RolePasswordsModal";
-
-const trafficData = [
-  { month: "Jan", visitors: 1240 },
-  { month: "Feb", visitors: 1580 },
-  { month: "Mar", visitors: 1320 },
-  { month: "Apr", visitors: 1890 },
-  { month: "May", visitors: 2100 },
-  { month: "Jun", visitors: 1950 },
-];
-
-// sitePerformance will be computed dynamically from the active sites list
+import {
+  ViewUserModal,
+  EditUserModal,
+  TransferSiteModal,
+  StatusConfirmModal,
+  ResetPasswordModal,
+  ViewLicenseModal
+} from "./modals/UserModals";
 
 const licenses = [
-  { company: "Tata Corp", sites: 12, users: 340, status: "Active", expiry: "2026-12-31" },
-  { company: "Reliance Industries", sites: 8, users: 210, status: "Active", expiry: "2026-09-15" },
-  { company: "Infosys Ltd", sites: 15, users: 520, status: "Active", expiry: "2027-03-20" },
-  { company: "Mahindra Group", sites: 5, users: 130, status: "Expiring Soon", expiry: "2026-04-01" },
-  { company: "Wipro Technologies", sites: 3, users: 80, status: "Expired", expiry: "2026-01-15" },
-];
-
-const auditLogs = [
-  { time: "Today, 11:30 AM", user: "Admin User", action: "Modified site configuration", target: "Mumbai HQ" },
-  { time: "Today, 10:15 AM", user: "System", action: "Auto-purged expired visitor data", target: "All Sites" },
-  { time: "Yesterday, 4:45 PM", user: "Priya Sharma", action: "Created new user role", target: "Security Manager" },
-  { time: "Yesterday, 2:20 PM", user: "Admin User", action: "Updated license validity", target: "Mahindra Group" },
-  { time: "Feb 24, 9:00 AM", user: "System", action: "Generated compliance report", target: "Q1 2026" },
+  { company: "Enterprise Customer", sites: 1, users: 1, status: "Active", expiry: "2027-05-26" }
 ];
 
 const SuperAdminDashboard = () => {
@@ -85,6 +70,23 @@ const SuperAdminDashboard = () => {
   const [siteFormSubmitting, setSiteFormSubmitting] = useState(false);
   const [siteActionFeedback, setSiteActionFeedback] = useState("");
 
+  // Super Admin User Management States
+  const [usersList, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [selectedUserForView, setSelectedUserForView] = useState(null);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState(null);
+  const [selectedUserForTransfer, setSelectedUserForTransfer] = useState(null);
+  const [selectedUserForStatus, setSelectedUserForStatus] = useState(null);
+  const [statusTarget, setStatusTarget] = useState("");
+  const [selectedUserForReset, setSelectedUserForReset] = useState(null);
+  const [actionFeedbackToast, setActionFeedbackToast] = useState("");
+
+  // License Management States
+  const [showViewLicenseModal, setShowViewLicenseModal] = useState(false);
+  const [isTogglingLicense, setIsTogglingLicense] = useState(false);
+
   const handleCardClick = (title) => {
     if (title === "Company & Site Master") {
       setActiveModal("company_site");
@@ -105,7 +107,6 @@ const SuperAdminDashboard = () => {
     totalCompanies: 0,
     totalSites: 0,
     totalUsers: 0,
-    systemHealth: "99.9%",
     trafficData: []
   });
   const [loading, setLoading] = useState(true);
@@ -132,10 +133,46 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const res = await apiClient.get("/admin/users");
+      setUsersList(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error fetching users list:", err);
+      setUsersList([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleToggleLicense = async () => {
+    if (!window.confirm("Are you sure you want to toggle the system license status?")) return;
+    try {
+      setIsTogglingLicense(true);
+      const res = await apiClient.post("/admin/toggle-license");
+      setActionFeedbackToast(res.data?.message || "License status toggled successfully.");
+      setTimeout(() => setActionFeedbackToast(""), 4000);
+      fetchStats();
+    } catch (err) {
+      const errMsg = err.response?.data?.error || "Failed to toggle license.";
+      alert(errMsg);
+    } finally {
+      setIsTogglingLicense(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     fetchSitesList();
+    fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "users") {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
   const handleOpenCreateSite = () => {
     setSiteFormData({
@@ -304,11 +341,6 @@ const SuperAdminDashboard = () => {
     return name.includes(q) || mobile.includes(q) || company.includes(q) || host.includes(q) || site.includes(q) || pass.includes(q);
   });
 
-  const sitePerformance = sites.map((s, idx) => ({
-    site: s.name,
-    score: s.status === "Active" ? (90 + (idx * 3) % 11) : (70 + (idx * 2) % 10)
-  }));
-
   const getStatusClass = (status) => {
     switch (status) {
       case "Active": return "active";
@@ -321,12 +353,11 @@ const SuperAdminDashboard = () => {
   const loggedInUser = JSON.parse(sessionStorage.getItem("user") || "{}");
 
   const currentLicenses = dashboardData.licenses && dashboardData.licenses.length > 0 ? dashboardData.licenses : licenses;
-  const currentTrafficData = dashboardData.trafficData && dashboardData.trafficData.length > 0 ? dashboardData.trafficData : trafficData;
+  const currentTrafficData = dashboardData.trafficData && dashboardData.trafficData.length > 0 ? dashboardData.trafficData : [];
   const totalCompanies = dashboardData.totalCompanies !== undefined ? dashboardData.totalCompanies : licenses.length;
   const totalSites = dashboardData.totalSites !== undefined ? dashboardData.totalSites : (sites ? sites.length : 0);
   const totalUsers = dashboardData.totalUsers !== undefined ? dashboardData.totalUsers : 0;
-  const systemHealth = dashboardData.systemHealth || "99.9%";
-  const activeCompanyName = currentLicenses && currentLicenses.length > 0 ? currentLicenses[0].company.split(" (")[0] : "Sumeet Group";
+  const activeCompanyName = currentLicenses && currentLicenses.length > 0 ? currentLicenses[0].company.split(" (")[0] : "Enterprise";
 
   const filteredSites = sites.filter(s => {
     const matchesSearch = (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -355,11 +386,29 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
 
+        {/* Global Action Feedback Toast */}
+        {actionFeedbackToast && (
+          <div style={{
+            background: "rgba(16, 185, 129, 0.95)",
+            color: "#ffffff",
+            padding: "0.85rem 1.25rem",
+            borderRadius: "0.75rem",
+            marginBottom: "1.5rem",
+            boxShadow: "0 8px 24px rgba(16, 185, 129, 0.25)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontWeight: 600,
+            fontSize: "0.95rem"
+          }}>
+            <CheckCircle size={18} /> {actionFeedbackToast}
+          </div>
+        )}
+
         <div className="superadmin-stats-grid">
           <StatCard label="Active Company" value={activeCompanyName} icon={<Building size={22} />} iconBg="hsl(217, 91%, 60%, 0.1)" iconColor="hsl(217, 91%, 60%)" />
           <StatCard label="Active Sites" value={totalSites} icon={<Globe size={22} />} iconBg="hsl(152, 81%, 90%)" iconColor="hsl(164, 86%, 20%)" />
           <StatCard label="Total Users" value={totalUsers} icon={<Users size={22} />} iconBg="hsl(270, 60%, 90%)" iconColor="hsl(270, 60%, 40%)" />
-          <StatCard label="System Health" value={systemHealth} icon={<Activity size={22} />} iconBg="hsl(48, 96%, 89%)" iconColor="hsl(26, 90%, 31%)" trend={{ value: "Uptime", positive: true }} />
         </div>
 
         {/* Config Cards */}
@@ -396,13 +445,13 @@ const SuperAdminDashboard = () => {
                   <button className={`superadmin-tab ${activeTab === "visitors" ? "active" : ""}`} onClick={() => setActiveTab("visitors")}>
                     <Users size={16} /> Visitor Data
                   </button>
-                  <button className={`superadmin-tab ${activeTab === "audit" ? "active" : ""}`} onClick={() => setActiveTab("audit")}>
-                    <FileText size={16} /> Audit Logs
+                  <button className={`superadmin-tab ${activeTab === "users" ? "active" : ""}`} onClick={() => setActiveTab("users")}>
+                    <Shield size={16} /> User Management
                   </button>
                 </div>
                 <div className="superadmin-search-box">
                   <Search size={16} />
-                  <input type="text" placeholder="Search visitors, sites, hosts..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <input type="text" placeholder="Search visitors, sites, users..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
               </div>
 
@@ -438,9 +487,32 @@ const SuperAdminDashboard = () => {
                           </td>
                           <td>
                             <div className="superadmin-action-btns">
-                              <button className="superadmin-icon-btn" title="View"><Eye size={15} /></button>
-                              <button className="superadmin-icon-btn" title="Edit"><Edit size={15} /></button>
-                              <button className="superadmin-icon-btn" title="Toggle"><ToggleLeft size={15} /></button>
+                              <button
+                                className="superadmin-icon-btn"
+                                title="View License & Subscription Details"
+                                onClick={() => setShowViewLicenseModal(true)}
+                              >
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                className="superadmin-icon-btn"
+                                title="Edit License & Feature Config"
+                                onClick={() => setActiveModal("license_manager")}
+                              >
+                                <Edit size={15} />
+                              </button>
+                              <button
+                                className="superadmin-icon-btn"
+                                title={lic.status === "Active" ? "Suspend License" : "Reactivate License"}
+                                onClick={handleToggleLicense}
+                                disabled={isTogglingLicense}
+                              >
+                                {lic.status === "Active" ? (
+                                  <ToggleLeft size={16} color="#16a34a" />
+                                ) : (
+                                  <ToggleLeft size={16} color="#ea580c" style={{ transform: "rotate(180deg)" }} />
+                                )}
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -693,23 +765,174 @@ const SuperAdminDashboard = () => {
                 </div>
               )}
 
-              {activeTab === "audit" && (
-                <div className="superadmin-audit-list">
-                  {auditLogs.map((log, i) => (
-                    <div key={i} className="superadmin-audit-item">
-                      <div className="superadmin-audit-icon">
-                        <Activity size={14} />
-                      </div>
-                      <div className="superadmin-audit-content">
-                        <div className="superadmin-audit-header">
-                          <span className="superadmin-audit-user">{log.user}</span>
-                          <span className="superadmin-audit-time">{log.time}</span>
-                        </div>
-                        <p className="superadmin-audit-action">{log.action}</p>
-                        <span className="superadmin-audit-target">{log.target}</span>
-                      </div>
+              {/* USER MANAGEMENT TAB CONTENT */}
+              {activeTab === "users" && (
+                <div style={{ padding: "1.25rem 1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b", marginRight: "4px" }}>Role:</span>
+                      {["all", "admin", "host", "security"].map(r => (
+                        <button
+                          key={r}
+                          className={`superadmin-status-filter-btn ${userRoleFilter === r ? "active" : ""}`}
+                          onClick={() => setUserRoleFilter(r)}
+                        >
+                          {r === "all" ? "All Roles" : r.charAt(0).toUpperCase() + r.slice(1)}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b", marginRight: "4px" }}>Status:</span>
+                      {["all", "Active", "Inactive"].map(st => (
+                        <button
+                          key={st}
+                          className={`superadmin-status-filter-btn ${userStatusFilter === st ? "active" : ""}`}
+                          onClick={() => setUserStatusFilter(st)}
+                        >
+                          {st === "all" ? "All Status" : st === "Active" ? "🟢 Active" : "⚪ Inactive"}
+                        </button>
+                      ))}
+                      <button
+                        className="superadmin-icon-btn"
+                        title="Refresh Users"
+                        onClick={fetchUsers}
+                        style={{ marginLeft: "8px" }}
+                      >
+                        <RefreshCw size={15} className={loadingUsers ? "spin" : ""} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {loadingUsers ? (
+                    <div style={{ textAlign: "center", padding: "3rem", color: "#64748b" }}>
+                      <RefreshCw size={24} className="spin" style={{ margin: "0 auto 0.5rem" }} />
+                      <p style={{ margin: 0 }}>Loading user accounts...</p>
+                    </div>
+                  ) : (
+                    <div className="superadmin-table-container">
+                      <table className="superadmin-table">
+                        <thead>
+                          <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Assigned Site(s)</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usersList
+                            .filter(u => {
+                              const q = searchQuery.toLowerCase();
+                              const name = (u.name || "").toLowerCase();
+                              const email = (u.email || "").toLowerCase();
+                              const dept = (u.department || "").toLowerCase();
+                              const role = (u.role || "").toLowerCase();
+                              const sitesStr = Array.isArray(u.sites) ? u.sites.map(s => s.name).join(" ").toLowerCase() : (u.site_name || "").toLowerCase();
+                              
+                              const matchesSearch = !q || name.includes(q) || email.includes(q) || dept.includes(q) || role.includes(q) || sitesStr.includes(q);
+                              const matchesRole = userRoleFilter === "all" || role === userRoleFilter.toLowerCase();
+                              const matchesStatus = userStatusFilter === "all" || (u.status || "Active").toLowerCase() === userStatusFilter.toLowerCase();
+                              
+                              return matchesSearch && matchesRole && matchesStatus;
+                            })
+                            .map((u, i) => {
+                              const sitesLabel = Array.isArray(u.sites) && u.sites.length > 0
+                                ? u.sites.map(s => s.name).join(", ")
+                                : (u.site_ids === "ALL" ? "All Sites" : (u.site_name || "Unassigned"));
+
+                              return (
+                                <tr key={u.id || u.user_id || i}>
+                                  <td>
+                                    <div className="superadmin-company-cell">
+                                      <div className="superadmin-company-icon" style={{ background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", fontWeight: 700 }}>
+                                        {(u.name || "U").substring(0, 2).toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <span className="superadmin-company-name">{u.name}</span>
+                                        <div style={{ fontSize: "0.78rem", color: "#627d98" }}>{u.email}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span style={{
+                                      fontSize: "0.78rem",
+                                      fontWeight: 600,
+                                      padding: "3px 8px",
+                                      borderRadius: "4px",
+                                      textTransform: "uppercase",
+                                      background: u.role === "admin" ? "rgba(124, 58, 237, 0.1)" : (u.role === "superadmin" ? "rgba(220, 38, 38, 0.1)" : "rgba(37, 99, 235, 0.1)"),
+                                      color: u.role === "admin" ? "#7c3aed" : (u.role === "superadmin" ? "#dc2626" : "#2563eb")
+                                    }}>
+                                      {u.role}
+                                    </span>
+                                  </td>
+                                  <td>{u.department || "-"}</td>
+                                  <td>
+                                    <span className="superadmin-site-badge">
+                                      📍 {sitesLabel}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className={`superadmin-status ${u.status === "Active" ? "active" : "expired"}`}>
+                                      <span className="superadmin-status-dot" /> {u.status || "Active"}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <div className="superadmin-action-btns">
+                                      <button
+                                        className="superadmin-icon-btn"
+                                        title="View User Details"
+                                        onClick={() => setSelectedUserForView(u)}
+                                      >
+                                        <Eye size={15} />
+                                      </button>
+                                      <button
+                                        className="superadmin-icon-btn"
+                                        title="Edit User Details"
+                                        onClick={() => setSelectedUserForEdit(u)}
+                                      >
+                                        <Edit size={15} />
+                                      </button>
+                                      <button
+                                        className="superadmin-icon-btn"
+                                        title="Change Assigned Site"
+                                        onClick={() => setSelectedUserForTransfer(u)}
+                                      >
+                                        <MapPin size={15} />
+                                      </button>
+                                      <button
+                                        className="superadmin-icon-btn"
+                                        title={u.status === "Active" ? "Deactivate User" : "Activate User"}
+                                        onClick={() => {
+                                          setSelectedUserForStatus(u);
+                                          setStatusTarget(u.status === "Active" ? "Inactive" : "Active");
+                                        }}
+                                      >
+                                        {u.status === "Active" ? (
+                                          <ToggleLeft size={16} color="#16a34a" />
+                                        ) : (
+                                          <ToggleLeft size={16} color="#ea580c" style={{ transform: "rotate(180deg)" }} />
+                                        )}
+                                      </button>
+                                      <button
+                                        className="superadmin-icon-btn"
+                                        title="Reset Password"
+                                        onClick={() => setSelectedUserForReset(u)}
+                                      >
+                                        <Key size={15} color="#7c3aed" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -719,43 +942,37 @@ const SuperAdminDashboard = () => {
             {/* Traffic Trend */}
             <div className="superadmin-card">
               <div className="superadmin-card-header">
-                <h3 className="superadmin-card-title"><BarChart3 size={18} /> Visitor Trends</h3>
+                <div>
+                  <h3 className="superadmin-card-title"><BarChart3 size={18} /> Visitor Trends</h3>
+                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "2px" }}>
+                    Monthly visitor registrations (Rolling 6 Months)
+                  </div>
+                </div>
               </div>
               <div className="superadmin-chart-container">
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={currentTrafficData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: chartTickFill }} />
-                    <YAxis tick={{ fontSize: 12, fill: chartTickFill }} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Line type="monotone" dataKey="visitors" stroke="hsl(217, 91%, 60%)" strokeWidth={2.5} dot={{ fill: "hsl(217, 91%, 60%)", r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {currentTrafficData && currentTrafficData.length > 0 && currentTrafficData.some(d => d.visitors > 0) ? (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={currentTrafficData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
+                      <XAxis dataKey="month" tick={{ fontSize: 12, fill: chartTickFill }} />
+                      <YAxis tick={{ fontSize: 12, fill: chartTickFill }} allowDecimals={false} />
+                      <Tooltip contentStyle={chartTooltipStyle} />
+                      <Line type="monotone" dataKey="visitors" stroke="hsl(217, 91%, 60%)" strokeWidth={2.5} dot={{ fill: "hsl(217, 91%, 60%)", r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ padding: "3rem 1rem", textAlign: "center", color: "#64748b" }}>
+                    <BarChart3 size={36} style={{ margin: "0 auto 0.75rem", opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontWeight: 500, fontSize: "0.9rem" }}>No visitor activity recorded in the past 6 months.</p>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Site Performance */}
-            <div className="superadmin-card">
-              <div className="superadmin-card-header">
-                <h3 className="superadmin-card-title">Site Compliance</h3>
-              </div>
-              <div className="superadmin-chart-container">
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={sitePerformance} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
-                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: chartTickFill }} />
-                    <YAxis type="category" dataKey="site" tick={{ fontSize: 12, fill: chartTickFill }} width={70} />
-                    <Tooltip contentStyle={chartTooltipStyle} />
-                    <Bar dataKey="score" fill="hsl(217, 91%, 60%)" radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
 
+      {/* MODALS */}
       {activeModal === "company_site" && (
         <CompanySiteModal
           onClose={() => {
@@ -766,9 +983,70 @@ const SuperAdminDashboard = () => {
         />
       )}
       {activeModal === "roles_permissions" && <RolesPermissionsModal onClose={() => setActiveModal(null)} />}
-      {activeModal === "license_manager" && <LicenseModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "license_manager" && <LicenseModal onClose={() => { setActiveModal(null); fetchStats(); }} />}
       {activeModal === "system_settings" && <SystemSettingsModal onClose={() => setActiveModal(null)} />}
       {activeModal === "role_passwords" && <RolePasswordsModal onClose={() => setActiveModal(null)} />}
+
+      {/* USER MANAGEMENT MODALS */}
+      {selectedUserForView && (
+        <ViewUserModal user={selectedUserForView} onClose={() => setSelectedUserForView(null)} />
+      )}
+      {selectedUserForEdit && (
+        <EditUserModal
+          user={selectedUserForEdit}
+          onClose={() => setSelectedUserForEdit(null)}
+          onUpdated={(msg) => {
+            setActionFeedbackToast(msg);
+            setTimeout(() => setActionFeedbackToast(""), 4000);
+            fetchUsers();
+          }}
+        />
+      )}
+      {selectedUserForTransfer && (
+        <TransferSiteModal
+          user={selectedUserForTransfer}
+          sites={sites}
+          onClose={() => setSelectedUserForTransfer(null)}
+          onUpdated={(msg) => {
+            setActionFeedbackToast(msg);
+            setTimeout(() => setActionFeedbackToast(""), 4000);
+            fetchUsers();
+          }}
+        />
+      )}
+      {selectedUserForStatus && (
+        <StatusConfirmModal
+          user={selectedUserForStatus}
+          targetStatus={statusTarget}
+          onClose={() => setSelectedUserForStatus(null)}
+          onUpdated={(msg) => {
+            setActionFeedbackToast(msg);
+            setTimeout(() => setActionFeedbackToast(""), 4000);
+            fetchUsers();
+          }}
+        />
+      )}
+      {selectedUserForReset && (
+        <ResetPasswordModal
+          user={selectedUserForReset}
+          onClose={() => setSelectedUserForReset(null)}
+          onUpdated={(msg) => {
+            setActionFeedbackToast(msg);
+            setTimeout(() => setActionFeedbackToast(""), 4000);
+            fetchUsers();
+          }}
+        />
+      )}
+
+      {/* LICENSE DETAILS MODAL */}
+      {showViewLicenseModal && (
+        <ViewLicenseModal
+          license={currentLicenses[0]}
+          licenseDetails={dashboardData.licenseDetails}
+          onClose={() => setShowViewLicenseModal(false)}
+          onOpenEdit={() => setActiveModal("license_manager")}
+        />
+      )}
 
       {selectedVisitorDetail && (
         <div className="superadmin-modal-overlay" onClick={() => setSelectedVisitorDetail(null)}>

@@ -991,9 +991,33 @@ def host_recent_activity():
 
 @request_bp.route("/api/visitor-requests/bulk", methods=["POST"])
 def bulk_create_requests():
+    caller_id, caller_role = get_current_user_from_request(request)
+    if not caller_id:
+        return jsonify({"error": "Authentication required"}), 401
+
     data = request.get_json()
     if not data or "visitors" not in data:
         return jsonify({"error": "No visitors data provided"}), 400
+
+    from utils.auth_utils import get_user_site_scope, is_site_authorized
+
+    # Determine site scope
+    scope_type, allowed_site_ids = get_user_site_scope(caller_id, caller_role)
+    raw_site_id = data.get("site_id") or request.headers.get("X-Site-ID")
+    target_site_id = None
+    if raw_site_id and str(raw_site_id).lower() != "all":
+        try:
+            target_site_id = int(raw_site_id)
+        except (ValueError, TypeError):
+            pass
+
+    if not target_site_id and allowed_site_ids:
+        target_site_id = allowed_site_ids[0]
+
+    # Validate caller's authorization for target_site_id
+    if caller_role not in ['superadmin', 'global_admin']:
+        if target_site_id and not is_site_authorized(caller_id, caller_role, target_site_id):
+            return jsonify({"error": "Access denied: Unauthorized to import visitors to this site."}), 403
 
     visitors_list = data.get("visitors", [])
     default_date = data.get("scheduled_date")
@@ -1159,6 +1183,7 @@ def bulk_create_requests():
                 INSERT INTO visitor_requests (
                     visitor_id,
                     host_id,
+                    site_id,
                     purpose,
                     scheduled_date,
                     scheduled_time,
@@ -1175,17 +1200,15 @@ def bulk_create_requests():
                     approved_by,
                     approved_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'APPROVED', NOW(), %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'APPROVED', NOW(), %s, NOW())
             """, (
-                visitor_id, host_id, purpose,
+                visitor_id, host_id, target_site_id, purpose,
                 default_date, default_time,
                 has_device, item.get("deviceType"), item.get("deviceMake"), item.get("deviceSerialNumber"),
                 has_material, material_name, material_quantity, material_serial_number,
                 default_host_id
             ))
             created_request_ids.append(cursor.lastrowid)
-
-
 
         if row_errors:
             conn.rollback()
@@ -1221,10 +1244,17 @@ def download_bulk_template():
         "Department",
         "Location",
         "Reason of Visit",
+        "Access Level",
+        "Type of ID Proof",
+        "ID Proof Number",
         "Has Device (Yes/No)",
         "Device Type",
         "Device Make",
         "Device Serial",
+        "Has Material (Yes/No)",
+        "Material Name",
+        "Material Quantity",
+        "Material Serial",
         "Vehicle Type",
         "Vehicle Number"
     ]
@@ -1238,15 +1268,35 @@ def download_bulk_template():
         "Engineering",
         "Pune",
         "Meeting",
+        "Visitor (Level 1)",
+        "Aadhar Card",
+        "123456789012",
         "No",
         "",
         "",
         "",
+        "No",
         "",
-        ""
+        "",
+        "",
+        "4 Wheeler",
+        "MH12AB1234"
     ]
     
     df = pd.DataFrame([sample_row], columns=headers)
+    format_type = request.args.get("format", "xlsx").lower()
+    
+    if format_type == "csv":
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        output = io.BytesIO(csv_buffer.getvalue().encode('utf-8'))
+        output.seek(0)
+        return send_file(
+            output,
+            download_name="vms_bulk_visitor_template.csv",
+            as_attachment=True,
+            mimetype="text/csv"
+        )
     
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -1292,6 +1342,41 @@ def download_bulk_template():
         for i, col in enumerate(df.columns):
             column_len = max(df[col].astype(str).str.len().max(), len(col)) + 6
             worksheet.set_column(i, i, column_len)
+
+        # Instructions Sheet
+        instructions_data = [
+            ["Column Name", "Requirement", "Allowed Values / Examples", "Validation Rules"],
+            ["Visitor Name *", "Required", "e.g., John Doe", "Letters and spaces"],
+            ["Mobile Number *", "Required", "e.g., 9876543210 or +919876543210", "7 to 15 digits (international format allowed)"],
+            ["Email", "Optional", "e.g., visitor@example.com", "Valid email address format"],
+            ["Company Name", "Optional", "e.g., Acme Technologies", "Free text"],
+            ["Person to Visit *", "Required", "e.g., Host full name", "Must match an existing registered user"],
+            ["Unit *", "Required", "Pune Eduction Foundation-Kasarwadi, Sason-Kasarwadi, Humankind-Kasarwadi, UDF-Kasarwadi, Eagle-Kasarwadi", "Select valid facility unit"],
+            ["Department", "Optional", "IT, HR, Operations, Sales & Marketing, Accounts, Legal, Store", "Department name"],
+            ["Location *", "Required", "e.g., Pune, Mumbai, Bangalore", "Site or city location"],
+            ["Reason of Visit *", "Required", "Meeting, Interview, Police Verification, Document Verification, Delivery, Contractor Work, Audit, IT, Other", "Standard visit reason"],
+            ["Access Level", "Optional", "Visitor (Level 1), Vendor (Level 2), Security (Level 3), Host (Level 4), Admin (Level 5)", "Default: Visitor (Level 1)"],
+            ["Type of ID Proof", "Optional", "Aadhar Card, PAN Card, Driving License, Passport, Voter ID", "Valid government ID"],
+            ["ID Proof Number", "Optional", "e.g., 123456789012 (Aadhar 12 digits), ABCDE1234F (PAN 10 chars)", "Validated if Aadhar/PAN"],
+            ["Has Device (Yes/No) *", "Required", "Yes or No", "Defaults to No"],
+            ["Device Type", "Optional", "e.g., Laptop, Tablet", "Required if Has Device is Yes"],
+            ["Device Make", "Optional", "e.g., Dell, Apple, Lenovo", "Device manufacturer"],
+            ["Device Serial", "Optional", "e.g., SN12345678", "Hardware serial number"],
+            ["Has Material (Yes/No)", "Optional", "Yes or No", "Defaults to No"],
+            ["Material Name", "Optional", "e.g., Tool kit, Projector", "Material description"],
+            ["Material Quantity", "Optional", "e.g., 1, 5", "Numeric quantity"],
+            ["Material Serial", "Optional", "e.g., MAT-098", "Tracking identifier"],
+            ["Vehicle Type", "Optional", "2 Wheeler, 4 Wheeler, Commercial", "Vehicle category"],
+            ["Vehicle Number", "Optional", "e.g., MH12AB1234", "Format: 2 state letters + 2 district digits + 1-2 series letters + 4 digits"]
+        ]
+        inst_df = pd.DataFrame(instructions_data[1:], columns=instructions_data[0])
+        inst_df.to_excel(writer, index=False, sheet_name='Allowed Values & Guidelines')
+        inst_worksheet = writer.sheets['Allowed Values & Guidelines']
+        inst_header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
+        for c_idx, h in enumerate(instructions_data[0]):
+            inst_worksheet.write(0, c_idx, h, inst_header_fmt)
+        for idx, col in enumerate(inst_df.columns):
+            inst_worksheet.set_column(idx, idx, max(inst_df[col].astype(str).str.len().max(), len(col)) + 4)
             
     output.seek(0)
     return send_file(
@@ -1349,7 +1434,17 @@ def parse_bulk_excel():
             "device make": "deviceMake",
             "device serial": "deviceSerialNumber",
             "device serial number": "deviceSerialNumber",
-            "serial": "deviceSerialNumber",
+            "access level": "accessLevel",
+            "type of id proof": "typeOfIDProof",
+            "id proof type": "typeOfIDProof",
+            "id proof number": "idProofNumber",
+            "id number": "idProofNumber",
+            "has material": "hasMaterial",
+            "has material (yes/no)": "hasMaterial",
+            "material name": "materialName",
+            "material quantity": "materialQuantity",
+            "material serial": "materialSerialNumber",
+            "material serial number": "materialSerialNumber",
             "vehicle type": "vehicleType",
             "vehicle number": "vehicleNumber"
         }
@@ -1363,8 +1458,11 @@ def parse_bulk_excel():
             visitor = {
                 "name": "", "phone": "", "email": "", "companyName": "",
                 "personToVisit": "", "unit": "", "department": "", "location": "",
-                "reasonOfVisit": "Meeting", "hasDevice": "No", "deviceType": "",
-                "deviceMake": "", "deviceSerialNumber": "", "vehicleType": "", "vehicleNumber": ""
+                "reasonOfVisit": "Meeting", "accessLevel": "Visitor (Level 1)",
+                "typeOfIDProof": "", "idProofNumber": "",
+                "hasDevice": "No", "deviceType": "", "deviceMake": "", "deviceSerialNumber": "",
+                "hasMaterial": "No", "materialName": "", "materialQuantity": "", "materialSerialNumber": "",
+                "vehicleType": "", "vehicleNumber": ""
             }
             # Fill mapped keys
             for col in df.columns:

@@ -94,22 +94,24 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = async (format = "xlsx") => {
     try {
-      const response = await API.get("/visitor-requests/bulk-template", {
+      const response = await API.get(`/visitor-requests/bulk-template?format=${format}`, {
         responseType: "blob"
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const ext = format === "csv" ? "csv" : "xlsx";
+      const mime = format === "csv" ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: mime }));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "vms_bulk_visitor_template.xlsx");
+      link.setAttribute("download", `vms_bulk_visitor_template.${ext}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Failed to download template:", err);
-      alert("Failed to download Excel template. Please try again.");
+      alert(`Failed to download ${format.toUpperCase()} template. Please try again.`);
     }
   };
 
@@ -316,10 +318,12 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }) {
     setErrors([]);
 
     try {
+      const activeSiteId = sessionStorage.getItem("selected_site_id") || loggedInUser.site_id || undefined;
       const payload = {
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime,
         default_host_id: selectedHostId,
+        site_id: activeSiteId,
         visitors: parsedData
       };
 
@@ -356,7 +360,7 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }) {
             <UploadCloud size={24} className="title-icon" />
             <div>
               <h3>Bulk Visitor Pre-Registration</h3>
-              <p>Schedule multiple arrivals simultaneously via CSV file</p>
+              <p>Schedule multiple arrivals simultaneously via CSV or Excel file</p>
             </div>
           </div>
           <button className="bulk-modal-close" onClick={onClose}>
@@ -388,12 +392,18 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess }) {
                   onChange={handleFileChange}
                 />
               </div>
-              <div style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "20px" }}>
                 <button type="button" className="btn-secondary-glow" onClick={(e) => {
                   e.stopPropagation();
-                  handleDownloadTemplate();
+                  handleDownloadTemplate("xlsx");
                 }}>
-                  <Download size={16} /> Download Excel Template
+                  <Download size={16} /> Download Excel Template (.xlsx)
+                </button>
+                <button type="button" className="btn-secondary-glow" onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadTemplate("csv");
+                }}>
+                  <Download size={16} /> Download CSV Template (.csv)
                 </button>
               </div>
             </>

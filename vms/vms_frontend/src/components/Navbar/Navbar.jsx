@@ -3,10 +3,11 @@ import companyLogo from "../../assets/logo.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../auth/authSlice";
-import { Shield, User, Settings, LogOut, ChevronDown, Bell, CalendarClock, X, Sun, Moon, BookOpen, ShieldAlert, RefreshCw, Building } from "lucide-react";
+import { Shield, User, Settings, LogOut, ChevronDown, CalendarClock, X, Sun, Moon, BookOpen, ShieldAlert, RefreshCw, Building } from "lucide-react";
 import apiClient from "../../app/apiClient";
 import { useTheme } from "../../context/ThemeContext";
 import SiteSelector from "../common/SiteSelector";
+import UserManualModal from "../UserManual/UserManualModal";
 import "./Navbar.css";
 
 
@@ -154,12 +155,6 @@ const Navbar = ({ role, userName }) => {
 
         <div className="vms-nav-actions">
           <SiteSelector />
-
-          <button className="vms-notification-btn" title="Notifications">
-
-            <Bell size={20} />
-            <span className="vms-notification-dot" />
-          </button>
 
           <button
             className="vms-notification-btn"

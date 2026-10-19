@@ -1290,10 +1290,10 @@ const AdminDashboard = () => {
           </div>
         </div>
         <div className="admin-stats-grid">
-          <StatCard label="Total Users" value={stats.users} icon={<Users size={22} />} iconBg="hsl(217, 91%, 60%, 0.1)" iconColor="hsl(217, 91%, 60%)" trend={{ value: "12% this month", positive: true }} />
-          <StatCard label="Active Visitors" value={stats.visitors} icon={<UserCheck size={22} />} iconBg="hsl(152, 81%, 90%)" iconColor="hsl(164, 86%, 20%)" trend={{ value: "8% today", positive: true }} />
-          <StatCard label="Pending Approvals" value={stats.pending} icon={<Clock size={22} />} iconBg="hsl(48, 96%, 89%)" iconColor="hsl(26, 90%, 31%)" trend={{ value: "3 urgent", positive: false }} />
-          <StatCard label="Security Alerts" value={stats.alerts} icon={<AlertTriangle size={22} />} iconBg="hsl(0, 93%, 94%)" iconColor="hsl(0, 72%, 51%)" trend={{ value: "2 resolved", positive: true }} />
+          <StatCard label="Total Users" value={stats.users} icon={<Users size={22} />} iconBg="hsl(217, 91%, 60%, 0.1)" iconColor="hsl(217, 91%, 60%)" />
+          <StatCard label="Active Visitors" value={stats.visitors} icon={<UserCheck size={22} />} iconBg="hsl(152, 81%, 90%)" iconColor="hsl(164, 86%, 20%)" />
+          <StatCard label="Pending Approvals" value={stats.pending} icon={<Clock size={22} />} iconBg="hsl(48, 96%, 89%)" iconColor="hsl(26, 90%, 31%)" />
+          <StatCard label="Security Alerts" value={stats.alerts} icon={<AlertTriangle size={22} />} iconBg="hsl(0, 93%, 94%)" iconColor="hsl(0, 72%, 51%)" />
         </div>
 
         {/* CHARTS TOGGLES */}

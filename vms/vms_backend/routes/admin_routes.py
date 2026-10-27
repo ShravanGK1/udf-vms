@@ -850,13 +850,17 @@ def transfer_user_site(user_id):
 
         # Verify sites exist, belong to customer, and are Active
         format_s = ','.join(['%s'] * len(target_site_ids))
-        cursor.execute(f"SELECT site_id, name, status FROM sites WHERE customer_id = %s AND site_id IN ({format_s})", (caller_cust_id, *target_site_ids))
-        found_sites = {r[0]: {"name": r[1], "status": r[2]} for r in cursor.fetchall()}
+        cursor.execute(f"SELECT site_id, name, status, customer_id FROM sites WHERE site_id IN ({format_s})", (*target_site_ids,))
+        all_sites = {r[0]: {"name": r[1], "status": r[2], "customer_id": r[3]} for r in cursor.fetchall()}
         for s_id in target_site_ids:
-            if s_id not in found_sites:
+            if s_id not in all_sites:
+                return jsonify({"error": f"Invalid site assignment. Site #{s_id} does not exist."}), 400
+            if all_sites[s_id]["customer_id"] != caller_cust_id:
                 return jsonify({"error": f"Unauthorized: Site #{s_id} does not belong to your organization."}), 403
-            if found_sites[s_id]["status"].lower() != "active":
-                return jsonify({"error": f"Site '{found_sites[s_id]['name']}' is inactive and cannot be assigned."}), 400
+            if all_sites[s_id]["status"].lower() != "active":
+                return jsonify({"error": f"Site '{all_sites[s_id]['name']}' is inactive and cannot be assigned."}), 400
+
+        found_sites = all_sites
 
         # Update user_sites
         cursor.execute("DELETE FROM user_sites WHERE user_id = %s", (user_id,))

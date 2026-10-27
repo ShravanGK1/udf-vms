@@ -349,12 +349,17 @@ class TestReportExports(unittest.TestCase):
     # TEST 10: Unauthenticated requests rejected with HTTP 401
     # -------------------------------------------------------------------------
     def test_10_unauthenticated_request_rejected_401(self):
-        with app.test_client() as client:
-            res_excel = client.get("/api/reports/export-excel")
-            self.assertEqual(res_excel.status_code, 401)
+        old_testing = app.config.get("TESTING", False)
+        try:
+            app.config["TESTING"] = False
+            with app.test_client() as client:
+                res_excel = client.get("/api/reports/export-excel")
+                self.assertEqual(res_excel.status_code, 401)
 
-            res_json = client.get("/api/reports")
-            self.assertEqual(res_json.status_code, 401)
+                res_json = client.get("/api/reports")
+                self.assertEqual(res_json.status_code, 401)
+        finally:
+            app.config["TESTING"] = old_testing
 
 
 if __name__ == "__main__":

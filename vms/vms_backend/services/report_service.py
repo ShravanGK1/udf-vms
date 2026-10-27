@@ -259,7 +259,9 @@ def get_report_data(user_id, role, period="daily", start_date=None, end_date=Non
         query = f"""
             SELECT 
                 vr.request_id,
+                vr.visitor_id,
                 v.visitor_name,
+                v.email,
                 v.mobile_number,
                 v.company_name,
                 COALESCE(
@@ -304,7 +306,9 @@ def get_report_data(user_id, role, period="daily", start_date=None, end_date=Non
             visitors.append({
                 "sr_no": idx,
                 "request_id": r["request_id"],
+                "visitor_id": r["visitor_id"],
                 "name": r["visitor_name"] or "-",
+                "email": r["email"] or "-",
                 "phone": r["mobile_number"] or "-",
                 "company": r["company_name"] or "-",
                 "person_visited": r["person_to_visit"] or "-",

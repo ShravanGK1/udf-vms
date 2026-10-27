@@ -10,8 +10,9 @@
     <sizeThreshold>10240</sizeThreshold>
     <keepFiles>5</keepFiles>
   </log>
-  <stopargument>--defaults-file="%BASE%\..\..\config\my.ini" -u root shutdown</stopargument>
+  <stoparguments>--defaults-file="%BASE%\..\..\config\my.ini" -u root shutdown</stoparguments>
   <stopexecutable>%BASE%\..\..\bin\database\bin\mysqladmin.exe</stopexecutable>
+  <stoptimeout>15 sec</stoptimeout>
   <env name="VMS_INSTALL_DIR" value="%BASE%\..\.."/>
   <onfailure action="restart" delay="5 sec"/>
   <onfailure action="restart" delay="15 sec"/>

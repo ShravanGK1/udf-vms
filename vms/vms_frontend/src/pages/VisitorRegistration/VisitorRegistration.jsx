@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import API from "../../app/apiClient";
-import { User, Mail, Phone, MapPin, Building, Briefcase, Hash, Save, ClipboardList, Laptop, CheckCircle, Languages, ChevronDown, Camera, Calendar, Clock, Plus, Trash2 } from "lucide-react";
+import { User, Mail, Phone, MapPin, Building, Briefcase, Hash, Save, ClipboardList, Laptop, CheckCircle, Languages, ChevronDown, Camera, Calendar, Clock, Plus, Trash2, Users } from "lucide-react";
 import "./VisitorRegistration.css";
 import CameraModal from "../../components/modals/CameraModal";
 import HostSelect from "../../components/common/HostSelect";
@@ -11,7 +11,7 @@ const translations = {
   English: {
     title: "Self Registration",
     subtitle: "Please enter your details accurately for visitor access.",
-    fullName: "Full Name",
+    fullName: "Visitor Full Name",
     personToVisit: "Person to Visit",
     email: "Email ID",
     phone: "Phone Number",
@@ -34,7 +34,7 @@ const translations = {
     selectDept: "Select Department",
     selectId: "Select ID Proof",
     selectReason: "Select Reason",
-    placeholderName: "Enter full name",
+    placeholderName: "Enter visitor full name",
     placeholderPerson: "Enter person name",
     placeholderEmail: "visitor@company.com",
     placeholderPhone: "+91 9876543210",
@@ -92,7 +92,7 @@ const translations = {
   Hindi: {
     title: "स्व-पंजीकरण",
     subtitle: "कृपया विज़िटर एक्सेस के लिए अपना विवरण सटीक रूप से दर्ज करें।",
-    fullName: "पूरा नाम",
+    fullName: "विज़िटर का पूरा नाम",
     personToVisit: "मिलने वाले व्यक्ति का नाम",
     email: "ईमेल आईडी",
     phone: "फोन नंबर",
@@ -115,7 +115,7 @@ const translations = {
     selectDept: "विभाग चुनें",
     selectId: "पहचान पत्र चुनें",
     selectReason: "कारण चुनें",
-    placeholderName: "पूरा नाम दर्ज करें",
+    placeholderName: "विज़िटर का पूरा नाम दर्ज करें",
     placeholderPerson: "व्यक्ति का नाम दर्ज करें",
     placeholderEmail: "visitor@company.com",
     placeholderPhone: "+91 9876543210",
@@ -173,7 +173,7 @@ const translations = {
   Marathi: {
     title: "स्व-नोंदणी",
     subtitle: "कृपया अभ्यागत प्रवेशासाठी आपला तपशील अचूक प्रविष्ट करा.",
-    fullName: "पूर्ण नाव",
+    fullName: "व्हिजिटरचे पूर्ण नाव",
     personToVisit: "भेट द्यावयाची व्यक्ती",
     email: "ईमेल आयडी",
     phone: "फोन नंबर",
@@ -196,7 +196,7 @@ const translations = {
     selectDept: "विभाग निवडा",
     selectId: "ओळखपत्र निवडा",
     selectReason: "कारण निवडा",
-    placeholderName: "पूर्ण नाव प्रविष्ट करा",
+    placeholderName: "व्हिजिटरचे पूर्ण नाव प्रविष्ट करा",
     placeholderPerson: "व्यक्तीचे नाव प्रविष्ट करा",
     placeholderEmail: "visitor@company.com",
     placeholderPhone: "+91 9876543210",
@@ -417,6 +417,29 @@ export default function VisitorRegistration() {
     setDevices(prev => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   };
 
+  // Group / Accompanying Visitors state
+  const [isGroup, setIsGroup] = useState(false);
+  const [groupVisitors, setGroupVisitors] = useState([]);
+
+  const handleGroupVisitorChange = (index, field, value) => {
+    setGroupVisitors(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addGroupVisitorRow = () => {
+    setGroupVisitors(prev => [
+      ...prev,
+      { name: "", phone: "", email: "", typeOfIDProof: "", idProofNumber: "" }
+    ]);
+  };
+
+  const removeGroupVisitorRow = (index) => {
+    setGroupVisitors(prev => (prev.length > 1 ? prev.filter((_, i) => i !== index) : []));
+  };
+
   const handleCountryChange = (e) => {
     const newCode = e.target.value;
     const { localNumber } = parsePhoneNumber(formData.phone);
@@ -628,7 +651,27 @@ export default function VisitorRegistration() {
       return;
     }
 
+    const validGroupVisitors = isGroup 
+      ? groupVisitors
+          .map(v => ({
+            name: (v.name || "").trim(),
+            phone: (v.phone || "").trim(),
+            email: (v.email || "").trim(),
+            typeOfIDProof: (v.typeOfIDProof || "").trim(),
+            idProofNumber: (v.idProofNumber || "").trim()
+          }))
+          .filter(v => v.name !== "")
+      : [];
+
+    if (isGroup && groupVisitors.length > 0 && validGroupVisitors.length === 0) {
+      alert("Please enter the name of at least one accompanying visitor, or uncheck Group Visit.");
+      return;
+    }
+
     const data = new FormData();
+    if (isGroup && validGroupVisitors.length > 0) {
+      data.append("group_visitors", JSON.stringify(validGroupVisitors));
+    }
     data.append("visitor_name", formData.name);
     data.append("full_name", formData.name);
     data.append("email", formData.email);
@@ -739,6 +782,7 @@ export default function VisitorRegistration() {
 
         <form className="reg-form-content" onSubmit={handleSubmit}>
           <div className="reg-form-grid">
+            {/* Visitor Full Name - Mandatory */}
             <div className="form-group">
               <label>{t.fullName} <span>*</span></label>
               <div style={{ position: "relative" }}>
@@ -747,7 +791,269 @@ export default function VisitorRegistration() {
               </div>
             </div>
 
+            {/* Group Visit Button - Beside Visitor Full Name */}
             <div className="form-group">
+              <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Group Visit</span>
+                {isGroup && (
+                  <span style={{ fontSize: "11px", color: "#10b981", fontWeight: 700 }}>
+                    Active ({groupVisitors.filter(g => g.name.trim()).length + 1} Visitors)
+                  </span>
+                )}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isGroup;
+                  setIsGroup(next);
+                  if (next && groupVisitors.length === 0) {
+                    setGroupVisitors([{ name: "", phone: "", email: "", typeOfIDProof: "", idProofNumber: "" }]);
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  height: "44px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0 14px",
+                  background: isGroup ? "rgba(16, 185, 129, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                  border: isGroup ? "1.5px solid #10b981" : "1px solid var(--border-color, #334155)",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  color: isGroup ? "#10b981" : "var(--foreground, #f8fafc)",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                  transition: "all 0.2s ease",
+                  boxSizing: "border-box"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Users size={17} style={{ color: isGroup ? "#10b981" : "#94a3b8" }} />
+                  <span>{isGroup ? "Group Visit (Enabled)" : "Add Group Visitors"}</span>
+                </div>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    padding: "3px 9px",
+                    borderRadius: "9999px",
+                    background: isGroup ? "#10b981" : "rgba(148, 163, 184, 0.15)",
+                    color: isGroup ? "#ffffff" : "#94a3b8"
+                  }}
+                >
+                  {isGroup ? `${groupVisitors.filter(g => g.name.trim()).length + 1} People` : "+ 4–5 People"}
+                </span>
+              </button>
+            </div>
+
+
+            {/* 👥 Accompanying Visitors Section (Placed right after Visitor Full Name & Host) */}
+            {isGroup && (
+              <div 
+                className="form-group full-width" 
+                style={{ 
+                  marginTop: "4px", 
+                  marginBottom: "8px",
+                  padding: "14px 16px", 
+                  background: "rgba(16, 185, 129, 0.08)", 
+                  border: "1.5px solid #10b981", 
+                  borderRadius: "10px", 
+                  transition: "all 0.2s ease" 
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                  <div>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#047857", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Users size={16} /> Accompanying Visitors ({groupVisitors.length})
+                    </span>
+                    <span style={{ fontSize: "11px", color: "var(--text-gray, #64748b)", display: "block", marginTop: "2px" }}>
+                      Lead visitor is listed above. Add accompanying group members below (4–5 people) — each visitor gets their own entry & pass.
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span 
+                      style={{ 
+                        fontSize: "12px", 
+                        fontWeight: 700, 
+                        color: "#047857", 
+                        background: "#d1fae5", 
+                        padding: "4px 10px", 
+                        borderRadius: "9999px",
+                        border: "1px solid #a7f3d0"
+                      }}
+                    >
+                      Group Size: {groupVisitors.filter(g => g.name.trim()).length + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={addGroupVisitorRow}
+                      style={{
+                        background: "#ecfdf5",
+                        color: "#059669",
+                        border: "1px solid #a7f3d0",
+                        borderRadius: "6px",
+                        padding: "6px 14px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <Plus size={14} /> Add Another Visitor
+                    </button>
+                  </div>
+                </div>
+
+                {groupVisitors.map((member, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "var(--card, #ffffff)",
+                      border: "1px solid var(--border-color, #e2e8f0)",
+                      borderRadius: "8px",
+                      padding: "14px",
+                      marginBottom: "10px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "#047857", textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <User size={13} /> Accompanying Visitor #{idx + 2}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeGroupVisitorRow(idx)}
+                        style={{
+                          background: "#fee2e2",
+                          border: "1px solid #fca5a5",
+                          borderRadius: "4px",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          padding: "3px 8px",
+                          fontSize: "11px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                        title="Remove this visitor"
+                      >
+                        <Trash2 size={13} /> Remove
+                      </button>
+                    </div>
+
+                    <div className="form-grid" style={{ gap: "10px" }}>
+                      {/* Visitor Full Name */}
+                      <div className="form-group">
+                        <label style={{ fontSize: "12px" }}>{t.fullName} <span>*</span></label>
+                        <div style={{ position: "relative" }}>
+                          <User size={16} className="input-icon" />
+                          <input
+                            type="text"
+                            required
+                            placeholder={t.placeholderName}
+                            value={member.name}
+                            onChange={(e) => handleGroupVisitorChange(idx, "name", e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Phone */}
+                      <div className="form-group">
+                        <label style={{ fontSize: "12px" }}>{t.phone} <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional)</span></label>
+                        <div style={{ position: "relative" }}>
+                          <Phone size={16} className="input-icon" />
+                          <input
+                            type="tel"
+                            placeholder="Defaults to Lead Visitor's mobile"
+                            value={member.phone}
+                            onChange={(e) => handleGroupVisitorChange(idx, "phone", e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div className="form-group">
+                        <label style={{ fontSize: "12px" }}>{t.email} <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional)</span></label>
+                        <div style={{ position: "relative" }}>
+                          <Mail size={16} className="input-icon" />
+                          <input
+                            type="email"
+                            placeholder="visitor@example.com"
+                            value={member.email}
+                            onChange={(e) => handleGroupVisitorChange(idx, "email", e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* ID Proof Type */}
+                      <div className="form-group">
+                        <label style={{ fontSize: "12px" }}>{t.idType} <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional)</span></label>
+                        <div style={{ position: "relative" }}>
+                          <ClipboardList size={16} className="input-icon" />
+                          <select
+                            value={member.typeOfIDProof}
+                            onChange={(e) => handleGroupVisitorChange(idx, "typeOfIDProof", e.target.value)}
+                          >
+                            <option value="">{t.selectId}</option>
+                            <option value="Aadhar Card">{t.aadhar}</option>
+                            <option value="PAN Card">{t.pan}</option>
+                            <option value="Driving License">{t.dl}</option>
+                            <option value="Voting Card">Voting Card</option>
+                            <option value="Passport">{t.passport}</option>
+                            <option value="Company ID">{t.companyID}</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* ID Proof Number */}
+                      {member.typeOfIDProof && (
+                        <div className="form-group full-width">
+                          <label style={{ fontSize: "12px" }}>{t.idNumber}</label>
+                          <div style={{ position: "relative" }}>
+                            <Hash size={16} className="input-icon" />
+                            <input
+                              type="text"
+                              placeholder={t.placeholderId}
+                              value={member.idProofNumber}
+                              onChange={(e) => handleGroupVisitorChange(idx, "idProofNumber", e.target.value.toUpperCase())}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addGroupVisitorRow}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    background: "#f0fdf4",
+                    color: "#059669",
+                    border: "1px dashed #6ee7b7",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    marginTop: "6px"
+                  }}
+                >
+                  <Plus size={15} /> Add Another Group Visitor (e.g. 4–5 people)
+                </button>
+              </div>
+            )}
+
+            {/* Person to Visit - Below Group Visitors Section */}
+            <div className="form-group full-width">
               <HostSelect
                 selectedHostId={formData.host_id}
                 siteId={formData.site_id || formData.siteId || sessionStorage.getItem("active_site_id")}
@@ -766,25 +1072,100 @@ export default function VisitorRegistration() {
               />
             </div>
 
-            {/* Multi-day Visit Toggle Checkbox */}
-            <div className="form-group full-width" style={{ marginTop: "4px", marginBottom: "8px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontWeight: 600, color: "var(--foreground, #1e293b)", fontSize: "13px" }}>
-                <input
-                  type="checkbox"
-                  name="isMultiDay"
-                  checked={formData.isMultiDay === "Yes" || formData.isMultiDay === true}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setFormData(prev => ({
-                      ...prev,
-                      isMultiDay: checked ? "Yes" : "No",
-                      valid_till: checked ? (prev.valid_till || prev.scheduled_date || todayStr) : ""
-                    }));
-                  }}
-                  style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#2563eb" }}
-                />
-                <span>Multiple Days Visit (Long Duration On-Site Access)</span>
-              </label>
+            {/* Multi-day Visit Toggle Card Button */}
+            <div className="form-group full-width" style={{ marginTop: "4px", marginBottom: "10px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextChecked = !(formData.isMultiDay === "Yes" || formData.isMultiDay === true);
+                  setFormData(prev => ({
+                    ...prev,
+                    isMultiDay: nextChecked ? "Yes" : "No",
+                    valid_till: nextChecked ? (prev.valid_till || prev.scheduled_date || todayStr) : ""
+                  }));
+                }}
+                style={{
+                  width: "100%",
+                  minHeight: "48px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  background: (formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                    ? "rgba(37, 99, 235, 0.15)"
+                    : "rgba(255, 255, 255, 0.04)",
+                  border: (formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                    ? "1.5px solid #3b82f6"
+                    : "1px solid var(--border-color, #334155)",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  color: (formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                    ? "#60a5fa"
+                    : "var(--foreground, #f8fafc)",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                  transition: "all 0.2s ease",
+                  boxSizing: "border-box"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left" }}>
+                  <Calendar size={18} style={{ color: (formData.isMultiDay === "Yes" || formData.isMultiDay === true) ? "#3b82f6" : "#94a3b8" }} />
+                  <div>
+                    <span style={{ display: "block", fontSize: "13px", fontWeight: 600 }}>
+                      {(formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                        ? "Multiple Days Visit (Active)"
+                        : "Multiple Days Visit"}
+                    </span>
+                    <span style={{ display: "block", fontSize: "11px", color: "var(--text-gray, #94a3b8)", fontWeight: 400 }}>
+                      {(formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                        ? "Start Date and Till Date are enabled below for multi-day access"
+                        : "Enable for contractors, vendors, audits or multi-day on-site access"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      padding: "3px 10px",
+                      borderRadius: "9999px",
+                      background: (formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                        ? "#2563eb"
+                        : "rgba(148, 163, 184, 0.15)",
+                      color: (formData.isMultiDay === "Yes" || formData.isMultiDay === true)
+                        ? "#ffffff"
+                        : "#94a3b8"
+                    }}
+                  >
+                    {(formData.isMultiDay === "Yes" || formData.isMultiDay === true) ? "Multi-Day" : "Single Day"}
+                  </span>
+                  <div
+                    style={{
+                      width: "36px",
+                      height: "20px",
+                      borderRadius: "9999px",
+                      background: (formData.isMultiDay === "Yes" || formData.isMultiDay === true) ? "#2563eb" : "rgba(100, 116, 139, 0.4)",
+                      position: "relative",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "14px",
+                        height: "14px",
+                        borderRadius: "50%",
+                        background: "#ffffff",
+                        position: "absolute",
+                        top: "3px",
+                        left: (formData.isMultiDay === "Yes" || formData.isMultiDay === true) ? "19px" : "3px",
+                        transition: "all 0.2s ease"
+                      }}
+                    />
+                  </div>
+                </div>
+              </button>
             </div>
 
             {/* Visit Date(s) & Time */}
@@ -1158,6 +1539,8 @@ export default function VisitorRegistration() {
                 </select>
               </div>
             </div>
+
+
 
             <div className="form-group full-width">
               <label>{t.hasDevice} <span>*</span></label>

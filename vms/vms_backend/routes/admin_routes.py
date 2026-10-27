@@ -39,7 +39,7 @@ def allowed_file(filename):
 @admin_bp.route("/admin/users", methods=["GET"])
 def get_users():
     caller_id, role = get_current_user_from_request(request)
-    if not caller_id or role not in ['superadmin', 'admin']:
+    if not caller_id or role not in ['superadmin', 'admin', 'security']:
         return jsonify({"error": "Unauthorized"}), 403
 
     conn = get_db_connection()

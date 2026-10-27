@@ -251,6 +251,12 @@ def verify_and_migrate_columns():
         ("visitor_requests", "checkout_signature_path", "ALTER TABLE visitor_requests ADD COLUMN checkout_signature_path VARCHAR(255) DEFAULT NULL"),
         ("visitor_requests", "checked_in_by", "ALTER TABLE visitor_requests ADD COLUMN checked_in_by INT DEFAULT NULL"),
         ("visitor_requests", "physical_badge_no", "ALTER TABLE visitor_requests ADD COLUMN physical_badge_no VARCHAR(50) DEFAULT NULL"),
+        ("visitor_requests", "is_multi_day", "ALTER TABLE visitor_requests ADD COLUMN is_multi_day BOOLEAN DEFAULT FALSE"),
+        ("visitor_requests", "valid_till", "ALTER TABLE visitor_requests ADD COLUMN valid_till DATE DEFAULT NULL"),
+        ("visitor_requests", "group_id", "ALTER TABLE visitor_requests ADD COLUMN group_id VARCHAR(50) DEFAULT NULL"),
+        ("visitor_requests", "is_group_lead", "ALTER TABLE visitor_requests ADD COLUMN is_group_lead BOOLEAN DEFAULT FALSE"),
+        ("visitor_requests", "accompanying_visitors", "ALTER TABLE visitor_requests ADD COLUMN accompanying_visitors TEXT DEFAULT NULL"),
+        ("visitor_requests", "accompanying_count", "ALTER TABLE visitor_requests ADD COLUMN accompanying_count INT DEFAULT 0"),
     ]
 
     try:

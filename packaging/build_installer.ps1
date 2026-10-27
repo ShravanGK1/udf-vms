@@ -64,7 +64,24 @@ $RuntimeDir = Join-Path $ProjectRoot "dist_runtime"
 $RuntimePython = Join-Path $RuntimeDir "bin\python\python.exe"
 $RuntimeDb = Join-Path $RuntimeDir "bin\database\bin\mysqld.exe"
 $RuntimeProxy = Join-Path $RuntimeDir "bin\proxy\caddy.exe"
-$RuntimeWinSW = Join-Path $RuntimeDir "bin\winsw\winsw.exe"
+$WinSWDir = Join-Path $RuntimeDir "bin\winsw"
+$RuntimeWinSW = Join-Path $WinSWDir "winsw.exe"
+if (-not (Test-Path $RuntimeWinSW)) {
+    # Check if a staged service runner exists and can restore winsw.exe
+    $AltWinSW = Get-ChildItem -Path $WinSWDir -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($AltWinSW) {
+        Copy-Item -Path $AltWinSW.FullName -Destination $RuntimeWinSW -Force
+    }
+}
+# Ensure all service runner binaries exist alongside winsw.exe
+if (Test-Path $RuntimeWinSW) {
+    foreach ($svcRunner in @("vms-database.exe", "vms-backend.exe", "vms-proxy.exe")) {
+        $svcRunnerPath = Join-Path $WinSWDir $svcRunner
+        if (-not (Test-Path $svcRunnerPath)) {
+            Copy-Item -Path $RuntimeWinSW -Destination $svcRunnerPath -Force
+        }
+    }
+}
 
 $MissingRuntimes = @()
 if (-not (Test-Path $RuntimePython)) { $MissingRuntimes += "Python 3.11 Embed" }

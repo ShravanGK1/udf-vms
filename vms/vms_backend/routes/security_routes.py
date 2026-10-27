@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 import os
 from datetime import datetime, timedelta, date
 import pymysql.cursors
+import json
 from routes.request_routes import auto_expire_past_requests
 from utils.signature_utils import save_signature_image
 from utils.auth_utils import get_current_user_from_request, get_user_site_scope, is_site_authorized
@@ -1170,6 +1171,10 @@ def get_request_details(request_id):
                 vr.request_id,
                 vr.is_multi_day,
                 vr.valid_till,
+                vr.group_id,
+                vr.is_group_lead,
+                vr.accompanying_visitors,
+                vr.accompanying_count,
                 vr.purpose as "reasonOfVisit",
                 v.has_device,
                 v.device_type as "deviceType",
@@ -1208,6 +1213,35 @@ def get_request_details(request_id):
         """, (request_id,))
 
         request_details = cursor.fetchone()
+
+        if request_details and request_details.get("group_id"):
+            cursor.execute("""
+                SELECT 
+                    vr.request_id,
+                    vr.is_group_lead,
+                    vr.status,
+                    v.visitor_name as name,
+                    v.mobile_number as phone,
+                    v.email,
+                    v.id_proof_type as "typeOfIDProof",
+                    v.id_proof_number as "idProofNumber"
+                FROM visitor_requests vr
+                JOIN visitors v ON vr.visitor_id = v.visitor_id
+                WHERE vr.group_id = %s AND vr.request_id != %s
+                ORDER BY vr.request_id ASC
+            """, (request_details["group_id"], request_id))
+            request_details["group_members"] = cursor.fetchall()
+        elif request_details:
+            request_details["group_members"] = []
+
+        if request_details and request_details.get("accompanying_visitors"):
+            try:
+                request_details["accompanying_visitors_list"] = json.loads(request_details["accompanying_visitors"])
+            except Exception:
+                request_details["accompanying_visitors_list"] = []
+        elif request_details:
+            request_details["accompanying_visitors_list"] = []
+
         conn.close()
 
         if not request_details:

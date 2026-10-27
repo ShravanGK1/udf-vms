@@ -70,8 +70,9 @@ $DatabaseXmlContent = @"
     <sizeThreshold>10240</sizeThreshold>
     <keepFiles>5</keepFiles>
   </log>
-  <stopargument>--defaults-file="$InstallDirResolved\config\my.ini" -u root shutdown</stopargument>
+  <stoparguments>--defaults-file="$InstallDirResolved\config\my.ini" -u root shutdown</stoparguments>
   <stopexecutable>$InstallDirResolved\bin\database\bin\mysqladmin.exe</stopexecutable>
+  <stoptimeout>15 sec</stoptimeout>
   <env name="VMS_INSTALL_DIR" value="$InstallDirResolved"/>
   <onfailure action="restart" delay="5 sec"/>
   <onfailure action="restart" delay="15 sec"/>

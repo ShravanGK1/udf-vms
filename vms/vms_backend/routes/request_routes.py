@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 import os
 import time
 import re
+import json
+import random
 try:
     from utils.auth_utils import get_current_user_from_request, get_user_site_scope, is_site_authorized
 except ImportError:
@@ -112,6 +114,26 @@ def check_and_add_columns():
             if not cursor.fetchone():
                 print("Adding material_serial_number column to visitor_requests...")
                 cursor.execute("ALTER TABLE visitor_requests ADD COLUMN material_serial_number VARCHAR(100) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'group_id'")
+            if not cursor.fetchone():
+                print("Adding group_id column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN group_id VARCHAR(50) DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'is_group_lead'")
+            if not cursor.fetchone():
+                print("Adding is_group_lead column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN is_group_lead BOOLEAN DEFAULT FALSE")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'accompanying_visitors'")
+            if not cursor.fetchone():
+                print("Adding accompanying_visitors column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN accompanying_visitors TEXT DEFAULT NULL")
+
+            cursor.execute("SHOW COLUMNS FROM visitor_requests LIKE 'accompanying_count'")
+            if not cursor.fetchone():
+                print("Adding accompanying_count column to visitor_requests...")
+                cursor.execute("ALTER TABLE visitor_requests ADD COLUMN accompanying_count INT DEFAULT 0")
 
             cursor.execute("SHOW TABLES LIKE 'system_settings'")
             if not cursor.fetchone():
@@ -509,6 +531,30 @@ def create_request():
         except (ValueError, TypeError):
             target_site_id = 1
 
+        # Check for group / accompanying visitors
+        raw_group = data.get("group_visitors")
+        group_visitors = []
+        if raw_group:
+            if isinstance(raw_group, str):
+                try:
+                    group_visitors = json.loads(raw_group)
+                except Exception as ex:
+                    print(f"Error parsing group_visitors JSON: {ex}")
+                    group_visitors = []
+            elif isinstance(raw_group, list):
+                group_visitors = raw_group
+
+        # Filter out empty entries (require at least a non-empty name)
+        valid_group_members = []
+        if isinstance(group_visitors, list):
+            for g in group_visitors:
+                if isinstance(g, dict) and g.get("name") and str(g.get("name")).strip():
+                    valid_group_members.append(g)
+
+        group_id = None
+        if valid_group_members:
+            group_id = f"GRP-{int(time.time())}-{random.randint(1000, 9999)}"
+
         request_data = {
             "visitor_id": visitor_id,
             "host_id": host_id,
@@ -525,7 +571,11 @@ def create_request():
             "has_material": has_material,
             "material_name": material_name,
             "material_quantity": material_quantity,
-            "material_serial_number": material_serial_number
+            "material_serial_number": material_serial_number,
+            "group_id": group_id,
+            "is_group_lead": True if group_id else False,
+            "accompanying_count": len(valid_group_members),
+            "accompanying_visitors": json.dumps(valid_group_members) if valid_group_members else None
         }
 
         cursor.execute("""
@@ -546,6 +596,10 @@ def create_request():
                 material_name,
                 material_quantity,
                 material_serial_number,
+                group_id,
+                is_group_lead,
+                accompanying_count,
+                accompanying_visitors,
                 status,
                 created_at
             )
@@ -555,11 +609,127 @@ def create_request():
                 %(is_multi_day)s, %(valid_till)s,
                 %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s,
                 %(has_material)s, %(material_name)s, %(material_quantity)s, %(material_serial_number)s,
+                %(group_id)s, %(is_group_lead)s, %(accompanying_count)s, %(accompanying_visitors)s,
                 'PENDING', NOW()
             )
         """, request_data)
 
         new_request_id = cursor.lastrowid
+
+        # Insert requests for accompanying group members
+        created_group_requests = []
+        if group_id and valid_group_members:
+            for member in valid_group_members:
+                m_name = str(member.get("name")).strip()
+                m_phone = str(member.get("phone") or member.get("mobile_number") or mobile_str).strip()
+                m_email = str(member.get("email") or "").strip()
+                m_id_type = str(member.get("typeOfIDProof") or member.get("id_proof_type") or "").strip()
+                m_id_num = str(member.get("idProofNumber") or member.get("id_proof_number") or "").strip()
+
+                cursor.execute("""
+                    SELECT visitor_id FROM visitors 
+                    WHERE mobile_number = %s AND (LOWER(visitor_name) = LOWER(%s) OR LOWER(full_name) = LOWER(%s))
+                    LIMIT 1
+                """, (m_phone, m_name, m_name))
+                m_existing = cursor.fetchone()
+
+                if m_existing:
+                    m_visitor_id = m_existing["visitor_id"]
+                else:
+                    m_visitor_data = {
+                        "visitor_name": m_name,
+                        "full_name": m_name,
+                        "email": m_email,
+                        "mobile_number": m_phone,
+                        "pabx_number": data.get("pabx") or "",
+                        "company_name": data.get("company_name") or data.get("companyName"),
+                        "unit": data.get("unit"),
+                        "department": data.get("department"),
+                        "location": data.get("location"),
+                        "id_proof_type": m_id_type or None,
+                        "id_proof_number": m_id_num or None,
+                        "access_level": data.get("access_level") or data.get("accessLevel"),
+                        "reason_of_visit": data.get("purpose") or data.get("reasonOfVisit"),
+                        "employee_id": str(host_id),
+                        "photo": None,
+                        "person_to_visit": person_to_visit,
+                        "vehicle_type": data.get("vehicle_type") or data.get("vehicleType"),
+                        "vehicle_number": data.get("vehicle_number") or data.get("vehicleNumber"),
+                        "vehicle_photo_front": None,
+                        "vehicle_photo_side": None,
+                        "has_device": False,
+                        "device_type": None,
+                        "device_make": None,
+                        "device_serial_number": None,
+                        "has_material": False,
+                        "material_name": None,
+                        "material_quantity": None,
+                        "material_serial_number": None
+                    }
+                    cursor.execute("""
+                        INSERT INTO visitors (
+                            visitor_name, full_name, email, mobile_number, pabx_number,
+                            company_name, unit, department, location, id_proof_type,
+                            id_proof_number, access_level, reason_of_visit, employee_id,
+                            photo, person_to_visit, vehicle_type, vehicle_number,
+                            vehicle_photo_front, vehicle_photo_side, has_device,
+                            device_type, device_make, device_serial_number,
+                            has_material, material_name, material_quantity, material_serial_number
+                        )
+                        VALUES (
+                            %(visitor_name)s, %(full_name)s, %(email)s, %(mobile_number)s, 
+                            %(pabx_number)s, %(company_name)s, %(unit)s, %(department)s, 
+                            %(location)s, %(id_proof_type)s, %(id_proof_number)s, %(access_level)s, 
+                            %(reason_of_visit)s, %(employee_id)s, %(photo)s, %(person_to_visit)s,
+                            %(vehicle_type)s, %(vehicle_number)s, %(vehicle_photo_front)s, %(vehicle_photo_side)s,
+                            %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s,
+                            %(has_material)s, %(material_name)s, %(material_quantity)s, %(material_serial_number)s
+                        )
+                    """, m_visitor_data)
+                    m_visitor_id = cursor.lastrowid
+
+                m_req_data = {
+                    "visitor_id": m_visitor_id,
+                    "host_id": host_id,
+                    "site_id": target_site_id,
+                    "purpose": data.get("purpose") or data.get("reasonOfVisit"),
+                    "scheduled_date": sched_date_val,
+                    "scheduled_time": sched_time_val,
+                    "is_multi_day": is_multi_day,
+                    "valid_till": valid_till if valid_till else sched_date_val,
+                    "has_device": False,
+                    "device_type": None,
+                    "device_make": None,
+                    "device_serial_number": None,
+                    "has_material": False,
+                    "material_name": None,
+                    "material_quantity": None,
+                    "material_serial_number": None,
+                    "group_id": group_id,
+                    "is_group_lead": False,
+                    "accompanying_count": 0,
+                    "accompanying_visitors": None
+                }
+                cursor.execute("""
+                    INSERT INTO visitor_requests (
+                        visitor_id, host_id, site_id, purpose,
+                        scheduled_date, scheduled_time, is_multi_day, valid_till,
+                        has_device, device_type, device_make, device_serial_number,
+                        has_material, material_name, material_quantity, material_serial_number,
+                        group_id, is_group_lead, accompanying_count, accompanying_visitors,
+                        status, created_at
+                    )
+                    VALUES (
+                        %(visitor_id)s, %(host_id)s, %(site_id)s, %(purpose)s,
+                        %(scheduled_date)s, %(scheduled_time)s, %(is_multi_day)s, %(valid_till)s,
+                        %(has_device)s, %(device_type)s, %(device_make)s, %(device_serial_number)s,
+                        %(has_material)s, %(material_name)s, %(material_quantity)s, %(material_serial_number)s,
+                        %(group_id)s, %(is_group_lead)s, %(accompanying_count)s, %(accompanying_visitors)s,
+                        'PENDING', NOW()
+                    )
+                """, m_req_data)
+                created_group_requests.append(cursor.lastrowid)
+
         cursor.execute("SELECT * FROM visitor_requests WHERE request_id = %s", (new_request_id,))
         new_request = cursor.fetchone()
 
@@ -656,6 +826,18 @@ def approve_request(request_id):
                     approved_at=NOW()
                 WHERE request_id=%s
             """, (approver_id, request_id))
+
+        # If part of a group visit, approve all accompanying group members
+        cursor.execute("SELECT group_id FROM visitor_requests WHERE request_id = %s", (request_id,))
+        grp_row = cursor.fetchone()
+        if grp_row and grp_row.get("group_id"):
+            cursor.execute("""
+                UPDATE visitor_requests
+                SET status='APPROVED',
+                    approved_by=%s,
+                    approved_at=NOW()
+                WHERE group_id=%s AND status='PENDING'
+            """, (approver_id, grp_row["group_id"]))
         
         conn.commit()
         return jsonify({"message": "Approved"}), 200
@@ -697,6 +879,18 @@ def reject_request(request_id):
                 approved_at=NOW()
             WHERE request_id=%s
         """, (approver_id, request_id))
+
+        # If part of a group visit, reject all accompanying group members
+        cursor.execute("SELECT group_id FROM visitor_requests WHERE request_id = %s", (request_id,))
+        grp_row = cursor.fetchone()
+        if grp_row and grp_row.get("group_id"):
+            cursor.execute("""
+                UPDATE visitor_requests
+                SET status='REJECTED',
+                    approved_by=%s,
+                    approved_at=NOW()
+                WHERE group_id=%s AND status='PENDING'
+            """, (approver_id, grp_row["group_id"]))
 
         conn.commit()
         return jsonify({"message": "Rejected"}), 200
@@ -1387,8 +1581,13 @@ def download_bulk_template():
     )
 
 @request_bp.route("/api/visitor-requests/parse-excel", methods=["POST"])
+@request_bp.route("/api/visitor-requests/parse_excel", methods=["POST"])
+@request_bp.route("/api/visitor_requests/parse-excel", methods=["POST"])
+@request_bp.route("/api/visitor_requests/parse_excel", methods=["POST"])
 def parse_bulk_excel():
     import pandas as pd
+    import io
+    import csv
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
     file = request.files["file"]
@@ -1397,15 +1596,84 @@ def parse_bulk_excel():
         
     filename = file.filename.lower()
     try:
-        if filename.endswith(".csv"):
-            df = pd.read_csv(file)
-        elif filename.endswith((".xls", ".xlsx")):
-            df = pd.read_excel(file)
-        else:
-            return jsonify({"error": "Unsupported file format. Please upload an Excel (.xlsx/.xls) or CSV file."}), 400
+        raw_bytes = file.read()
+        if not raw_bytes:
+            return jsonify({"error": "The uploaded file is empty."}), 400
+
+        df = None
+
+        # 1. Automatic Excel signature detection (handles misnamed .csv or .xlsx)
+        if raw_bytes.startswith(b"PK\x03\x04") or raw_bytes.startswith(b"\xd0\xcf\x11\xe0"):
+            try:
+                df = pd.read_excel(io.BytesIO(raw_bytes))
+            except Exception as ex:
+                return jsonify({"error": f"Failed to parse Excel workbook: {str(ex)}"}), 400
+
+        # 2. UTF-16 BOM or wide-character CSV detection (Excel 'Unicode Text' export)
+        elif raw_bytes.startswith(b"\xff\xfe") or raw_bytes.startswith(b"\xfe\xff") or (b"\x00" in raw_bytes[:60]):
+            for enc in ["utf-16", "utf-16-le", "utf-16-be"]:
+                try:
+                    df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc, sep=None, engine="python", on_bad_lines="skip")
+                    break
+                except Exception:
+                    try:
+                        df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc, on_bad_lines="skip")
+                        break
+                    except Exception:
+                        continue
+
+        # 3. Standard Text CSV / TSV encodings with automatic delimiter detection
+        if df is None:
+            encodings = ["utf-8-sig", "utf-8", "cp1252", "latin1", "iso-8859-1"]
+            for enc in encodings:
+                try:
+                    df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc, sep=None, engine="python", on_bad_lines="skip")
+                    break
+                except Exception:
+                    try:
+                        df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc, on_bad_lines="skip")
+                        break
+                    except Exception:
+                        continue
+
+        # 4. Standard Python csv.reader fallback
+        if df is None:
+            for enc in ["utf-8-sig", "utf-8", "cp1252", "latin1"]:
+                try:
+                    text = raw_bytes.decode(enc)
+                    lines = [l for l in text.splitlines() if l.strip()]
+                    if not lines:
+                        continue
+                    sample = "\n".join(lines[:5])
+                    try:
+                        dialect = csv.Sniffer().sniff(sample)
+                        delimiter = dialect.delimiter
+                    except Exception:
+                        delimiter = ";" if ";" in lines[0] else "\t" if "\t" in lines[0] else ","
+                    
+                    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+                    rows = list(reader)
+                    if len(rows) > 1:
+                        df = pd.DataFrame(rows[1:], columns=rows[0])
+                        break
+                except Exception:
+                    continue
+
+        # 5. Last resort fallback: read_excel
+        if df is None:
+            try:
+                df = pd.read_excel(io.BytesIO(raw_bytes))
+            except Exception:
+                pass
+
+        if df is None:
+            return jsonify({"error": "Could not parse file. Please verify it is a valid Excel (.xlsx/.xls) or CSV file."}), 400
             
-        # Clean columns to lowercase and remove asterisks for mapping
-        df.columns = [str(c).strip().lower().replace("*", "").strip() for c in df.columns]
+        # Clean columns to lowercase and remove BOM / asterisks for mapping
+        df.columns = [
+            str(c).replace("\ufeff", "").replace("\xef\xbb\xbf", "").strip().lower().replace("*", "").strip() 
+            for c in df.columns
+        ]
         
         # Mappings
         HEADER_MAPPING = {

@@ -131,3 +131,6 @@ The installer was recompiled using [`packaging/build_installer.ps1`](file:///z:/
 - **Installer Path**: `dist_installer/VMS_Setup_v1.0.0.exe`
 - **Compiler**: Inno Setup 6.7.3 (`ISCC.exe`)
 - **Staging Mode**: Local `%TEMP%` staging with direct copy to `dist_installer`
+- **File Size**: `102,373,444` bytes (`97.63 MB`)
+- **SHA-256 Hash**: `9E35A0D8AF49F6C4A60EE4109F72982821CC2D33ACBEA71998FF1DDB0F898F05`
+
